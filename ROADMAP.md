@@ -98,6 +98,13 @@ Where the idea holds or fails, cheap to check.
   we get here?" faster? Does the 3D add anything to the map?
 - [ ] Written down here, whatever the answer
 
+First evidence (2026-10-18), on a server reloading its configuration, threads waiting left out,
+peaks by class, ridges in 3D: a small text utility stood out as a peak of its own, 3.7% of the
+CPU, eighth of the classes. In a flame graph its time is split among the many paths that call it,
+none of them wide. Its mountain led through schema parsing to its callers, and the JDK frames under
+it to regular expressions compiled on every call; rewritten without them, it ran 5 to 6 times
+faster. The landscape shows secondary bottlenecks, gathered, that a flame graph scatters.
+
 ## Later
 
 - Time slider: `from` and `to` filter the samples already, the terrain redrawn as they move
