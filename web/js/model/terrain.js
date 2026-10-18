@@ -54,13 +54,21 @@
 /** The gap between two mountains, as a share of the largest one's radius. */
 const GAP = 0.12;
 
+/** How much a mountain is drawn to the centre, against to the mountains it shares callers with. */
+const CENTRE = 0.3;
+
+/** The places tried around a mountain to set another against it. */
+const ANGLES = 36;
+
 /**
  * @param {Frame[]} trees the mountains, each a peak and its callers as mountains() gives them, the
  *        heaviest first
  * @param {number} [size] the cells along the longer side of the grid
+ * @param {number} [aspect] the width over the height of the space the terrain is shown in: the
+ *        mountains are gathered in an ellipse of that shape
  * @returns {Terrain}
  */
-export function massif(trees, size = 400) {
+export function massif(trees, size = 600, aspect = 1) {
   /** @type {TerrainNode[]} */
   const nodes = [];
   /** @type {number[]} the index of each peak */
@@ -88,7 +96,7 @@ export function massif(trees, size = 400) {
   });
 
   const top = trees.reduce((max, t) => Math.max(max, t.total), 0);
-  const circles = layout(trees, top);
+  const circles = layout(trees, top, aspect);
 
   // the grid around them, with a margin
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -100,7 +108,7 @@ export function massif(trees, size = 400) {
   }
   if (circles.length === 0)
     x0 = y0 = -1, x1 = y1 = 1;
-  const margin = 0.1 * Math.max(x1 - x0, y1 - y0);
+  const margin = 0.03 * Math.max(x1 - x0, y1 - y0);
   x0 -= margin, y0 -= margin, x1 += margin, y1 += margin;
   const scale = size / Math.max(x1 - x0, y1 - y0);
   const width = Math.max(1, Math.round((x1 - x0) * scale)), height = Math.max(1, Math.round((y1 - y0) * scale));
@@ -158,23 +166,35 @@ function sectorAt(nodes, ring, a) {
 
 /**
  * Where the mountains stand: each a circle whose area is its peak's time,
- * placed against the one already placed it shares the most callers with,
- * where it is nearest to those it shares callers with, then to the centre.
+ * placed against one already placed, where it is nearest to those it shares
+ * callers with, and to the centre of an ellipse of the shape asked. A
+ * caller most mountains have (a thread's run, a pool's worker) says nothing
+ * of them and is not counted.
  *
  * @param {Frame[]} trees
  * @param {number} top the time of the highest peak
+ * @param {number} [aspect] the width over the height of the ellipse they are gathered in
  * @returns {{x: number, y: number, r: number}[]} in the order of the trees; the largest radius is 1
  */
-export function layout(trees, top) {
+export function layout(trees, top, aspect = 1) {
+  const n = trees.length;
   const radius = trees.map(t => top > 0 ? Math.sqrt(t.total / top) : 1);
   const callers = trees.map(callerTimes);
-  const n = trees.length;
+  if (n >= 4) {
+    /** @type {Map<string, number>} the mountains each caller is in */
+    const count = new Map();
+    for (const c of callers)
+      for (const name of c.keys())
+        count.set(name, (count.get(name) ?? 0) + 1);
+    for (const c of callers)
+      for (const name of [...c.keys()])
+        if (/** @type {number} */ (count.get(name)) > n / 2)
+          c.delete(name);
+  }
   const similar = new Float64Array(n * n);
   for (let i = 0; i < n; i++)
     for (let j = 0; j < i; j++)
       similar[i * n + j] = similar[j * n + i] = similarity(callers[i], callers[j], trees[i].total, trees[j].total);
-  /** @type {(i: number, j: number) => number} */
-  const shared = (i, j) => similar[i * n + j];
 
   /** @type {{x: number, y: number, r: number}[]} */
   const placed = [];
@@ -184,31 +204,27 @@ export function layout(trees, top) {
       placed.push({x: 0, y: 0, r});
       return;
     }
-    let anchor = 0, best = -1;
-    for (let i = 0; i < j; i++) {
-      const s = shared(i, j);
-      if (s > best)
-        best = s, anchor = i;
-    }
-    const a = placed[anchor];
     /** @param {number} x @param {number} y */
     const free = (x, y) => placed.every(c => Math.hypot(c.x - x, c.y - y) >= c.r + r + GAP - 1e-9);
+    // distances measured across the ellipse: as far from its centre, as near one another
     /** @param {number} x @param {number} y */
     const cost = (x, y) => {
-      let sum = 0.05 * Math.hypot(x, y);
+      let sum = CENTRE * Math.hypot(x / aspect, y);
       for (let i = 0; i < j; i++)
-        sum += shared(i, j) * Math.hypot(placed[i].x - x, placed[i].y - y);
+        sum += similar[i * n + j] * Math.hypot((placed[i].x - x) / aspect, placed[i].y - y);
       return sum;
     };
-    for (let d = a.r + r + GAP; ; d += GAP) {
+    // against each one placed, further out if none has room
+    for (let gap = GAP; ; gap += GAP) {
       let bx = 0, by = 0, bc = Infinity;
-      for (let k = 0; k < 72; k++) {
-        const t = k * Math.PI / 36;
-        const x = a.x + d * Math.cos(t), y = a.y + d * Math.sin(t);
-        const c = cost(x, y);
-        if (c < bc && free(x, y))
-          bx = x, by = y, bc = c;
-      }
+      for (const a of placed)
+        for (let k = 0; k < ANGLES; k++) {
+          const t = 2 * Math.PI * k / ANGLES, d = a.r + r + gap;
+          const x = a.x + d * Math.cos(t), y = a.y + d * Math.sin(t);
+          const c = cost(x, y);
+          if (c < bc && free(x, y))
+            bx = x, by = y, bc = c;
+        }
       if (bc < Infinity) {
         placed.push({x: bx, y: by, r});
         return;

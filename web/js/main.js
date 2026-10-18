@@ -8,7 +8,8 @@ import {loadProfile} from './load.js';
 import {peaks, mountains} from './model/peaks.js';
 import {massif} from './model/terrain.js';
 import {peaksView} from './views/peaks.js';
-import {mapView} from './views/map.js';
+import {mapView, HEIGHT} from './views/map.js';
+import {leaveOut} from './model/samples.js';
 import {peakControls, peakSettings} from './components/peak-controls.js';
 
 /** @typedef {import('./profile/profile.js').Profile} Profile */
@@ -45,12 +46,21 @@ async function open(file) {
     const map = h('div'), table = h('div');
     /** @type {Set<string>} */
     const open = new Set();
-    const controls = peakControls(peakSettings(), ({grain, count, coverage, hide, java}) => {
+    /** @type {{waits: string, kept: Profile, left: number} | null} the samples kept, while waits is the same */
+    let kept = null;
+    const controls = peakControls(peakSettings(), ({grain, count, coverage, waits, hide, java}) => {
+      if (kept?.waits !== waits) {
+        const {profile, left} = leaveOut(p, waits);
+        kept = {waits, kept: profile, left};
+      }
+      const q = kept.kept;
       const filter = {all: true, hide, java};
-      const r = peaks(p, filter, {count, coverage, grain});
-      const m = mountains(p, filter, r.peaks, grain);
-      replace(map, mapView(massif(r.peaks.flatMap(peak => m.get(peak.name) ?? []))));
-      replace(table, peaksView(r, m, open));
+      const r = peaks(q, filter, {count, coverage, grain});
+      const m = mountains(q, filter, r.peaks, grain);
+      // as wide as the page allows: the mountains spread in its shape
+      const aspect = Math.max(1, (main.clientWidth - 32) / (HEIGHT * innerHeight));
+      replace(map, mapView(massif(r.peaks.flatMap(peak => m.get(peak.name) ?? []), 600, aspect)));
+      replace(table, peaksView(r, m, open, kept.left));
     });
     replace(main, summary(file.name, p), controls, map, table);
   }

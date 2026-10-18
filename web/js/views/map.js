@@ -14,6 +14,9 @@ import {contour, levels} from '../model/contours.js';
 /** The most contour lines, and how far down they go below the highest peak. */
 const LINES = 9, DEPTH = 1 / 256;
 
+/** The most height of the map, as a share of the window's. */
+export const HEIGHT = 0.7;
+
 /**
  * @param {Terrain} t
  * @returns {HTMLElement}
@@ -71,8 +74,8 @@ export function mapView(t) {
   };
 
   const draw = () => {
-    const width = Math.min(section.clientWidth || 800, 1000);
-    const scale = Math.min(width / t.width, 0.7 * innerHeight / t.height);
+    const width = section.clientWidth || 800;
+    const scale = Math.min(width / t.width, HEIGHT * innerHeight / t.height);
     const ratio = devicePixelRatio || 1;
     canvas.style.width = `${t.width * scale}px`;
     canvas.style.height = `${t.height * scale}px`;
@@ -120,8 +123,8 @@ export function mapView(t) {
   };
 
   let scale = 1;
-  // drawn once in the page, to know its width
-  requestAnimationFrame(() => scale = draw());
+  // drawn once in the page, to know its width, and again as it changes
+  new ResizeObserver(() => scale = draw()).observe(section);
 
   canvas.addEventListener('mousemove', e => {
     const x = Math.floor(e.offsetX / scale), y = Math.floor(e.offsetY / scale);

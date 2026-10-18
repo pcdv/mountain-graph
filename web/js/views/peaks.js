@@ -16,13 +16,15 @@ import {callersTree} from '../components/callers.js';
  * @param {Map<string, Frame>} mountains by the name of the peak
  * @param {Set<string>} open the names of the peaks whose mountain shows, kept up to date as they
  *        are clicked: the same set given again keeps them open when the table is drawn again
+ * @param {number} [left] ms of the samples left out before, as waits
  * @returns {HTMLElement}
  */
-export function peaksView(r, mountains, open) {
+export function peaksView(r, mountains, open, left = 0) {
   let covered = 0;
   return h('section', {class: 'peaks'},
     h('h3', null, `${r.peaks.length} peaks cover ${percent(r.coverage)} of ${ms(r.total)}`),
     h('p', {class: 'muted'},
+      left > 0 ? `Left out as waits: ${ms(left)}. ` : '',
       `The plain: ${ms(r.plain)} (${percent(r.total > 0 ? r.plain / r.total : 0)}), `
       + `${ms(r.bare)} of it with no method at the top.`),
     h('table', null,
