@@ -1,0 +1,11 @@
+{
+  "name": "mountain-graph",
+  "private": true,
+  "description": "Hot methods as mountain peaks, the paths that lead to them as the terrain around",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "serve": "node serve.js",
+    "test": "node --test \"test/**/*.test.js\""
+  }
+}
