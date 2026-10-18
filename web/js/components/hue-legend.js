@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * The caption of a terrain coloured by package: each package that shows,
+ * The caption of a terrain coloured by package: each root package that shows,
  * with its hue, in the order of the wheel, so that the packages of a part of
  * the code stand together. The smallest are counted, not named.
  */

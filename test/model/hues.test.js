@@ -36,11 +36,14 @@ test('a peak gathering a class or a package: its own package', () => {
   assert.equal(byPackage[0], byPackage[1]);
 });
 
-test('the caption: the packages that show, in the order of the wheel, with their share of the land', () => {
-  const t = nodes(['com.x.web.A.m', 0], ['org.lib.D.m', 1], ['com.x.db.B.m', 1], ['[main]', 2]);
-  t.cells = [0, 0, 1, 2, 3, -1];
+test('the caption: the root packages that show, in the order of the wheel, with their share of the land', () => {
+  const t = nodes(['com.x.web.A.m', 0], ['org.lib.D.m', 1], ['com.x.db.B.m', 1], ['flak.spi.E.m', 1],
+                  ['flak.core.F.m', 1], ['[main]', 2]);
+  t.cells = [0, 0, 1, 2, 3, 4, 5, -1];
   const {hues, legend} = packageHues(t, 'method');
-  assert.deepEqual(legend.map(e => e.name), ['com.x.db', 'com.x.web', 'org.lib']);
-  assert.deepEqual(legend.map(e => e.share), [0.25, 0.5, 0.25]);
-  assert.equal(legend[1].hue, hues[0]);
+  // past the domain, where each first branches (com.x, flak) or has frames (org.lib)
+  assert.deepEqual(legend.map(e => e.name), ['com.x', 'flak', 'org.lib']);
+  assert.deepEqual(legend.map(e => e.share), [3 / 6, 2 / 6, 1 / 6]);
+  const between = (h, a, b) => Math.min(a, b) <= h && h <= Math.max(a, b);
+  assert.ok(between(legend[0].hue, hues[0], hues[2]), 'com.x amid its sub-packages');
 });
