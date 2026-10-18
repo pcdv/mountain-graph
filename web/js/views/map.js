@@ -22,13 +22,10 @@ export const LINES = 9;
 /** The most height of a view of the terrain, as a share of the window's. */
 export const HEIGHT = 0.7;
 
-/** The width taken by the callers beside the terrain, gap included, in px: that of .map-panel. */
-export const PANEL = 396;
-
 /**
  * @param {Terrain} t
  * @param {Frame[]} trees the mountains it was raised from, in its order
- * @param {{chosen: string}} selection the name of the peak whose callers show, '' for none
+ * @param {import('../components/terrain-frame.js').Selection} selection the peak whose panel shows
  * @param {Float64Array | null} [hues] per node, the hue of its package (hues.js); none to colour by height only
  * @returns {HTMLElement}
  */
@@ -37,7 +34,7 @@ export function mapView(t, trees, selection, hues = null) {
   const canvas = h('canvas', {class: 'map'});
   let scale = 1;
   const frame = terrainFrame(t, trees, selection,
-                             'Hover the map: a frame, its path from the peak. Click a mountain: its callers.',
+                             'Hover the map: a frame, its path from the peak. Click a mountain: its callers and callees.',
                              () => {
                                light();
                                scale = draw();

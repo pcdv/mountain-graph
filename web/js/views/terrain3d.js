@@ -55,7 +55,7 @@ export function closeTerrainView() {
 /**
  * @param {Terrain} t
  * @param {Frame[]} trees the mountains it was raised from, in its order
- * @param {{chosen: string}} selection the name of the peak whose callers show, '' for none
+ * @param {import('../components/terrain-frame.js').Selection} selection the peak whose panel shows
  * @param {Viewpoint} viewpoint where the camera was, kept up to date as it moves, so that it stays
  *        there when the view is built again; empty at first, for a view of the whole terrain
  * @param {Float64Array | null} [hues] per node, the hue of its package (hues.js); none to colour by height only
@@ -69,7 +69,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
   const frame = terrainFrame(t, trees, selection,
                              'Drag to turn, right-drag to move, scroll to zoom, double-click to see it all again. '
                              + 'Hover: a frame, its path from the peak. '
-                             + 'Click a mountain: its callers.',
+                             + 'Click a mountain: its callers and callees.',
                              () => redraw());
   const loading = h('p', {class: 'muted'}, 'Loading three.js…');
   frame.holder.append(loading);

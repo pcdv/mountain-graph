@@ -5,10 +5,11 @@
  */
 import {$, h, replace} from './lib/dom.js';
 import {loadProfile} from './load.js';
-import {peaks, mountains} from './model/peaks.js';
+import {peaks, mountains, callees} from './model/peaks.js';
 import {terrain} from './model/terrain.js';
 import {peaksView} from './views/peaks.js';
-import {mapView, HEIGHT, PANEL} from './views/map.js';
+import {mapView, HEIGHT} from './views/map.js';
+import {panelWidth} from './components/terrain-frame.js';
 import {terrainView, closeTerrainView} from './views/terrain3d.js';
 import {leaveOut} from './model/samples.js';
 import {packageHues} from './model/hues.js';
@@ -49,6 +50,7 @@ async function open(file) {
     const map = h('div'), table = h('div');
     /** @type {Set<string>} */
     const open = new Set();
+    /** @type {import('./components/terrain-frame.js').Selection} */
     const selection = {chosen: ''};
     /** @type {import('./views/terrain3d.js').Viewpoint} the 3D view's camera, kept as settings change */
     const viewpoint = {};
@@ -64,7 +66,9 @@ async function open(file) {
       const r = peaks(q, filter, {count, coverage, grain});
       const m = mountains(q, filter, r.peaks, grain);
       // as wide as the page allows, less the callers beside it: the mountains spread in its shape
-      const width = main.clientWidth - 32 - (selection.chosen ? PANEL : 0);
+      selection.callees = name => callees(q, filter, name, grain);
+      // less the panel, its splitter and the gaps
+      const width = main.clientWidth - 32 - (selection.chosen ? panelWidth() + 22 : 0);
       const aspect = Math.max(1, width / (HEIGHT * innerHeight));
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
       const t = terrain(trees, {shape, aspect});

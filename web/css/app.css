@@ -263,8 +263,53 @@ canvas.map {
   min-width: 0;
 }
 
+.map-split {
+  align-self: stretch;
+  flex: 0 0 6px;
+  margin: 0 -8px;
+  cursor: col-resize;
+  border-radius: 3px;
+  touch-action: none;
+}
+
+.map-split:hover {
+  background: var(--line);
+}
+
+.map-split[hidden] {
+  display: none;
+}
+
+.map-panel .panel-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 6px 0;
+}
+
+.map-panel .panel-tabs .button.on {
+  font-weight: 600;
+  border-color: var(--fg);
+}
+
+.map-panel .tops {
+  margin: 4px 0 10px;
+  padding-left: 18px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.map-panel .kind {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: rgba(200, 120, 40, 0.2);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+}
+
 .map-panel {
-  flex: 0 1 380px;
+  flex: 0 1 520px;
+  min-width: 240px;
   max-height: 70vh;
   overflow: auto;
   padding: 8px 12px;
@@ -361,4 +406,9 @@ canvas.map {
   pointer-events: none;
   color: var(--fg);
   text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 2px var(--bg);
+}
+
+/* a frame and its ms on one line: the panel scrolls sideways rather than wrap */
+.map-panel .callers li, .map-panel .callers summary, .map-panel .tops li {
+  white-space: nowrap;
 }
