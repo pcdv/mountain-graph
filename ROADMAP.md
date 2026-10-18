@@ -94,9 +94,9 @@ Where the idea holds or fails, cheap to check.
 
 ## M4: verdict
 
-- [ ] Side by side with jfr-web's reversed flame graph on the same profiles: which answers "how do
+- [x] Side by side with jfr-web's reversed flame graph on the same profiles: which answers "how do
   we get here?" faster? Does the 3D add anything to the map?
-- [ ] Written down here, whatever the answer
+- [x] Written down here, whatever the answer
 
 First evidence (2026-10-18), on a server reloading its configuration, threads waiting left out,
 peaks by class, ridges in 3D: a small text utility stood out as a peak of its own, 3.7% of the
@@ -104,6 +104,16 @@ CPU, eighth of the classes. In a flame graph its time is split among the many pa
 none of them wide. Its mountain led through schema parsing to its callers, and the JDK frames under
 it to regular expressions compiled on every call; rewritten without them, it ran 5 to 6 times
 faster. The landscape shows secondary bottlenecks, gathered, that a flame graph scatters.
+
+Verdict (2026-10-18): the landscape is more useful than playing with a reversed flame graph to find
+what is worth a look. It gathers a method's, class's or package's time in one place, where a flame
+graph spreads it over many thin paths. The flame graph and the callers panel stay where a suspect is
+checked: exact figures, one path followed precisely.
+
+- The 2D map would have shown the same bottleneck: 3D adds no answer the map lacks. Both are kept,
+  the 3D view having room to improve.
+- One case behind it, on a server's profile, by class. On the test runs CPU self time was
+  scattered: the landscape may help less there, by method above all.
 
 ## Later
 
