@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {massif, layout, similarity} from '../../web/js/model/terrain.js';
+import {terrain} from '../../web/js/model/terrain.js';
+import {layout, similarity} from '../../web/js/model/layout.js';
 
 /** A frame of a mountain: name, ms, callers. */
 const fr = (name, total, ...children) => ({name, total, self: total - children.reduce((s, c) => s + c.total, 0),
@@ -14,7 +15,7 @@ const d = fr('D', 10, fr('B', 10, fr('[t]', 10)));
 const e = fr('E', 10, fr('F', 10));
 
 test('the peak at the centre, highest; the slopes going down; the plain around', () => {
-  const t = massif([a], 101);
+  const t = terrain([a], {size: 101});
   const m = t.mountains[0];
   const at = (x, y) => t.heights[Math.floor(y) * t.width + Math.floor(x)];
   assert.equal(t.top, 40);
@@ -50,7 +51,32 @@ test('mountains sized by their time, apart, those sharing callers nearer', () =>
 });
 
 test('no mountain: an empty plain', () => {
-  const t = massif([], 10);
+  const t = terrain([], {size: 10});
   assert.equal(t.mountains.length, 0);
   assert.ok(t.heights.every(h => h === 0));
+});
+
+test('ridges: the peak highest, a ridge out to each caller, lower as it goes; the plain between', () => {
+  const t = terrain([a], {shape: 'ridges', size: 101});
+  const m = t.mountains[0];
+  const at = (x, y) => t.heights[Math.floor(y) * t.width + Math.floor(x)];
+  const node = (x, y) => t.nodes[t.cells[Math.floor(y) * t.width + Math.floor(x)]]?.name;
+  // 3 depths: rings of r/3; B's sector is 3/4 of the turn from angle 0, its middle at 3π/4
+  const ring = m.r / 3;
+  const along = (d, angle) => [m.x + d * Math.cos(angle), m.y + d * Math.sin(angle)];
+  assert.ok(Math.abs(at(m.x, m.y) - 40) < 2, 'the peak, near its height');
+  assert.equal(node(m.x, m.y), 'A');
+  const [bx, by] = along(ring, 3 * Math.PI / 4);
+  assert.equal(node(bx, by), 'B', 'on its ridge');
+  // B stands at depth 1 of 3: 30 ms * 2/3
+  assert.ok(Math.abs(at(bx, by) - 20) < 2, `B at ${at(bx, by)}`);
+  const [tx, ty] = along(2 * ring, 3 * Math.PI / 4);
+  assert.equal(node(tx, ty), '[t]', 'then the thread');
+  assert.ok(at(tx, ty) < at(bx, by), 'lower');
+  // C's sector is the last quarter, its middle at 7π/4
+  const [cx, cy] = along(ring, 7 * Math.PI / 4);
+  assert.equal(node(cx, cy), 'C');
+  assert.equal(at(...along(2 * ring, Math.PI / 4)), 0, 'between the ridges, far enough out: the plain');
+  for (let i = 0; i < t.heights.length; i++)
+    assert.equal(t.cells[i] < 0, t.heights[i] === 0);
 });

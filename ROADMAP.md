@@ -79,7 +79,7 @@ Where the idea holds or fails, cheap to check.
 - [x] Hovering: the path from the peak down to the entry point, ms and share; the frame lit in every
   mountain it stands in
 - [x] Clicking a peak: its callers in a side panel
-- [ ] Ridges, switchable with massif
+- [x] Ridges, switchable with massif
 
 ## M3: 3D terrain
 

@@ -1,29 +1,33 @@
 // @ts-check
 /**
  * The terrain: the mountains of the peaks raised as relief on one grid, a
- * height and a node per cell. Each mountain is a massif, a sunburst seen as
- * relief: the peak a disk at the centre, each depth of its callers tree a
- * ring further out, each caller a sector of its callee's whose angle is its
- * share of it and whose height is its ms. A caller never weighs more than
- * the frame it called, so the slopes only go down; a single path keeps its
- * height (a mesa), a fork steps down. Where a sector has no caller further
- * out (execution entered there), the plain begins.
+ * height and a node per cell. A mountain's callers tree is laid out as a
+ * sunburst: the peak at the centre, each depth a ring further out, each
+ * caller a sector of its callee's, whose angle is its share of it. Two
+ * shapes are raised from it:
  *
- * The mountains are placed largest first, each against the one it shares
- * the most callers with: a request handler or a thread pool at the foot of
- * several mountains gathers them in a range.
+ * - massif: each sector raised to its ms. A caller never weighs more than
+ *   the frame it called, so the slopes only go down; a single path keeps
+ *   its height (a mesa), a fork steps down. Where a sector has no caller
+ *   further out (execution entered there), the plain begins.
+ * - ridges: each caller a ridge from its callee out to the middle of its
+ *   sector, as wide and as high as its ms, falling with depth too. One way
+ *   in makes a single spur, many make a star of ridges.
  *
  * No DOM: tested with Node.
  */
+import {layout} from './layout.js';
 
 /** @typedef {import('../profile/profile.js').Frame} Frame */
+
+/** @typedef {'massif' | 'ridges'} Shape */
 
 /**
  * A frame of a mountain, as the terrain shows it.
  *
  * @typedef {object} TerrainNode
  * @property {string} name
- * @property {number} total ms: its height
+ * @property {number} total ms
  * @property {number} depth 0 for the peak, 1 for its callers…
  * @property {number} parent the index of the frame it called, -1 for the peak
  * @property {number} mountain the index of its mountain
@@ -51,24 +55,24 @@
  * @property {number} top the height of the highest peak, ms
  */
 
-/** The gap between two mountains, as a share of the largest one's radius. */
-const GAP = 0.12;
+/**
+ * @typedef {object} TerrainOptions
+ * @property {Shape} [shape] massif by default
+ * @property {number} [size] the cells along the longer side of the grid
+ * @property {number} [aspect] the width over the height of the space the terrain is shown in: the
+ *           mountains are gathered in an ellipse of that shape
+ */
 
-/** How much a mountain is drawn to the centre, against to the mountains it shares callers with. */
-const CENTRE = 0.3;
-
-/** The places tried around a mountain to set another against it. */
-const ANGLES = 36;
+/** The widest ridge, the peak's, as a share of its mountain's radius. */
+const RIDGE = 0.18;
 
 /**
  * @param {Frame[]} trees the mountains, each a peak and its callers as mountains() gives them, the
  *        heaviest first
- * @param {number} [size] the cells along the longer side of the grid
- * @param {number} [aspect] the width over the height of the space the terrain is shown in: the
- *        mountains are gathered in an ellipse of that shape
+ * @param {TerrainOptions} [options]
  * @returns {Terrain}
  */
-export function massif(trees, size = 600, aspect = 1) {
+export function terrain(trees, {shape = 'massif', size = 600, aspect = 1} = {}) {
   /** @type {TerrainNode[]} */
   const nodes = [];
   /** @type {number[]} the index of each peak */
@@ -80,8 +84,7 @@ export function massif(trees, size = 600, aspect = 1) {
     /** @param {Frame} f @param {number} depth @param {number} parent @param {number} a0 @param {number} a1 */
     const add = (f, depth, parent, a0, a1) => {
       const index = nodes.length;
-      const node = {name: f.name, total: f.total, depth, parent, mountain: m, a0, a1};
-      nodes.push(node);
+      nodes.push({name: f.name, total: f.total, depth, parent, mountain: m, a0, a1});
       (byDepth[depth] ??= []).push(index);
       let a = a0;
       for (const c of f.children) {
@@ -113,33 +116,124 @@ export function massif(trees, size = 600, aspect = 1) {
   const scale = size / Math.max(x1 - x0, y1 - y0);
   const width = Math.max(1, Math.round((x1 - x0) * scale)), height = Math.max(1, Math.round((y1 - y0) * scale));
 
-  const heights = new Float64Array(width * height);
-  const cells = new Int32Array(width * height).fill(-1);
-  /** @type {Placed[]} */
-  const mountains = [];
+  /** @type {Terrain} */
+  const t = {
+    width, height,
+    heights: new Float64Array(width * height),
+    cells: new Int32Array(width * height).fill(-1),
+    nodes,
+    mountains: [],
+    top,
+  };
   circles.forEach((c, m) => {
-    const cx = (c.x - x0) * scale, cy = (c.y - y0) * scale, r = c.r * scale;
-    const byDepth = rings[m];
-    const band = r / byDepth.length;
-    mountains.push({name: trees[m].name, x: cx, y: cy, r, node: peaks[m]});
-    for (let y = Math.max(0, Math.floor(cy - r)); y < Math.min(height, Math.ceil(cy + r)); y++)
-      for (let x = Math.max(0, Math.floor(cx - r)); x < Math.min(width, Math.ceil(cx + r)); x++) {
-        // the centre of the cell
-        const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
-        const depth = Math.floor(Math.hypot(dx, dy) / band);
-        if (depth >= byDepth.length)
-          continue;
-        let a = Math.atan2(dy, dx);
-        if (a < 0)
-          a += 2 * Math.PI;
-        const i = sectorAt(nodes, byDepth[depth], a);
-        if (i >= 0) {
-          heights[y * width + x] = nodes[i].total;
-          cells[y * width + x] = i;
-        }
-      }
+    const placed = {name: trees[m].name, x: (c.x - x0) * scale, y: (c.y - y0) * scale, r: c.r * scale, node: peaks[m]};
+    t.mountains.push(placed);
+    (shape === 'ridges' ? ridges : massif)(t, placed, rings[m]);
   });
-  return {width, height, heights, cells, nodes, mountains, top};
+  return t;
+}
+
+/**
+ * Raises a mountain as a massif: each sector to its ms.
+ *
+ * @param {Terrain} t
+ * @param {Placed} m
+ * @param {number[][]} byDepth the indexes of its nodes, per depth, by angle
+ */
+function massif(t, m, byDepth) {
+  const band = m.r / byDepth.length;
+  eachCell(t, m.x, m.y, m.r, m.r, (i, dx, dy) => {
+    const depth = Math.floor(Math.hypot(dx, dy) / band);
+    if (depth >= byDepth.length)
+      return;
+    const n = sectorAt(t.nodes, byDepth[depth], angle(dx, dy));
+    if (n >= 0) {
+      t.heights[i] = t.nodes[n].total;
+      t.cells[i] = n;
+    }
+  });
+}
+
+/**
+ * Raises a mountain as ridges: the peak a dome at the centre, each caller a
+ * ridge from its callee out to the middle of its sector one ring further,
+ * its height and its width going from its callee's to its own. A cell
+ * belongs to the highest ridge over it.
+ *
+ * @param {Terrain} t
+ * @param {Placed} m
+ * @param {number[][]} byDepth
+ */
+function ridges(t, m, byDepth) {
+  const depths = byDepth.length;
+  const band = m.r / depths;
+  const peak = t.nodes[m.node];
+  const widest = RIDGE * m.r;
+  /** @param {number} n @returns {number[]} where it stands from the centre, its height, its half width */
+  const at = n => {
+    const node = t.nodes[n];
+    const a = (node.a0 + node.a1) / 2, d = node.depth * band;
+    const share = peak.total > 0 ? node.total / peak.total : 0;
+    return [d * Math.cos(a), d * Math.sin(a), node.total * (1 - node.depth / depths), widest * Math.sqrt(share)];
+  };
+  /** @param {number} i @param {number} h @param {number} n */
+  const raise = (i, h, n) => {
+    if (h > t.heights[i]) {
+      t.heights[i] = h;
+      t.cells[i] = n;
+    }
+  };
+
+  // the peak: a dome as wide as its ridges
+  eachCell(t, m.x, m.y, widest, widest, (i, dx, dy) => {
+    const d = Math.hypot(dx, dy) / widest;
+    if (d < 1)
+      raise(i, peak.total * (1 - d * d), m.node);
+  });
+  for (let depth = 1; depth < depths; depth++)
+    for (const n of byDepth[depth]) {
+      const node = t.nodes[n];
+      if (node.total <= 0)
+        continue;
+      const [ax, ay, ah, aw] = at(node.parent), [bx, by, bh, bw] = at(n);
+      const cx = (ax + bx) / 2, cy = (ay + by) / 2;
+      const reach = Math.hypot(bx - ax, by - ay) / 2 + Math.max(aw, bw);
+      const lx = bx - ax, ly = by - ay, length2 = lx * lx + ly * ly;
+      eachCell(t, m.x + cx, m.y + cy, reach, reach, (i, dx, dy) => {
+        // the nearest point of the segment, from the callee (0) to the caller (1)
+        const px = dx + cx - ax, py = dy + cy - ay;
+        const f = length2 > 0 ? Math.max(0, Math.min(1, (px * lx + py * ly) / length2)) : 0;
+        const w = aw + (bw - aw) * f;
+        const d = Math.hypot(px - f * lx, py - f * ly) / w;
+        if (d < 1)
+          raise(i, (ah + (bh - ah) * f) * (1 - d * d), n);
+      });
+    }
+}
+
+/**
+ * @param {Terrain} t
+ * @param {number} cx the centre of a box, in cells
+ * @param {number} cy
+ * @param {number} rx its half width
+ * @param {number} ry its half height
+ * @param {(i: number, dx: number, dy: number) => void} visit each cell of the grid in it, with the
+ *        offset of its centre from the box's
+ */
+function eachCell(t, cx, cy, rx, ry, visit) {
+  for (let y = Math.max(0, Math.floor(cy - ry)); y < Math.min(t.height, Math.ceil(cy + ry)); y++)
+    for (let x = Math.max(0, Math.floor(cx - rx)); x < Math.min(t.width, Math.ceil(cx + rx)); x++)
+      visit(y * t.width + x, x + 0.5 - cx, y + 0.5 - cy);
+}
+
+/**
+ * @param {number} dx
+ * @param {number} dy
+ * @returns {number} its angle, 0 to 2π
+ */
+function angle(dx, dy) {
+  const a = Math.atan2(dy, dx);
+  return a < 0 ? a + 2 * Math.PI : a;
 }
 
 /**
@@ -162,119 +256,4 @@ function sectorAt(nodes, ring, a) {
       return ring[mid];
   }
   return -1;
-}
-
-/**
- * Where the mountains stand: each a circle whose area is its peak's time,
- * placed against one already placed, where it is nearest to those it shares
- * callers with, and to the centre of an ellipse of the shape asked. A
- * caller most mountains have (a thread's run, a pool's worker) says nothing
- * of them and is not counted.
- *
- * @param {Frame[]} trees
- * @param {number} top the time of the highest peak
- * @param {number} [aspect] the width over the height of the ellipse they are gathered in
- * @returns {{x: number, y: number, r: number}[]} in the order of the trees; the largest radius is 1
- */
-export function layout(trees, top, aspect = 1) {
-  const n = trees.length;
-  const radius = trees.map(t => top > 0 ? Math.sqrt(t.total / top) : 1);
-  const callers = trees.map(callerTimes);
-  if (n >= 4) {
-    /** @type {Map<string, number>} the mountains each caller is in */
-    const count = new Map();
-    for (const c of callers)
-      for (const name of c.keys())
-        count.set(name, (count.get(name) ?? 0) + 1);
-    for (const c of callers)
-      for (const name of [...c.keys()])
-        if (/** @type {number} */ (count.get(name)) > n / 2)
-          c.delete(name);
-  }
-  const similar = new Float64Array(n * n);
-  for (let i = 0; i < n; i++)
-    for (let j = 0; j < i; j++)
-      similar[i * n + j] = similar[j * n + i] = similarity(callers[i], callers[j], trees[i].total, trees[j].total);
-
-  /** @type {{x: number, y: number, r: number}[]} */
-  const placed = [];
-  trees.forEach((_, j) => {
-    const r = radius[j];
-    if (j === 0) {
-      placed.push({x: 0, y: 0, r});
-      return;
-    }
-    /** @param {number} x @param {number} y */
-    const free = (x, y) => placed.every(c => Math.hypot(c.x - x, c.y - y) >= c.r + r + GAP - 1e-9);
-    // distances measured across the ellipse: as far from its centre, as near one another
-    /** @param {number} x @param {number} y */
-    const cost = (x, y) => {
-      let sum = CENTRE * Math.hypot(x / aspect, y);
-      for (let i = 0; i < j; i++)
-        sum += similar[i * n + j] * Math.hypot((placed[i].x - x) / aspect, placed[i].y - y);
-      return sum;
-    };
-    // against each one placed, further out if none has room
-    for (let gap = GAP; ; gap += GAP) {
-      let bx = 0, by = 0, bc = Infinity;
-      for (const a of placed)
-        for (let k = 0; k < ANGLES; k++) {
-          const t = 2 * Math.PI * k / ANGLES, d = a.r + r + gap;
-          const x = a.x + d * Math.cos(t), y = a.y + d * Math.sin(t);
-          const c = cost(x, y);
-          if (c < bc && free(x, y))
-            bx = x, by = y, bc = c;
-        }
-      if (bc < Infinity) {
-        placed.push({x: bx, y: by, r});
-        return;
-      }
-    }
-  });
-  return placed;
-}
-
-/**
- * @param {Frame} t a mountain
- * @returns {Map<string, number>} ms by caller, each path counted once at its caller nearest the
- *          peak
- */
-function callerTimes(t) {
-  /** @type {Map<string, number>} */
-  const times = new Map();
-  /** @type {Set<string>} */
-  const on = new Set();
-  /** @param {Frame} f */
-  const walk = f => {
-    const enter = !on.has(f.name);
-    if (enter) {
-      times.set(f.name, (times.get(f.name) ?? 0) + f.total);
-      on.add(f.name);
-    }
-    f.children.forEach(walk);
-    if (enter)
-      on.delete(f.name);
-  };
-  t.children.forEach(walk);
-  return times;
-}
-
-/**
- * @param {Map<string, number>} a the callers of a mountain
- * @param {Map<string, number>} b of another
- * @param {number} ta the time of the first
- * @param {number} tb of the other
- * @returns {number} 0 to 1: the share of the smaller one's time that went through a caller both
- *          have, the one most went through
- */
-export function similarity(a, b, ta, tb) {
-  const [small, large] = a.size < b.size ? [a, b] : [b, a];
-  let best = 0;
-  for (const [name, ms] of small) {
-    const other = large.get(name);
-    if (other !== undefined)
-      best = Math.max(best, Math.min(ms, other));
-  }
-  const smaller = Math.min(ta, tb);
-  return smaller > 0 ? Math.min(1, best / smaller) : 0;
 }

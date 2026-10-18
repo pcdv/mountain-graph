@@ -2,13 +2,15 @@
 /**
  * What sets the peaks: what each gathers, their most number, the coverage at
  * which no more are taken, the samples left out as waits, the frames hidden,
- * and whether native samples count. Remembered in the browser.
+ * whether native samples count, and the shape of the mountains. Remembered in
+ * the browser.
  */
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {WAITS} from '../model/samples.js';
 
 /** @typedef {import('../model/peaks.js').Grain} Grain */
+/** @typedef {import('../model/terrain.js').Shape} Shape */
 
 /**
  * @typedef {object} PeakSettings
@@ -20,6 +22,7 @@ import {WAITS} from '../model/samples.js';
  * @property {string} hide a regular expression for the frames hidden, empty for none
  * @property {boolean} java keeps the Java samples only, leaving out the native ones: those of
  *           threads blocked in native code (a socket read, a poll) weigh time waited, not CPU
+ * @property {Shape} shape of the mountains: a massif or ridges
  */
 
 /**
@@ -29,7 +32,7 @@ import {WAITS} from '../model/samples.js';
  * @type {PeakSettings}
  */
 const DEFAULTS = {grain: 'method', count: 10, coverage: 1, waits: WAITS, hide: '^(java|javax|jdk|sun|com\\.sun)\\.',
-                  java: false};
+                  java: false, shape: 'massif'};
 
 const KEY = 'mountaingraph.peaks.';
 
@@ -45,6 +48,7 @@ export function peakSettings() {
     waits: readSetting(KEY + 'waits') ?? DEFAULTS.waits,
     hide: readSetting(KEY + 'hide') ?? DEFAULTS.hide,
     java: readSetting(KEY + 'java') === 'true',
+    shape: readSetting(KEY + 'shape') === 'ridges' ? 'ridges' : DEFAULTS.shape,
   };
 }
 
@@ -63,6 +67,8 @@ export function peakControls(settings, changed) {
   const hide = h('input', {type: 'text', class: 'pattern', spellcheck: false, value: settings.hide,
                            placeholder: 'none'});
   const java = h('input', {type: 'checkbox', checked: settings.java});
+  const shape = h('select', null, ['massif', 'ridges'].map(s =>
+    h('option', {value: s, selected: s === settings.shape}, s)));
 
   const update = () => {
     for (const input of [waits, hide]) {
@@ -75,12 +81,12 @@ export function peakControls(settings, changed) {
       return;
     /** @type {PeakSettings} */
     const next = {grain: /** @type {Grain} */ (grain.value), count: n, coverage: c / 100, waits: waits.value,
-                  hide: hide.value, java: java.checked};
+                  hide: hide.value, java: java.checked, shape: /** @type {Shape} */ (shape.value)};
     for (const [key, value] of Object.entries(next))
       writeSetting(KEY + key, value);
     changed(next);
   };
-  for (const input of [grain, count, coverage, waits, hide, java])
+  for (const input of [grain, count, coverage, waits, hide, java, shape])
     input.addEventListener('input', update);
   update();
 
@@ -94,6 +100,8 @@ export function peakControls(settings, changed) {
       'Hide ', hide),
     h('label', {title: 'Leaves out the native samples: threads blocked in native code, waiting'},
       java, ' Java samples only (CPU)'),
+    h('label', {title: 'A massif: each caller a sector as high as its time. Ridges: each a ridge out to it'},
+      'Mountains as ', shape),
     h('button', {type: 'button', class: 'button', onclick: () => {
       grain.value = DEFAULTS.grain;
       count.value = String(DEFAULTS.count);
@@ -101,6 +109,7 @@ export function peakControls(settings, changed) {
       waits.value = DEFAULTS.waits;
       hide.value = DEFAULTS.hide;
       java.checked = DEFAULTS.java;
+      shape.value = DEFAULTS.shape;
       update();
     }}, 'Defaults'));
 }
