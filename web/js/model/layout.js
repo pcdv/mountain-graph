@@ -33,22 +33,7 @@ const ANGLES = 36;
 export function layout(trees, top, aspect = 1) {
   const n = trees.length;
   const radius = trees.map(t => top > 0 ? Math.sqrt(t.total / top) : 1);
-  const callers = trees.map(callerTimes);
-  if (n >= 4) {
-    /** @type {Map<string, number>} the mountains each caller is in */
-    const count = new Map();
-    for (const c of callers)
-      for (const name of c.keys())
-        count.set(name, (count.get(name) ?? 0) + 1);
-    for (const c of callers)
-      for (const name of [...c.keys()])
-        if (/** @type {number} */ (count.get(name)) > n / 2)
-          c.delete(name);
-  }
-  const similar = new Float64Array(n * n);
-  for (let i = 0; i < n; i++)
-    for (let j = 0; j < i; j++)
-      similar[i * n + j] = similar[j * n + i] = similarity(callers[i], callers[j], trees[i].total, trees[j].total);
+  const similar = relations(trees).share;
 
   /** @type {{x: number, y: number, r: number}[]} */
   const placed = [];
@@ -89,6 +74,41 @@ export function layout(trees, top, aspect = 1) {
 }
 
 /**
+ * How the mountains are related: for each pair, the caller both have that
+ * most of the smaller one's time went through, and that share. A caller
+ * most mountains have (n >= 4) is not counted.
+ *
+ * @param {Frame[]} trees
+ * @returns {{share: Float64Array, caller: string[]}} n by n, both ways; 0 and '' for a pair sharing
+ *          none
+ */
+export function relations(trees) {
+  const n = trees.length;
+  const callers = trees.map(callerTimes);
+  if (n >= 4) {
+    /** @type {Map<string, number>} the mountains each caller is in */
+    const count = new Map();
+    for (const c of callers)
+      for (const name of c.keys())
+        count.set(name, (count.get(name) ?? 0) + 1);
+    for (const c of callers)
+      for (const name of [...c.keys()])
+        if (/** @type {number} */ (count.get(name)) > n / 2)
+          c.delete(name);
+  }
+  const share = new Float64Array(n * n);
+  const caller = new Array(n * n).fill('');
+  for (let i = 0; i < n; i++)
+    for (let j = 0; j < i; j++) {
+      const [name, ms] = strongest(callers[i], callers[j]);
+      const smaller = Math.min(trees[i].total, trees[j].total);
+      share[i * n + j] = share[j * n + i] = smaller > 0 ? Math.min(1, ms / smaller) : 0;
+      caller[i * n + j] = caller[j * n + i] = name;
+    }
+  return {share, caller};
+}
+
+/**
  * @param {Frame} t a mountain
  * @returns {Map<string, number>} ms by caller, each path counted once at its caller nearest the
  *          peak
@@ -122,13 +142,24 @@ function callerTimes(t) {
  *          have, the one most went through
  */
 export function similarity(a, b, ta, tb) {
+  const smaller = Math.min(ta, tb);
+  return smaller > 0 ? Math.min(1, strongest(a, b)[1] / smaller) : 0;
+}
+
+/**
+ * @param {Map<string, number>} a the callers of a mountain
+ * @param {Map<string, number>} b of another
+ * @returns {[string, number]} the caller both have that the most time went through, in the one
+ *          that spent less there, and that time; '' and 0 for none
+ */
+function strongest(a, b) {
   const [small, large] = a.size < b.size ? [a, b] : [b, a];
-  let best = 0;
+  /** @type {[string, number]} */
+  let best = ['', 0];
   for (const [name, ms] of small) {
     const other = large.get(name);
-    if (other !== undefined)
-      best = Math.max(best, Math.min(ms, other));
+    if (other !== undefined && Math.min(ms, other) > best[1])
+      best = [name, Math.min(ms, other)];
   }
-  const smaller = Math.min(ta, tb);
-  return smaller > 0 ? Math.min(1, best / smaller) : 0;
+  return best;
 }

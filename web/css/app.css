@@ -302,6 +302,11 @@ canvas.map {
   cursor: grab;
 }
 
+.peak-labels span.trail {
+  font-style: italic;
+  font-size: 10px;
+}
+
 .map-holder.three .relief {
   position: absolute;
   top: 6px;

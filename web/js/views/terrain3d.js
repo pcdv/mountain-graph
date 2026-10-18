@@ -150,6 +150,18 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     const lineMaterial = new T.LineBasicMaterial({color: new T.Color(r / 255, g / 255, b / 255).convertSRGBToLinear(),
                                                   transparent: true, opacity: a});
     scene.add(new T.LineSegments(lines, lineMaterial));
+
+    // the trails between related mountains, on the plain: the mountains hide them where they cross
+    const trailLines = new T.BufferGeometry().setFromPoints(t.trails.flatMap(trail => {
+      const [x1, y1, x2, y2] = trail.line;
+      return [new T.Vector3(x1 - 0.5 - (W - 1) / 2, side / 1000, y1 - 0.5 - (H - 1) / 2),
+              new T.Vector3(x2 - 0.5 - (W - 1) / 2, side / 1000, y2 - 0.5 - (H - 1) / 2)];
+    }));
+    const trailMaterial = new T.LineDashedMaterial({color: colors.text, dashSize: side / 150, gapSize: side / 200,
+                                                    transparent: true, opacity: 0.7});
+    const trailSegments = new T.LineSegments(trailLines, trailMaterial);
+    trailSegments.computeLineDistances();
+    scene.add(trailSegments);
     scene.add(new T.HemisphereLight(0xffffff, 0x8a8170, 1.8));
     const sun = new T.DirectionalLight(0xffffff, 1.6);
     sun.position.set(-1, 1.6, -0.6);
@@ -185,7 +197,13 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     }, {passive: false});
 
     const labels = h('div', {class: 'peak-labels'});
-    const names = t.mountains.map(m => h('span', null, short(m.name)));
+    // the peaks, then the trails halfway, named after the caller they share
+    const spots = [
+      ...t.mountains.map(m => ({label: short(m.name), x: m.x, y: m.y, h: () => lift(t.nodes[m.node].total) + side / 60})),
+      ...t.trails.map(({caller, line: [x1, y1, x2, y2]}) =>
+        ({label: short(caller), x: (x1 + x2) / 2, y: (y1 + y2) / 2, h: () => side / 200})),
+    ];
+    const names = spots.map((s, k) => h('span', {class: k < t.mountains.length ? '' : 'trail'}, s.label));
     labels.append(...names);
     const slider = h('input', {type: 'range', min: FLATTEST, max: HIGHEST, step: 0.01, value: relief,
                                oninput: () => {
@@ -219,16 +237,15 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
       if (gone)
         return;
       renderer.render(scene, camera);
-      // the labels over the peaks in sight, the highest first, none over another
+      // the labels over the peaks in sight, the highest first, then the trails', none over another
       const width = renderer.domElement.clientWidth, height = renderer.domElement.clientHeight;
       /** @type {number[][]} */
       const taken = [];
-      t.mountains.forEach((m, k) => {
-        const at = new T.Vector3(m.x - 0.5 - (W - 1) / 2, lift(t.nodes[m.node].total) + side / 60,
-                                 m.y - 0.5 - (H - 1) / 2);
+      spots.forEach((s, k) => {
+        const at = new T.Vector3(s.x - 0.5 - (W - 1) / 2, s.h(), s.y - 0.5 - (H - 1) / 2);
         const p = at.clone().project(camera);
         const x = (p.x + 1) / 2 * width, y = (1 - p.y) / 2 * height;
-        const w = names[k].offsetWidth || 8 * short(m.name).length;
+        const w = names[k].offsetWidth || 8 * s.label.length;
         const box = [x - w / 2, y - 8, x + w / 2, y + 8];
         const shown = p.z < 1 && x > 0 && x < width && y > 0 && y < height
                       && !taken.some(b => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3])
@@ -355,6 +372,8 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
       material.dispose();
       lines.dispose();
       lineMaterial.dispose();
+      trailLines.dispose();
+      trailMaterial.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
     };

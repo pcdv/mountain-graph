@@ -21,7 +21,7 @@
  *
  * No DOM: tested with Node.
  */
-import {layout} from './layout.js';
+import {layout, relations} from './layout.js';
 
 /** @typedef {import('../profile/profile.js').Frame} Frame */
 
@@ -61,6 +61,19 @@ import {layout} from './layout.js';
  * @property {Placed[]} mountains in the order given
  * @property {number} top the height of the highest peak, ms
  * @property {Saddle[]} saddles where mountains meet, ranges only
+ * @property {Trail[]} trails between mountains related, however far apart
+ */
+
+/**
+ * A path on the plain between two mountains much of whose time went
+ * through a caller they share: they are related, however far apart.
+ *
+ * @typedef {object} Trail
+ * @property {number} a the index of a mountain
+ * @property {number} b of the other
+ * @property {string} caller the one they share
+ * @property {number} share of the smaller one's time that went through it, 0 to 1
+ * @property {number[]} line from the foot of the one to that of the other, x1, y1, x2, y2 in cells
  */
 
 /**
@@ -92,6 +105,12 @@ const RIDGE = 0.18;
  * cross the map.
  */
 const NEAR = 1.5;
+
+/** The least share of the smaller one's time through a caller two mountains share, for a trail. */
+const TRAIL = 0.25;
+
+/** The most trails from a mountain, the strongest first. */
+const TRAILS = 3;
 
 /**
  * @param {Frame[]} trees the mountains, each a peak and its callers as mountains() gives them, the
@@ -152,6 +171,7 @@ export function terrain(trees, {shape = 'massif', size = 600, aspect = 1} = {}) 
     mountains: [],
     top,
     saddles: [],
+    trails: [],
   };
   const cx = circles.reduce((s, c) => s + c.x, 0) / (circles.length || 1);
   const cy = circles.reduce((s, c) => s + c.y, 0) / (circles.length || 1);
@@ -166,7 +186,45 @@ export function terrain(trees, {shape = 'massif', size = 600, aspect = 1} = {}) 
     ranges(t, rings);
   else
     t.mountains.forEach((m, k) => (shape === 'ridges' ? ridges : massif)(t, m, rings[k]));
+  trails(t, trees);
   return t;
+}
+
+/**
+ * The trails between related mountains, the strongest first, but those a
+ * saddle already joins.
+ *
+ * @param {Terrain} t
+ * @param {Frame[]} trees
+ */
+function trails(t, trees) {
+  const n = trees.length;
+  const {share, caller} = relations(trees);
+  /** @type {Set<number>} the pairs a saddle joins */
+  const joined = new Set();
+  for (const s of t.saddles)
+    for (const i of s.nodes)
+      for (const j of s.nodes)
+        joined.add(t.nodes[i].mountain * n + t.nodes[j].mountain);
+  /** @type {number[]} */
+  const pairs = [];
+  for (let a = 0; a < n; a++)
+    for (let b = a + 1; b < n; b++)
+      if (share[a * n + b] >= TRAIL && !joined.has(a * n + b))
+        pairs.push(a * n + b);
+  pairs.sort((p, q) => share[q] - share[p]);
+  const from = new Int32Array(n);
+  for (const p of pairs) {
+    const a = Math.floor(p / n), b = p % n;
+    if (from[a] >= TRAILS || from[b] >= TRAILS)
+      continue;
+    from[a]++;
+    from[b]++;
+    const ma = t.mountains[a], mb = t.mountains[b];
+    const d = Math.hypot(mb.x - ma.x, mb.y - ma.y) || 1, ux = (mb.x - ma.x) / d, uy = (mb.y - ma.y) / d;
+    t.trails.push({a, b, caller: caller[p], share: share[p],
+                   line: [ma.x + ux * ma.r, ma.y + uy * ma.r, mb.x - ux * mb.r, mb.y - uy * mb.r]});
+  }
 }
 
 /**

@@ -137,3 +137,14 @@ test('divides: where two mountains meet, broken at the saddle joining them', () 
                nodes: [{mountain: 0}, {mountain: 1}], mountains: [{}, {}]};
   assert.deepEqual(divides(two), [2, 0, 2, 1]);
 });
+
+test('trails: between mountains related through a caller, from foot to foot; none to one unrelated', () => {
+  const t = terrain([a, e, d], {size: 201});
+  assert.equal(t.trails.length, 1);
+  const [trail] = t.trails;
+  assert.deepEqual([trail.a, trail.b, trail.caller, trail.share], [0, 2, 'B', 1]);
+  const [x1, y1, x2, y2] = trail.line, [ma, , md] = t.mountains;
+  assert.ok(Math.abs(Math.hypot(x1 - ma.x, y1 - ma.y) - ma.r) < 1e-9, 'from the foot of A');
+  assert.ok(Math.abs(Math.hypot(x2 - md.x, y2 - md.y) - md.r) < 1e-9, 'to that of D');
+  assert.equal(terrain([a, e, d], {shape: 'ranges', size: 201}).trails.length, 0, 'a saddle joins them');
+});

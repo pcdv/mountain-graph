@@ -2,7 +2,8 @@
 /**
  * The terrain as a topographic map: tinted by height, contour lines each
  * half the height of the one above, the peaks named; the divides between
- * mountains, and the saddles joining them, marked )( and named. Hovering a frame lights
+ * mountains, and the saddles joining them, marked )( and named; dashed
+ * trails between mountains related through a caller, however far apart. Hovering a frame lights
  * it in every mountain it stands in; what it is, and the callers of a
  * mountain clicked, show around the map (terrain-frame.js).
  */
@@ -43,7 +44,8 @@ export function mapView(t, trees, selection, hues = null) {
                              });
   frame.holder.append(canvas);
 
-  // the tint and the lines, drawn once at the terrain's resolution
+  // the tint and the lines, drawn once at the terrain's resolution; the plain clear, for the trails
+  // under the land
   const land = document.createElement('canvas');
   land.width = t.width;
   land.height = t.height;
@@ -52,7 +54,7 @@ export function mapView(t, trees, selection, hues = null) {
   for (let i = 0; i < t.heights.length; i++) {
     const c = tint(colors, t.heights[i], t.top);
     image.data.set(hues && t.cells[i] >= 0 ? hued(c, hues[t.cells[i]]) : c, 4 * i);
-    image.data[4 * i + 3] = 255;
+    image.data[4 * i + 3] = t.heights[i] > 0 ? 255 : 0;
   }
   ctx.putImageData(image, 0, 0);
   const lines = levels(t.top, LINES, t.top * DEPTH).map(level => contour(t.heights, t.width, t.height, level));
@@ -87,6 +89,24 @@ export function mapView(t, trees, selection, hues = null) {
     canvas.height = Math.round(t.height * scale * ratio);
     const g = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
     g.setTransform(ratio * scale, 0, 0, ratio * scale, 0, 0);
+    g.fillStyle = `rgb(${colors.land[0].join(',')})`;
+    g.fillRect(0, 0, t.width, t.height);
+
+    // the trails on the plain, under the land, as wide as the relation is strong
+    g.strokeStyle = colors.text;
+    g.globalAlpha = 0.7;
+    g.setLineDash([5 / scale, 4 / scale]);
+    for (const trail of t.trails) {
+      const [x1, y1, x2, y2] = trail.line;
+      g.lineWidth = (1 + 2 * trail.share) / scale;
+      g.beginPath();
+      g.moveTo(x1, y1);
+      g.lineTo(x2, y2);
+      g.stroke();
+    }
+    g.setLineDash([]);
+    g.globalAlpha = 1;
+
     g.drawImage(land, 0, 0);
     if (frame.lit() >= 0)
       g.drawImage(glow, 0, 0);
@@ -110,6 +130,7 @@ export function mapView(t, trees, selection, hues = null) {
       g.lineTo(divide[i + 2], divide[i + 3]);
     }
     g.stroke();
+
     g.globalAlpha = 1;
 
     const chosen = frame.chosen();
@@ -162,6 +183,11 @@ export function mapView(t, trees, selection, hues = null) {
         g.stroke();
       }
       name(short(s.name), x, y + 13, 10);
+    }
+    // the trails, named after the caller they share, halfway
+    for (const trail of t.trails) {
+      const [x1, y1, x2, y2] = trail.line;
+      name(short(trail.caller), (x1 + x2) / 2 * scale, (y1 + y2) / 2 * scale, 10);
     }
     return scale;
   };
