@@ -11,6 +11,7 @@ import {peaksView} from './views/peaks.js';
 import {mapView, HEIGHT, PANEL} from './views/map.js';
 import {terrainView, closeTerrainView} from './views/terrain3d.js';
 import {leaveOut} from './model/samples.js';
+import {packageHues} from './model/hues.js';
 import {peakControls, peakSettings} from './components/peak-controls.js';
 
 /** @typedef {import('./profile/profile.js').Profile} Profile */
@@ -52,7 +53,7 @@ async function open(file) {
     const viewpoint = {};
     /** @type {{waits: string, kept: Profile, left: number} | null} the samples kept, while waits is the same */
     let kept = null;
-    const controls = peakControls(peakSettings(), ({grain, count, coverage, waits, hide, java, shape, view}) => {
+    const controls = peakControls(peakSettings(), ({grain, count, coverage, waits, hide, java, shape, view, colour}) => {
       if (kept?.waits !== waits) {
         const {profile, left} = leaveOut(p, waits);
         kept = {waits, kept: profile, left};
@@ -66,8 +67,9 @@ async function open(file) {
       const aspect = Math.max(1, width / (HEIGHT * innerHeight));
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
       const t = terrain(trees, {shape, aspect});
+      const hues = colour === 'package' ? packageHues(t, grain) : null;
       closeTerrainView();
-      replace(map, view === '3d' ? terrainView(t, trees, selection, viewpoint) : mapView(t, trees, selection));
+      replace(map, view === '3d' ? terrainView(t, trees, selection, viewpoint, hues) : mapView(t, trees, selection, hues));
       replace(table, peaksView(r, m, open, kept.left));
     });
     replace(main, summary(file.name, p), controls, map, table);

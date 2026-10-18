@@ -8,7 +8,7 @@
 import {h} from '../lib/dom.js';
 import {contour, levels} from '../model/contours.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
-import {palette, tint, DEPTH} from './palette.js';
+import {palette, tint, hued, DEPTH} from './palette.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -26,9 +26,10 @@ export const PANEL = 396;
  * @param {Terrain} t
  * @param {Frame[]} trees the mountains it was raised from, in its order
  * @param {{chosen: string}} selection the name of the peak whose callers show, '' for none
+ * @param {Float64Array | null} [hues] per node, the hue of its package (hues.js); none to colour by height only
  * @returns {HTMLElement}
  */
-export function mapView(t, trees, selection) {
+export function mapView(t, trees, selection, hues = null) {
   const colors = palette();
   const canvas = h('canvas', {class: 'map'});
   let scale = 1;
@@ -47,7 +48,8 @@ export function mapView(t, trees, selection) {
   const ctx = /** @type {CanvasRenderingContext2D} */ (land.getContext('2d'));
   const image = ctx.createImageData(t.width, t.height);
   for (let i = 0; i < t.heights.length; i++) {
-    image.data.set(tint(colors, t.heights[i], t.top), 4 * i);
+    const c = tint(colors, t.heights[i], t.top);
+    image.data.set(hues && t.cells[i] >= 0 ? hued(c, hues[t.cells[i]]) : c, 4 * i);
     image.data[4 * i + 3] = 255;
   }
   ctx.putImageData(image, 0, 0);

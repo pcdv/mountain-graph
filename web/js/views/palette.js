@@ -57,3 +57,27 @@ export function tint(colors, height, top) {
   const a = land[i], b = land[Math.min(land.length - 1, i + 1)];
   return [0, 1, 2].map(k => Math.round(a[k] + (b[k] - a[k]) * f));
 }
+
+/** How saturated the land is when coloured by package. */
+const SATURATION = 0.5;
+
+/**
+ * A colour of the land given a hue: its lightness kept, so that heights
+ * still read as they do in the palette.
+ *
+ * @param {number[]} color rgb, 0 to 255, as tint() gives it
+ * @param {number} hue 0 to 1; NaN keeps the colour
+ * @returns {number[]} rgb, 0 to 255
+ */
+export function hued(color, hue) {
+  if (Number.isNaN(hue))
+    return color;
+  const l = (Math.max(...color) + Math.min(...color)) / 2 / 255;
+  const c = (1 - Math.abs(2 * l - 1)) * SATURATION;
+  /** @param {number} n */
+  const f = n => {
+    const k = (n + hue * 12) % 12;
+    return Math.round(255 * (l - c / 2 * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
+  };
+  return [f(0), f(8), f(4)];
+}

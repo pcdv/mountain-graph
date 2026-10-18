@@ -13,7 +13,7 @@
 import {h} from '../lib/dom.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
 import {contour, levels} from '../model/contours.js';
-import {palette, tint, DEPTH} from './palette.js';
+import {palette, tint, hued, DEPTH} from './palette.js';
 import {HEIGHT, LINES} from './map.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
@@ -54,9 +54,10 @@ export function closeTerrainView() {
  * @param {{chosen: string}} selection the name of the peak whose callers show, '' for none
  * @param {Viewpoint} viewpoint where the camera was, kept up to date as it moves, so that it stays
  *        there when the view is built again; empty at first, for a view of the whole terrain
+ * @param {Float64Array | null} [hues] per node, the hue of its package (hues.js); none to colour by height only
  * @returns {HTMLElement}
  */
-export function terrainView(t, trees, selection, viewpoint) {
+export function terrainView(t, trees, selection, viewpoint, hues = null) {
   closeTerrainView();
   let gone = false;
   release = () => gone = true;
@@ -132,7 +133,8 @@ export function terrainView(t, trees, selection, viewpoint) {
     });
     const base = new Float32Array(3 * W * H);
     for (let i = 0; i < W * H; i++) {
-      const c = tint(colors, smooth[i], t.top);
+      const height = tint(colors, smooth[i], t.top);
+      const c = hues && t.cells[i] >= 0 ? hued(height, hues[t.cells[i]]) : height;
       base[3 * i] = linear[c[0]], base[3 * i + 1] = linear[c[1]], base[3 * i + 2] = linear[c[2]];
     }
     const lit = colors.lit.map(c => linear[c]);
@@ -226,7 +228,7 @@ export function terrainView(t, trees, selection, viewpoint) {
                                  m.y - 0.5 - (H - 1) / 2);
         const p = at.clone().project(camera);
         const x = (p.x + 1) / 2 * width, y = (1 - p.y) / 2 * height;
-        const w = names[k].offsetWidth || 8 * names[k].textContent.length;
+        const w = names[k].offsetWidth || 8 * short(m.name).length;
         const box = [x - w / 2, y - 8, x + w / 2, y + 8];
         const shown = p.z < 1 && x > 0 && x < width && y > 0 && y < height
                       && !taken.some(b => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3])

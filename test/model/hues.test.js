@@ -1,0 +1,37 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {packageHues, packageOf} from '../../web/js/model/hues.js';
+
+/** A terrain's nodes and a cell of each, all that packageHues reads. */
+const nodes = (...names) => ({nodes: names.map(([name, depth]) => ({name, depth})), cells: names.map((_, i) => i)});
+
+/** @returns {number} how far apart two hues are on the wheel, 0 to 0.5 */
+const apart = (a, b) => Math.min(Math.abs(a - b), 1 - Math.abs(a - b));
+
+test('the package of a frame, inner classes and lambdas in their outer class', () => {
+  assert.equal(packageOf('a.b.C.m'), 'a.b');
+  assert.equal(packageOf('a.b.C$D.m'), 'a.b');
+  assert.equal(packageOf('a.b.C$$Lambda.0x12.test'), 'a.b');
+  assert.equal(packageOf('C.m'), '');
+  assert.equal(packageOf('[main]'), '');
+});
+
+test('sub-packages near their parent, unrelated packages apart; a chain one hue', () => {
+  const hues = packageHues(nodes(['com.x.app.web.A.m', 0], ['com.x.app.db.B.m', 1], ['com.x.app.db.sql.C.m', 2],
+                                 ['org.lib.D.m', 1], ['[main]', 3]), 'method');
+  const [web, db, sql, lib, thread] = hues;
+  assert.ok(Number.isNaN(thread), 'no package, no hue');
+  assert.ok(apart(web, lib) > 0.2, `two libraries apart: ${web} ${lib}`);
+  assert.ok(apart(web, db) < apart(web, lib), 'siblings nearer than strangers');
+  assert.ok(apart(db, sql) < apart(web, db), 'a sub-package nearest its parent');
+  // com.x.app alone under com.x, alone under com: the three share a hue
+  const chain = packageHues(nodes(['com.x.app.A.m', 0], ['org.lib.D.m', 1]), 'method');
+  assert.ok(apart(chain[0], chain[1]) > 0.3);
+});
+
+test('a peak gathering a class or a package: its own package', () => {
+  const byClass = packageHues(nodes(['a.b.C', 0], ['a.b.C.m', 1]), 'class');
+  assert.equal(byClass[0], byClass[1]);
+  const byPackage = packageHues(nodes(['a.b', 0], ['a.b.C.m', 1]), 'package');
+  assert.equal(byPackage[0], byPackage[1]);
+});

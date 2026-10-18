@@ -24,6 +24,8 @@ import {WAITS} from '../model/samples.js';
  *           threads blocked in native code (a socket read, a poll) weigh time waited, not CPU
  * @property {Shape} shape of the mountains: a massif or ridges
  * @property {'map' | '3d'} view what shows them: a topographic map or a terrain in 3D
+ * @property {'height' | 'package'} colour of the land: by height only, or the hue of each frame's
+ *           package too
  */
 
 /**
@@ -33,7 +35,7 @@ import {WAITS} from '../model/samples.js';
  * @type {PeakSettings}
  */
 const DEFAULTS = {grain: 'method', count: 10, coverage: 1, waits: WAITS, hide: '^(java|javax|jdk|sun|com\\.sun)\\.',
-                  java: false, shape: 'massif', view: 'map'};
+                  java: false, shape: 'massif', view: 'map', colour: 'height'};
 
 const KEY = 'mountaingraph.peaks.';
 
@@ -51,6 +53,7 @@ export function peakSettings() {
     java: readSetting(KEY + 'java') === 'true',
     shape: readSetting(KEY + 'shape') === 'ridges' ? 'ridges' : DEFAULTS.shape,
     view: readSetting(KEY + 'view') === '3d' ? '3d' : DEFAULTS.view,
+    colour: readSetting(KEY + 'colour') === 'package' ? 'package' : DEFAULTS.colour,
   };
 }
 
@@ -73,6 +76,8 @@ export function peakControls(settings, changed) {
     h('option', {value: s, selected: s === settings.shape}, s)));
   const view = h('select', null, [['map', 'a map'], ['3d', '3D']].map(([v, label]) =>
     h('option', {value: v, selected: v === settings.view}, label)));
+  const colour = h('select', null, ['height', 'package'].map(c =>
+    h('option', {value: c, selected: c === settings.colour}, c)));
 
   const update = () => {
     for (const input of [waits, hide]) {
@@ -86,12 +91,12 @@ export function peakControls(settings, changed) {
     /** @type {PeakSettings} */
     const next = {grain: /** @type {Grain} */ (grain.value), count: n, coverage: c / 100, waits: waits.value,
                   hide: hide.value, java: java.checked, shape: /** @type {Shape} */ (shape.value),
-                  view: view.value === '3d' ? '3d' : 'map'};
+                  view: view.value === '3d' ? '3d' : 'map', colour: colour.value === 'package' ? 'package' : 'height'};
     for (const [key, value] of Object.entries(next))
       writeSetting(KEY + key, value);
     changed(next);
   };
-  for (const input of [grain, count, coverage, waits, hide, java, shape, view])
+  for (const input of [grain, count, coverage, waits, hide, java, shape, view, colour])
     input.addEventListener('input', update);
   update();
 
@@ -107,6 +112,8 @@ export function peakControls(settings, changed) {
       java, ' Java samples only (CPU)'),
     h('label', {title: 'A massif: each caller a sector as high as its time. Ridges: each a ridge out to it'},
       'Mountains as ', shape, ' in ', view),
+    h('label', {title: 'By package: a hue per package, sub-packages near their parent; the height still sets how light'},
+      'coloured by ', colour),
     h('button', {type: 'button', class: 'button', onclick: () => {
       grain.value = DEFAULTS.grain;
       count.value = String(DEFAULTS.count);
@@ -116,6 +123,7 @@ export function peakControls(settings, changed) {
       java.checked = DEFAULTS.java;
       shape.value = DEFAULTS.shape;
       view.value = DEFAULTS.view;
+      colour.value = DEFAULTS.colour;
       update();
     }}, 'Defaults'));
 }
