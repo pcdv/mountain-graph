@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {decode, COMPILED} from '../../web/js/profile/profile.js';
-import {peaks} from '../../web/js/model/peaks.js';
+import {decode, COMPILED, NO_OPERATION} from '../../web/js/profile/profile.js';
+import {peaks, mountains} from '../../web/js/model/peaks.js';
 
 // strings: 0 "A.a", 1 "B.b", 2 "C.c", 3 "Main.run", 4 "java.util.HashMap.get", 5 "main"
 const strings = ['A.a', 'B.b', 'C.c', 'Main.run', 'java.util.HashMap.get', 'main'];
@@ -75,4 +75,34 @@ test('a stack all hidden: no method at the top, bare', () => {
   const r = peaks(p, {...all, hide: '.'});
   assert.deepEqual(r.peaks, []);
   assert.equal(r.bare, 90);
+});
+
+/** A tree as lines "path total", the root first. */
+function lines(t, prefix = '') {
+  const path = prefix ? `${prefix};${t.name}` : t.name;
+  return [`${path} ${t.total}`, ...t.children.flatMap(c => lines(c, path))];
+}
+
+test('a mountain: the peak, its callers down to the thread where execution entered', () => {
+  const r = peaks(p, all, {count: 2});
+  const m = mountains(p, all, r.peaks);
+  assert.deepEqual([...m.keys()], ['A.a', 'java.util.HashMap.get']);
+  assert.deepEqual(lines(m.get('A.a')), [
+    'A.a 30',
+    'A.a;B.b 10',
+    'A.a;B.b;Main.run 10',
+    'A.a;B.b;Main.run;[main tid=1] 10',
+    `A.a;B.b;Main.run;[main tid=1];${NO_OPERATION} 10`,
+    'A.a;Main.run 20',
+    'A.a;Main.run;[main tid=1] 20',
+    `A.a;Main.run;[main tid=1];${NO_OPERATION} 20`,
+  ]);
+  assert.equal(m.get('A.a').total, r.peaks[0].self);
+});
+
+test('a mountain with frames hidden: their callers in their place', () => {
+  const filter = {...all, hide: '^java\.'};
+  const m = mountains(p, filter, peaks(p, filter, {count: 1}).peaks);
+  assert.deepEqual(lines(m.get('A.a')).slice(0, 3), ['A.a 50', 'A.a;B.b 10', 'A.a;B.b;Main.run 10']);
+  assert.equal(m.get('A.a').total, 50);
 });

@@ -5,7 +5,7 @@
  */
 import {$, h, replace} from './lib/dom.js';
 import {loadProfile} from './load.js';
-import {peaks} from './model/peaks.js';
+import {peaks, mountains} from './model/peaks.js';
 import {peaksView} from './views/peaks.js';
 import {peakControls, peakSettings} from './components/peak-controls.js';
 
@@ -41,8 +41,13 @@ async function open(file) {
   try {
     const p = await loadProfile(file);
     const table = h('div');
-    const controls = peakControls(peakSettings(), ({count, coverage, hide}) =>
-      replace(table, peaksView(peaks(p, {all: true, hide}, {count, coverage}))));
+    /** @type {Set<string>} */
+    const open = new Set();
+    const controls = peakControls(peakSettings(), ({count, coverage, hide}) => {
+      const filter = {all: true, hide};
+      const r = peaks(p, filter, {count, coverage});
+      replace(table, peaksView(r, mountains(p, filter, r.peaks), open));
+    });
     replace(main, summary(file.name, p), controls, table);
   }
   catch (e) {

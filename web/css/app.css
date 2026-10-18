@@ -145,3 +145,40 @@ button.button {
   background: transparent;
   color: inherit;
 }
+
+.peaks tr.peak {
+  cursor: pointer;
+}
+
+.peaks tr.peak:hover, .peaks tr.peak.open {
+  background: var(--drop);
+}
+
+.peaks tr.mountain > td {
+  padding: 4px 8px 8px;
+}
+
+.callers, .callers ul {
+  margin: 0;
+  padding-left: 16px;
+  list-style: none;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+
+.callers {
+  padding-left: 0;
+}
+
+.callers li.leaf {
+  padding-left: 14px;
+}
+
+.callers summary {
+  cursor: pointer;
+}
+
+.callers .entry {
+  color: var(--accent);
+  font-weight: 600;
+}

@@ -53,7 +53,7 @@ Where the idea holds or fails, cheap to check.
 
 - [x] The peaks of a profile: self time, total time, share; the plain; the coverage
 - [x] Their number, a coverage to reach, and `hide` changeable in the page
-- [ ] Each peak's callers listed, down to the entry points
+- [x] Each peak's callers listed, down to the entry points
 - [ ] Tried on several real profiles: do 5 to 15 peaks cover most of the time?
 - [ ] Collapsed stacks read too (`a;b;c 12` per line), into the same `Profile`. Open: their
   counts weigh samples, not ms (`weights` per kind today), and they have no time, thread or

@@ -7,10 +7,11 @@
  *
  * No DOM: tested with Node.
  */
-import {hotMethods} from '../profile/profile.js';
+import {hotMethods, tree} from '../profile/profile.js';
 
 /** @typedef {import('../profile/profile.js').Profile} Profile */
 /** @typedef {import('../profile/profile.js').Filter} Filter */
+/** @typedef {import('../profile/profile.js').Frame} Frame */
 
 /**
  * @typedef {object} Peak
@@ -62,4 +63,23 @@ export function peaks(p, filter, {count = 10, coverage = 1} = {}) {
     self += m.self;
   }
   return {peaks: taken, plain: total - self, bare, coverage: total > 0 ? self / total : 0, total};
+}
+
+/**
+ * The mountains of peaks: each the tree of the samples that ran in the peak,
+ * its callers as children and so on down to where execution entered, the
+ * operation (or the thread, for the samples outside operations) last. Its
+ * total is the peak's self time.
+ *
+ * @param {Profile} p
+ * @param {Filter} filter that the peaks were found with
+ * @param {Peak[]} list
+ * @returns {Map<string, Frame>} by the name of the peak
+ */
+export function mountains(p, filter, list) {
+  const names = new Set(list.map(peak => peak.name));
+  // its children are the methods at the top of the samples, and the operations
+  // of those with no method at the top, left out by name
+  const {root} = tree(p, {...filter, reversed: true});
+  return new Map(root.children.filter(f => names.has(f.name)).map(f => [f.name, f]));
 }

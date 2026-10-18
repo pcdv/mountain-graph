@@ -2,17 +2,23 @@
 /**
  * The peaks of a profile as a table, with no graphics: each peak's self and
  * total time and its share, the coverage reached peak after peak, and the
- * plain left over.
+ * plain left over. A peak clicked shows its mountain under it: its callers,
+ * down to where execution entered.
  */
 import {h} from '../lib/dom.js';
+import {callersTree} from '../components/callers.js';
 
 /** @typedef {import('../model/peaks.js').Peaks} Peaks */
+/** @typedef {import('../profile/profile.js').Frame} Frame */
 
 /**
  * @param {Peaks} r
+ * @param {Map<string, Frame>} mountains by the name of the peak
+ * @param {Set<string>} open the names of the peaks whose mountain shows, kept up to date as they
+ *        are clicked: the same set given again keeps them open when the table is drawn again
  * @returns {HTMLElement}
  */
-export function peaksView(r) {
+export function peaksView(r, mountains, open) {
   let covered = 0;
   return h('section', {class: 'peaks'},
     h('h3', null, `${r.peaks.length} peaks cover ${percent(r.coverage)} of ${ms(r.total)}`),
@@ -28,14 +34,30 @@ export function peaksView(r) {
           h('th', {class: 'num'}, 'Covered'),
           h('th', {class: 'num'}, 'Total'))),
       h('tbody', null,
-        r.peaks.map(peak => {
+        r.peaks.flatMap(peak => {
           covered += peak.share;
-          return h('tr', null,
+          const mountain = mountains.get(peak.name);
+          const cell = h('td', {colspan: 5});
+          const below = h('tr', {class: 'mountain'}, cell);
+          const show = () => {
+            below.hidden = !open.has(peak.name);
+            if (!below.hidden && mountain && !cell.firstChild)
+              cell.append(callersTree(mountain));
+          };
+          show();
+          const row = h('tr', {class: 'peak', title: 'Its callers', onclick: () => {
+            if (!open.delete(peak.name))
+              open.add(peak.name);
+            show();
+            row.classList.toggle('open', !below.hidden);
+          }},
             h('td', {class: 'name'}, peak.name),
             h('td', {class: 'num'}, ms(peak.self)),
             h('td', {class: 'num'}, percent(peak.share)),
             h('td', {class: 'num muted'}, percent(covered)),
             h('td', {class: 'num'}, ms(peak.total)));
+          row.classList.toggle('open', !below.hidden);
+          return [row, below];
         }))));
 }
 
