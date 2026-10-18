@@ -40,8 +40,8 @@ export function panelWidth() {
  * @property {() => number} chosen the mountain whose callers show, -1 for none
  * @property {(n: number) => boolean} isLit whether a node is lit: it is named as the one hovered
  * @property {(n: number) => void} hover the node under the mouse, -1 for none: redraws if it changed
- * @property {(n: number) => void} click on a node: shows its mountain's callers, or hides them when
- *           they show; on the plain, hides them
+ * @property {(n: number) => void} click on a node: shows its mountain's panel, left as it is if it
+ *           shows already (a tree unfolded, a tab); on the plain, -1, hides it
  */
 
 /**
@@ -134,7 +134,11 @@ export function terrainFrame(t, trees, selection, hint, redraw) {
       redraw();
     },
     click: n => {
-      choose(n < 0 || t.nodes[n].mountain === chosen ? -1 : t.nodes[n].mountain);
+      // its mountain's, kept as it is when it shows already; on the plain, none
+      const m = n < 0 ? -1 : t.nodes[n].mountain;
+      if (m === chosen)
+        return;
+      choose(m);
       redraw();
     },
   };
