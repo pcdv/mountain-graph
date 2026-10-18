@@ -31,7 +31,7 @@ import {layout} from './layout.js';
  * @property {number} depth 0 for the peak, 1 for its callers…
  * @property {number} parent the index of the frame it called, -1 for the peak
  * @property {number} mountain the index of its mountain
- * @property {number} a0 where its sector starts, in radians
+ * @property {number} a0 where its sector starts, in radians, before its mountain's turn
  * @property {number} a1 where it ends
  */
 
@@ -42,6 +42,8 @@ import {layout} from './layout.js';
  * @property {number} y
  * @property {number} r its radius, in cells: its foot
  * @property {number} node the index of its peak in nodes
+ * @property {number} turn radians its sectors are turned by: the middle of the whole turn, where a
+ *           single path goes, points away from the middle of the mountains
  */
 
 /**
@@ -125,8 +127,13 @@ export function terrain(trees, {shape = 'massif', size = 600, aspect = 1} = {}) 
     mountains: [],
     top,
   };
+  const cx = circles.reduce((s, c) => s + c.x, 0) / (circles.length || 1);
+  const cy = circles.reduce((s, c) => s + c.y, 0) / (circles.length || 1);
   circles.forEach((c, m) => {
-    const placed = {name: trees[m].name, x: (c.x - x0) * scale, y: (c.y - y0) * scale, r: c.r * scale, node: peaks[m]};
+    // the middle of the turn is at π: out of the middle, or left as it is for a mountain there
+    const out = Math.hypot(c.x - cx, c.y - cy) > 1e-6 * c.r ? Math.atan2(c.y - cy, c.x - cx) - Math.PI : 0;
+    const placed = {name: trees[m].name, x: (c.x - x0) * scale, y: (c.y - y0) * scale, r: c.r * scale, node: peaks[m],
+                    turn: out};
     t.mountains.push(placed);
     (shape === 'ridges' ? ridges : massif)(t, placed, rings[m]);
   });
@@ -146,7 +153,7 @@ function massif(t, m, byDepth) {
     const depth = Math.floor(Math.hypot(dx, dy) / band);
     if (depth >= byDepth.length)
       return;
-    const n = sectorAt(t.nodes, byDepth[depth], angle(dx, dy));
+    const n = sectorAt(t.nodes, byDepth[depth], angle(dx, dy, -m.turn));
     if (n >= 0) {
       t.heights[i] = t.nodes[n].total;
       t.cells[i] = n;
@@ -172,7 +179,7 @@ function ridges(t, m, byDepth) {
   /** @param {number} n @returns {number[]} where it stands from the centre, its height, its half width */
   const at = n => {
     const node = t.nodes[n];
-    const a = (node.a0 + node.a1) / 2, d = node.depth * band;
+    const a = (node.a0 + node.a1) / 2 + m.turn, d = node.depth * band;
     const share = peak.total > 0 ? node.total / peak.total : 0;
     return [d * Math.cos(a), d * Math.sin(a), node.total * (1 - node.depth / depths), widest * Math.sqrt(share)];
   };
@@ -229,10 +236,11 @@ function eachCell(t, cx, cy, rx, ry, visit) {
 /**
  * @param {number} dx
  * @param {number} dy
+ * @param {number} [turn] radians added to it
  * @returns {number} its angle, 0 to 2π
  */
-function angle(dx, dy) {
-  const a = Math.atan2(dy, dx);
+function angle(dx, dy, turn = 0) {
+  const a = (Math.atan2(dy, dx) + turn) % (2 * Math.PI);
   return a < 0 ? a + 2 * Math.PI : a;
 }
 

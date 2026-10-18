@@ -80,3 +80,13 @@ test('ridges: the peak highest, a ridge out to each caller, lower as it goes; th
   for (let i = 0; i < t.heights.length; i++)
     assert.equal(t.cells[i] < 0, t.heights[i] === 0);
 });
+
+test('ridges: a single path points away from the middle of the mountains', () => {
+  const t = terrain([a, e], {shape: 'ridges', size: 201});
+  const [ma, me] = t.mountains;
+  const node = (x, y) => t.nodes[t.cells[Math.floor(y) * t.width + Math.floor(x)]]?.name;
+  // E's caller F at depth 1 of 2: half its radius out, on the side away from A
+  const away = Math.atan2(me.y - ma.y, me.x - ma.x), d = me.r / 2;
+  assert.equal(node(me.x + d * Math.cos(away), me.y + d * Math.sin(away)), 'F');
+  assert.notEqual(node(me.x - d * Math.cos(away), me.y - d * Math.sin(away)), 'F', 'not towards A');
+});
