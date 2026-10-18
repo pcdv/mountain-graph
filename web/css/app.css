@@ -302,6 +302,22 @@ canvas.map {
   cursor: grab;
 }
 
+.map-holder.three .relief {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fg);
+  text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg);
+}
+
+.map-holder.three .relief input {
+  width: 100px;
+}
+
 .peak-labels span {
   position: absolute;
   transform: translate(-50%, -50%);

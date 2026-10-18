@@ -1,8 +1,9 @@
 // @ts-check
 /**
  * The terrain in 3D: the same grid as the map, a plane whose points are
- * raised to the heights of its cells, tinted as on the map, lit from the
- * north-west, turned and zoomed with the mouse. The peaks are named; a frame
+ * raised to the heights of its cells, tinted and lined as on the map, lit
+ * from the north-west, turned and zoomed with the mouse, its relief made
+ * higher or flatter. The peaks in sight are named; a frame
  * hovered is lit in every mountain, and a mountain clicked shows its callers
  * (terrain-frame.js), as on the map.
  *
@@ -11,8 +12,9 @@
  */
 import {h} from '../lib/dom.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
-import {palette, tint} from './palette.js';
-import {HEIGHT} from './map.js';
+import {contour, levels} from '../model/contours.js';
+import {palette, tint, DEPTH} from './palette.js';
+import {HEIGHT, LINES} from './map.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -20,8 +22,8 @@ import {HEIGHT} from './map.js';
 /** The modules, resolved by the import map: strings, so that the type checker leaves them. */
 const THREE = /** @type {string} */ ('three'), CONTROLS = /** @type {string} */ ('three/addons/controls/OrbitControls.js');
 
-/** The height of the highest peak, as a share of the terrain's longer side. */
-const RELIEF = 0.16;
+/** The height of the highest peak, as a share of the terrain's longer side: at first, and its range. */
+const RELIEF = 0.16, FLATTEST = 0.04, HIGHEST = 0.5;
 
 /** How much the distance changes per pixel of wheel: e^(100 ZOOM), about 15%, per notch of a mouse. */
 const ZOOM = 0.0014;
@@ -34,6 +36,7 @@ const ZOOM = 0.0014;
  * @typedef {object} Viewpoint
  * @property {number[]} [position]
  * @property {number[]} [target]
+ * @property {number} [relief] the height of the highest peak, as a share of the longer side
  */
 
 /** Frees the view shown last: a page has few WebGL contexts. */
@@ -78,8 +81,9 @@ export function terrainView(t, trees, selection, viewpoint) {
       return;
     const colors = palette();
     const W = t.width, H = t.height, side = Math.max(W, H);
+    let relief = viewpoint.relief ?? RELIEF;
     /** @param {number} height ms @returns {number} its y */
-    const lift = height => t.top > 0 && height > 0 ? Math.sqrt(height / t.top) * RELIEF * side : 0;
+    const lift = height => t.top > 0 && height > 0 ? Math.sqrt(height / t.top) * relief * side : 0;
 
     // a point per cell, row 0 the farthest
     const geometry = new T.PlaneGeometry(W - 1, H - 1, W - 1, H - 1);
@@ -88,9 +92,38 @@ export function terrainView(t, trees, selection, viewpoint) {
     // picking keeps the cells
     const position = geometry.attributes.position;
     const smooth = blur(blur(t.heights, W, H), W, H);
-    for (let i = 0; i < W * H; i++)
-      position.setY(i, lift(smooth[i]));
-    geometry.computeVertexNormals();
+
+    // the map's contour lines, but of the smoothed heights: on the surface; their y set by raise()
+    const steps = levels(t.top, LINES, t.top * DEPTH);
+    const segments = steps.map(level => contour(smooth, W, H, level));
+    const points = new Float32Array(segments.reduce((n, s) => n + s.length / 2 * 3, 0));
+    let k = 0;
+    for (const s of segments)
+      for (let i = 0; i < s.length; i += 2, k += 3) {
+        points[k] = s[i] - 0.5 - (W - 1) / 2;
+        points[k + 2] = s[i + 1] - 0.5 - (H - 1) / 2;
+      }
+    const lines = new T.BufferGeometry();
+    lines.setAttribute('position', new T.BufferAttribute(points, 3));
+
+    /** sets the heights of the surface and of the lines to the relief */
+    const raise = () => {
+      for (let i = 0; i < W * H; i++)
+        position.setY(i, lift(smooth[i]));
+      position.needsUpdate = true;
+      geometry.computeVertexNormals();
+      geometry.computeBoundingSphere();
+      let k = 1;
+      segments.forEach((s, l) => {
+        // a little above: a line across a square can cut under the two triangles drawing it
+        const y = lift(steps[l]) + side / 2000;
+        for (let i = 0; i < s.length; i += 2, k += 3)
+          points[k] = y;
+      });
+      lines.attributes.position.needsUpdate = true;
+      lines.computeBoundingSphere();
+    };
+    raise();
 
     // the map's colours, in the linear space three.js lights in
     const linear = Float32Array.from({length: 256}, (_, c) => {
@@ -106,9 +139,15 @@ export function terrainView(t, trees, selection, viewpoint) {
     const color = new T.BufferAttribute(base.slice(), 3);
     geometry.setAttribute('color', color);
 
-    const material = new T.MeshLambertMaterial({vertexColors: true});
+    const material = new T.MeshLambertMaterial({vertexColors: true, polygonOffset: true,
+                                                polygonOffsetFactor: 1, polygonOffsetUnits: 1});
     const scene = new T.Scene();
     scene.add(new T.Mesh(geometry, material));
+    // the colour of the map's lines, its alpha as the opacity: three.js colours have none
+    const [r, g, b, a = 1] = (colors.line.match(/[\d.]+/g) || []).map(Number);
+    const lineMaterial = new T.LineBasicMaterial({color: new T.Color(r / 255, g / 255, b / 255).convertSRGBToLinear(),
+                                                  transparent: true, opacity: a});
+    scene.add(new T.LineSegments(lines, lineMaterial));
     scene.add(new T.HemisphereLight(0xffffff, 0x8a8170, 1.8));
     const sun = new T.DirectionalLight(0xffffff, 1.6);
     sun.position.set(-1, 1.6, -0.6);
@@ -146,24 +185,52 @@ export function terrainView(t, trees, selection, viewpoint) {
     const labels = h('div', {class: 'peak-labels'});
     const names = t.mountains.map(m => h('span', null, short(m.name)));
     labels.append(...names);
-    loading.replaceWith(renderer.domElement, labels);
+    const slider = h('input', {type: 'range', min: FLATTEST, max: HIGHEST, step: 0.01, value: relief,
+                               oninput: () => {
+                                 viewpoint.relief = relief = Number(slider.value);
+                                 raise();
+                                 redraw();
+                               }});
+    loading.replaceWith(renderer.domElement, labels, h('label', {class: 'relief'}, 'Relief ', slider));
+
+    /**
+     * @param {any} to a point, a Vector3
+     * @returns {boolean} whether the surface stands between the camera and it, but for the last
+     *          cells before it
+     */
+    const behind = to => {
+      const from = camera.position, top = lift(t.top);
+      const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z;
+      const steps = Math.ceil(Math.hypot(dx, dz));
+      // from where the line goes under the highest peak
+      const first = dy < 0 && from.y > top ? Math.floor((from.y - top) / -dy * steps) : 0;
+      for (let s = first; s < steps - 3; s++) {
+        const f = s / steps;
+        const x = Math.round(from.x + f * dx + (W - 1) / 2), z = Math.round(from.z + f * dz + (H - 1) / 2);
+        if (x >= 0 && z >= 0 && x < W && z < H && from.y + f * dy < position.getY(z * W + x))
+          return true;
+      }
+      return false;
+    };
 
     const render = () => {
       if (gone)
         return;
       renderer.render(scene, camera);
-      // the labels over the peaks, the highest first, none over another
+      // the labels over the peaks in sight, the highest first, none over another
       const width = renderer.domElement.clientWidth, height = renderer.domElement.clientHeight;
       /** @type {number[][]} */
       const taken = [];
       t.mountains.forEach((m, k) => {
-        const p = new T.Vector3(m.x - 0.5 - (W - 1) / 2, lift(t.nodes[m.node].total) + side / 60,
-                                m.y - 0.5 - (H - 1) / 2).project(camera);
+        const at = new T.Vector3(m.x - 0.5 - (W - 1) / 2, lift(t.nodes[m.node].total) + side / 60,
+                                 m.y - 0.5 - (H - 1) / 2);
+        const p = at.clone().project(camera);
         const x = (p.x + 1) / 2 * width, y = (1 - p.y) / 2 * height;
         const w = names[k].offsetWidth || 8 * names[k].textContent.length;
         const box = [x - w / 2, y - 8, x + w / 2, y + 8];
         const shown = p.z < 1 && x > 0 && x < width && y > 0 && y < height
-                      && !taken.some(b => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3]);
+                      && !taken.some(b => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3])
+                      && !behind(at);
         names[k].hidden = !shown;
         if (shown) {
           taken.push(box);
@@ -240,9 +307,9 @@ export function terrainView(t, trees, selection, viewpoint) {
 
     // picking: the mouse's ray marched over the heights, the first cell it goes under
     const raycaster = new T.Raycaster();
-    const top = lift(t.top);
     /** @param {MouseEvent} e @returns {number} the node under the mouse, -1 on the plain */
     const nodeAt = e => {
+      const top = lift(t.top);
       const box = renderer.domElement.getBoundingClientRect();
       raycaster.setFromCamera(new T.Vector2((e.clientX - box.left) / box.width * 2 - 1,
                                             1 - (e.clientY - box.top) / box.height * 2), camera);
@@ -284,6 +351,8 @@ export function terrainView(t, trees, selection, viewpoint) {
       controls.dispose();
       geometry.dispose();
       material.dispose();
+      lines.dispose();
+      lineMaterial.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
     };

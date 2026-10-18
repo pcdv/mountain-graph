@@ -14,7 +14,7 @@ import {palette, tint, DEPTH} from './palette.js';
 /** @typedef {import('../profile/profile.js').Frame} Frame */
 
 /** The most contour lines. */
-const LINES = 9;
+export const LINES = 9;
 
 /** The most height of a view of the terrain, as a share of the window's. */
 export const HEIGHT = 0.7;
