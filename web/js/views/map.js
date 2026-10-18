@@ -3,13 +3,16 @@
  * The terrain as a topographic map: tinted by height, contour lines each
  * half the height of the one above, the peaks named. Hovering a frame shows
  * its path from the peak and the heaviest way on to where execution entered,
- * and lights it in every mountain it stands in.
+ * and lights it in every mountain it stands in. Clicking a mountain shows its
+ * callers beside the map.
  */
 import {h} from '../lib/dom.js';
 import {contour, levels} from '../model/contours.js';
+import {callersTree} from '../components/callers.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../model/terrain.js').TerrainNode} TerrainNode */
+/** @typedef {import('../profile/profile.js').Frame} Frame */
 
 /** The most contour lines, and how far down they go below the highest peak. */
 const LINES = 9, DEPTH = 1 / 256;
@@ -17,15 +20,43 @@ const LINES = 9, DEPTH = 1 / 256;
 /** The most height of the map, as a share of the window's. */
 export const HEIGHT = 0.7;
 
+/** The width taken by the callers beside the map, gap included, in px: that of .map-panel. */
+export const PANEL = 396;
+
 /**
  * @param {Terrain} t
+ * @param {Frame[]} trees the mountains it was raised from, in its order
+ * @param {{chosen: string}} selection the name of the peak whose callers show, '' for none: kept up
+ *        to date as mountains are clicked, so that the same one shows when the map is drawn again
  * @returns {HTMLElement}
  */
-export function mapView(t) {
+export function mapView(t, trees, selection) {
   const colors = palette();
   const canvas = h('canvas', {class: 'map'});
-  const info = h('div', {class: 'map-info muted'}, 'Hover the map: a frame, its path from the peak.');
-  const section = h('section', {class: 'terrain'}, canvas, info);
+  const info = h('div', {class: 'map-info muted'},
+                 'Hover the map: a frame, its path from the peak. Click a mountain: its callers.');
+  const holder = h('div', {class: 'map-holder'}, canvas, info);
+  const panel = h('aside', {class: 'map-panel'});
+  const section = h('section', {class: 'terrain'}, holder, panel);
+  let chosen = t.mountains.findIndex(m => m.name === selection.chosen);
+  /** @param {number} m the mountain whose callers show, -1 for none */
+  const choose = m => {
+    chosen = m;
+    selection.chosen = m < 0 ? '' : t.mountains[m].name;
+    panel.hidden = m < 0;
+    if (m < 0)
+      return;
+    const tree = trees[m];
+    panel.replaceChildren(
+      h('div', {class: 'panel-head'},
+        h('b', null, tree.name),
+        h('button', {type: 'button', class: 'button', title: 'Close', onclick: () => {
+          choose(-1);
+          scale = draw();
+        }}, '×')),
+      h('div', {class: 'muted'}, `${Math.round(tree.total).toLocaleString()} ms; its callers, the heaviest first:`),
+      callersTree(tree));
+  };
 
   // the tint and the lines, drawn once at the terrain's resolution
   const land = document.createElement('canvas');
@@ -74,7 +105,7 @@ export function mapView(t) {
   };
 
   const draw = () => {
-    const width = section.clientWidth || 800;
+    const width = holder.clientWidth || 800;
     const scale = Math.min(width / t.width, HEIGHT * innerHeight / t.height);
     const ratio = devicePixelRatio || 1;
     canvas.style.width = `${t.width * scale}px`;
@@ -97,6 +128,17 @@ export function mapView(t) {
         g.lineTo(s[i + 2], s[i + 3]);
       }
     g.stroke();
+
+    if (chosen >= 0) {
+      const m = t.mountains[chosen];
+      g.lineWidth = 2 / scale;
+      g.strokeStyle = colors.text;
+      g.setLineDash([4 / scale, 3 / scale]);
+      g.beginPath();
+      g.arc(m.x, m.y, m.r + 2, 0, 2 * Math.PI);
+      g.stroke();
+      g.setLineDash([]);
+    }
 
     g.setTransform(ratio, 0, 0, ratio, 0, 0);
     g.font = '11px system-ui, sans-serif';
@@ -123,12 +165,22 @@ export function mapView(t) {
   };
 
   let scale = 1;
+  choose(chosen);
   // drawn once in the page, to know its width, and again as it changes
-  new ResizeObserver(() => scale = draw()).observe(section);
+  new ResizeObserver(() => scale = draw()).observe(holder);
 
-  canvas.addEventListener('mousemove', e => {
+  /** @param {MouseEvent} e @returns {number} the node under the mouse, -1 on the plain */
+  const nodeAt = e => {
     const x = Math.floor(e.offsetX / scale), y = Math.floor(e.offsetY / scale);
-    const n = x >= 0 && y >= 0 && x < t.width && y < t.height ? t.cells[y * t.width + x] : -1;
+    return x >= 0 && y >= 0 && x < t.width && y < t.height ? t.cells[y * t.width + x] : -1;
+  };
+  canvas.addEventListener('click', e => {
+    const n = nodeAt(e);
+    choose(n < 0 || t.nodes[n].mountain === chosen ? -1 : t.nodes[n].mountain);
+    scale = draw();
+  });
+  canvas.addEventListener('mousemove', e => {
+    const n = nodeAt(e);
     if (n === lit)
       return;
     lit = n;

@@ -78,7 +78,7 @@ Where the idea holds or fails, cheap to check.
   named. Lines and tint by halvings of the highest peak, so that small peaks show
 - [x] Hovering: the path from the peak down to the entry point, ms and share; the frame lit in every
   mountain it stands in
-- [ ] Clicking a peak: its callers in a side panel
+- [x] Clicking a peak: its callers in a side panel
 - [ ] Ridges, switchable with massif
 
 ## M3: 3D terrain

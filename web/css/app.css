@@ -250,3 +250,42 @@ canvas.map {
 .map-info .path li.on {
   color: var(--muted);
 }
+
+.terrain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.map-holder {
+  flex: 1 1 480px;
+  min-width: 0;
+}
+
+.map-panel {
+  flex: 0 1 380px;
+  max-height: 70vh;
+  overflow: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.map-panel .panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.map-panel .callers {
+  margin-top: 6px;
+}
+
+canvas.map {
+  cursor: pointer;
+}
