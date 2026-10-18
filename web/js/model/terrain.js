@@ -13,6 +13,11 @@
  * - ridges: each caller a ridge from its callee out to the middle of its
  *   sector, as wide and as high as its ms, falling with depth too. One way
  *   in makes a single spur, many make a star of ridges.
+ * - ranges: ridges, a caller several mountains share drawn once, between
+ *   them, where their ridges meet: a saddle, as high as the most time one
+ *   of them spends through it. Its callers follow it. A caller most
+ *   mountains share (a thread's run) is not merged: it would pull them all
+ *   to one place, and says nothing of them.
  *
  * No DOM: tested with Node.
  */
@@ -20,7 +25,7 @@ import {layout} from './layout.js';
 
 /** @typedef {import('../profile/profile.js').Frame} Frame */
 
-/** @typedef {'massif' | 'ridges'} Shape */
+/** @typedef {'massif' | 'ridges' | 'ranges'} Shape */
 
 /**
  * A frame of a mountain, as the terrain shows it.
@@ -55,6 +60,19 @@ import {layout} from './layout.js';
  * @property {TerrainNode[]} nodes
  * @property {Placed[]} mountains in the order given
  * @property {number} top the height of the highest peak, ms
+ * @property {Saddle[]} saddles where mountains meet, ranges only
+ */
+
+/**
+ * A caller several mountains share, drawn once where their ridges meet.
+ *
+ * @typedef {object} Saddle
+ * @property {string} name of the caller
+ * @property {number} x in cells
+ * @property {number} y
+ * @property {number} reach how wide its ridges are around it, in cells
+ * @property {number[]} nodes the caller in each mountain, the heaviest first
+ * @property {boolean} join whether paths join there; false further down the ridge they then share
  */
 
 /**
@@ -67,6 +85,13 @@ import {layout} from './layout.js';
 
 /** The widest ridge, the peak's, as a share of its mountain's radius. */
 const RIDGE = 0.18;
+
+/**
+ * How far apart two mountains may stand, as a share of the sum of their
+ * radii, for a caller they share to be merged: further, its ridges would
+ * cross the map.
+ */
+const NEAR = 1.5;
 
 /**
  * @param {Frame[]} trees the mountains, each a peak and its callers as mountains() gives them, the
@@ -126,6 +151,7 @@ export function terrain(trees, {shape = 'massif', size = 600, aspect = 1} = {}) 
     nodes,
     mountains: [],
     top,
+    saddles: [],
   };
   const cx = circles.reduce((s, c) => s + c.x, 0) / (circles.length || 1);
   const cy = circles.reduce((s, c) => s + c.y, 0) / (circles.length || 1);
@@ -135,8 +161,11 @@ export function terrain(trees, {shape = 'massif', size = 600, aspect = 1} = {}) 
     const placed = {name: trees[m].name, x: (c.x - x0) * scale, y: (c.y - y0) * scale, r: c.r * scale, node: peaks[m],
                     turn: out};
     t.mountains.push(placed);
-    (shape === 'ridges' ? ridges : massif)(t, placed, rings[m]);
   });
+  if (shape === 'ranges')
+    ranges(t, rings);
+  else
+    t.mountains.forEach((m, k) => (shape === 'ridges' ? ridges : massif)(t, m, rings[k]));
   return t;
 }
 
@@ -172,50 +201,173 @@ function massif(t, m, byDepth) {
  * @param {number[][]} byDepth
  */
 function ridges(t, m, byDepth) {
-  const depths = byDepth.length;
-  const band = m.r / depths;
-  const peak = t.nodes[m.node];
-  const widest = RIDGE * m.r;
-  /** @param {number} n @returns {number[]} where it stands from the centre, its height, its half width */
-  const at = n => {
-    const node = t.nodes[n];
-    const a = (node.a0 + node.a1) / 2 + m.turn, d = node.depth * band;
-    const share = peak.total > 0 ? node.total / peak.total : 0;
-    return [d * Math.cos(a), d * Math.sin(a), node.total * (1 - node.depth / depths), widest * Math.sqrt(share)];
-  };
-  /** @param {number} i @param {number} h @param {number} n */
-  const raise = (i, h, n) => {
-    if (h > t.heights[i]) {
-      t.heights[i] = h;
-      t.cells[i] = n;
-    }
-  };
+  dome(t, m);
+  for (let depth = 1; depth < byDepth.length; depth++)
+    for (const n of byDepth[depth])
+      ridge(t, stance(t, m, byDepth.length, t.nodes[n].parent), stance(t, m, byDepth.length, n), n);
+}
 
-  // the peak: a dome as wide as its ridges
+/**
+ * Raises the mountains as ridges, the callers they share merged into
+ * saddles: each placed where its ridges, weighed by their time, would end on
+ * average; its callers moved as much, so that they follow it.
+ *
+ * @param {Terrain} t
+ * @param {number[][][]} rings per mountain, per depth, its nodes by angle
+ */
+function ranges(t, rings) {
+  /** @type {Stance[]} where each node would stand on its own mountain */
+  const own = new Array(t.nodes.length);
+  rings.forEach((byDepth, k) => byDepth.flat().forEach(n => own[n] = stance(t, t.mountains[k], byDepth.length, n)));
+
+  // per caller, the heaviest node of its name in each mountain
+  /** @type {Map<string, Map<number, number>>} */
+  const shared = new Map();
+  t.nodes.forEach((node, n) => {
+    if (node.depth === 0)
+      return;
+    let per = shared.get(node.name);
+    if (!per)
+      shared.set(node.name, per = new Map());
+    const was = per.get(node.mountain);
+    if (was === undefined || t.nodes[was].total < node.total)
+      per.set(node.mountain, n);
+  });
+  const most = t.mountains.length >= 4 ? t.mountains.length / 2 : Infinity;
+  /** @param {number} a @param {number} b mountains @returns {boolean} whether they stand side by side */
+  const near = (a, b) => {
+    const ma = t.mountains[a], mb = t.mountains[b];
+    return Math.hypot(ma.x - mb.x, ma.y - mb.y) <= NEAR * (ma.r + mb.r);
+  };
+  /** how far each node moves, x and y */
+  const move = new Float64Array(2 * t.nodes.length);
+  /** the saddle each node is merged into, -1 for none */
+  const into = new Int32Array(t.nodes.length).fill(-1);
+  for (const [name, per] of shared) {
+    let left = [...per.values()].filter(n => t.nodes[n].total > 0)
+                                .sort((a, b) => t.nodes[b].total - t.nodes[a].total);
+    if (left.length > most)
+      continue;
+    // the heaviest with those of the mountains beside its own, then the rest likewise
+    while (left.length >= 2) {
+      const first = t.nodes[left[0]].mountain;
+      const nodes = left.filter(n => near(first, t.nodes[n].mountain));
+      left = left.filter(n => !nodes.includes(n));
+      if (nodes.length < 2)
+        continue;
+      const weight = nodes.reduce((s, n) => s + t.nodes[n].total, 0);
+      const x = nodes.reduce((s, n) => s + own[n].x * t.nodes[n].total, 0) / weight;
+      const y = nodes.reduce((s, n) => s + own[n].y * t.nodes[n].total, 0) / weight;
+      for (const n of nodes) {
+        into[n] = t.saddles.length;
+        move[2 * n] = x - own[n].x;
+        move[2 * n + 1] = y - own[n].y;
+      }
+      t.saddles.push({name, x, y, reach: Math.max(...nodes.map(n => own[n].w)), nodes, join: true});
+    }
+  }
+  // past where the paths join, a caller they still share is no saddle of its own: the same ridge
+  for (const s of t.saddles) {
+    const below = s.nodes.map(n => into[t.nodes[n].parent]);
+    s.join = below[0] < 0 || below.some(b => b !== below[0]);
+  }
+  // the others moved as their nearest merged callee: a node comes after its callee
+  t.nodes.forEach((node, n) => {
+    if (into[n] < 0 && node.parent >= 0) {
+      move[2 * n] = move[2 * node.parent];
+      move[2 * n + 1] = move[2 * node.parent + 1];
+    }
+  });
+  /** @param {number} n @returns {Stance} */
+  const at = n => ({...own[n], x: own[n].x + move[2 * n], y: own[n].y + move[2 * n + 1]});
+
+  t.mountains.forEach(m => dome(t, m));
+  t.nodes.forEach((node, n) => {
+    if (node.parent >= 0)
+      ridge(t, at(node.parent), at(n), n);
+  });
+}
+
+/**
+ * Where a node of ridges stands.
+ *
+ * @typedef {object} Stance
+ * @property {number} x in cells
+ * @property {number} y
+ * @property {number} h its height, ms
+ * @property {number} w its half width, in cells
+ */
+
+/**
+ * @param {Terrain} t
+ * @param {Placed} m its mountain
+ * @param {number} depths of its mountain
+ * @param {number} n a node
+ * @returns {Stance} out from the centre to the middle of its sector, on its depth's ring; lower as
+ *          it is deeper, narrower as it is lighter
+ */
+function stance(t, m, depths, n) {
+  const node = t.nodes[n], peak = t.nodes[m.node];
+  const a = (node.a0 + node.a1) / 2 + m.turn, d = node.depth * m.r / depths;
+  const share = peak.total > 0 ? node.total / peak.total : 0;
+  return {x: m.x + d * Math.cos(a), y: m.y + d * Math.sin(a), h: node.total * (1 - node.depth / depths),
+          w: RIDGE * m.r * Math.sqrt(share)};
+}
+
+/**
+ * The peak of a mountain: a dome as wide as its widest ridge.
+ *
+ * @param {Terrain} t
+ * @param {Placed} m
+ */
+function dome(t, m) {
+  const peak = t.nodes[m.node], widest = RIDGE * m.r;
   eachCell(t, m.x, m.y, widest, widest, (i, dx, dy) => {
     const d = Math.hypot(dx, dy) / widest;
     if (d < 1)
-      raise(i, peak.total * (1 - d * d), m.node);
+      raise(t, i, peak.total * (1 - d * d), m.node);
   });
-  for (let depth = 1; depth < depths; depth++)
-    for (const n of byDepth[depth]) {
-      const node = t.nodes[n];
-      if (node.total <= 0)
-        continue;
-      const [ax, ay, ah, aw] = at(node.parent), [bx, by, bh, bw] = at(n);
-      const cx = (ax + bx) / 2, cy = (ay + by) / 2;
-      const reach = Math.hypot(bx - ax, by - ay) / 2 + Math.max(aw, bw);
-      const lx = bx - ax, ly = by - ay, length2 = lx * lx + ly * ly;
-      eachCell(t, m.x + cx, m.y + cy, reach, reach, (i, dx, dy) => {
-        // the nearest point of the segment, from the callee (0) to the caller (1)
-        const px = dx + cx - ax, py = dy + cy - ay;
-        const f = length2 > 0 ? Math.max(0, Math.min(1, (px * lx + py * ly) / length2)) : 0;
-        const w = aw + (bw - aw) * f;
-        const d = Math.hypot(px - f * lx, py - f * ly) / w;
-        if (d < 1)
-          raise(i, (ah + (bh - ah) * f) * (1 - d * d), n);
-      });
-    }
+}
+
+/**
+ * A ridge from a callee out to its caller, its height and its width going
+ * from the one's to the other's.
+ *
+ * @param {Terrain} t
+ * @param {Stance} a the callee
+ * @param {Stance} b the caller
+ * @param {number} n the caller's node
+ */
+function ridge(t, a, b, n) {
+  if (t.nodes[n].total <= 0)
+    return;
+  const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+  const reach = Math.hypot(b.x - a.x, b.y - a.y) / 2 + Math.max(a.w, b.w);
+  const lx = b.x - a.x, ly = b.y - a.y, length2 = lx * lx + ly * ly;
+  eachCell(t, cx, cy, reach, reach, (i, dx, dy) => {
+    // the nearest point of the segment, from the callee (0) to the caller (1)
+    const px = dx + cx - a.x, py = dy + cy - a.y;
+    const f = length2 > 0 ? Math.max(0, Math.min(1, (px * lx + py * ly) / length2)) : 0;
+    const w = a.w + (b.w - a.w) * f;
+    const d = Math.hypot(px - f * lx, py - f * ly) / w;
+    if (d < 1)
+      raise(t, i, (a.h + (b.h - a.h) * f) * (1 - d * d), n);
+  });
+}
+
+/**
+ * Raises a cell to a height, if higher: it belongs to the highest ridge over it.
+ *
+ * @param {Terrain} t
+ * @param {number} i
+ * @param {number} h
+ * @param {number} n the node it belongs to then
+ */
+function raise(t, i, h, n) {
+  if (h > t.heights[i]) {
+    t.heights[i] = h;
+    t.cells[i] = n;
+  }
 }
 
 /**

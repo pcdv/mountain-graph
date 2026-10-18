@@ -22,7 +22,8 @@ import {WAITS} from '../model/samples.js';
  * @property {string} hide a regular expression for the frames hidden, empty for none
  * @property {boolean} java keeps the Java samples only, leaving out the native ones: those of
  *           threads blocked in native code (a socket read, a poll) weigh time waited, not CPU
- * @property {Shape} shape of the mountains: a massif or ridges
+ * @property {Shape} shape of the mountains: a massif, ridges, or ridges joined at the callers they
+ *           share (ranges)
  * @property {'map' | '3d'} view what shows them: a topographic map or a terrain in 3D
  * @property {'height' | 'package'} colour of the land: by height only, or the hue of each frame's
  *           package too
@@ -51,7 +52,7 @@ export function peakSettings() {
     waits: readSetting(KEY + 'waits') ?? DEFAULTS.waits,
     hide: readSetting(KEY + 'hide') ?? DEFAULTS.hide,
     java: readSetting(KEY + 'java') === 'true',
-    shape: readSetting(KEY + 'shape') === 'ridges' ? 'ridges' : DEFAULTS.shape,
+    shape: shapeOf(readSetting(KEY + 'shape')),
     view: readSetting(KEY + 'view') === '3d' ? '3d' : DEFAULTS.view,
     colour: readSetting(KEY + 'colour') === 'package' ? 'package' : DEFAULTS.colour,
   };
@@ -72,7 +73,7 @@ export function peakControls(settings, changed) {
   const hide = h('input', {type: 'text', class: 'pattern', spellcheck: false, value: settings.hide,
                            placeholder: 'none'});
   const java = h('input', {type: 'checkbox', checked: settings.java});
-  const shape = h('select', null, ['massif', 'ridges'].map(s =>
+  const shape = h('select', null, ['massif', 'ridges', 'ranges'].map(s =>
     h('option', {value: s, selected: s === settings.shape}, s)));
   const view = h('select', null, [['map', 'a map'], ['3d', '3D']].map(([v, label]) =>
     h('option', {value: v, selected: v === settings.view}, label)));
@@ -90,7 +91,7 @@ export function peakControls(settings, changed) {
       return;
     /** @type {PeakSettings} */
     const next = {grain: /** @type {Grain} */ (grain.value), count: n, coverage: c / 100, waits: waits.value,
-                  hide: hide.value, java: java.checked, shape: /** @type {Shape} */ (shape.value),
+                  hide: hide.value, java: java.checked, shape: shapeOf(shape.value),
                   view: view.value === '3d' ? '3d' : 'map', colour: colour.value === 'package' ? 'package' : 'height'};
     for (const [key, value] of Object.entries(next))
       writeSetting(KEY + key, value);
@@ -110,7 +111,8 @@ export function peakControls(settings, changed) {
       'Hide ', hide),
     h('label', {title: 'Leaves out the native samples: threads blocked in native code, waiting'},
       java, ' Java samples only (CPU)'),
-    h('label', {title: 'A massif: each caller a sector as high as its time. Ridges: each a ridge out to it'},
+    h('label', {title: 'A massif: each caller a sector as high as its time. Ridges: each a ridge out to it. '
+                       + 'Ranges: ridges, a caller several mountains share drawn once, a saddle between them'},
       'Mountains as ', shape, ' in ', view),
     h('label', {title: 'By package: a hue per package, sub-packages near their parent; the height still sets how light'},
       'coloured by ', colour),
@@ -126,6 +128,14 @@ export function peakControls(settings, changed) {
       colour.value = DEFAULTS.colour;
       update();
     }}, 'Defaults'));
+}
+
+/**
+ * @param {string | null} s
+ * @returns {Shape} the one named, or the default
+ */
+function shapeOf(s) {
+  return s === 'ridges' || s === 'ranges' ? s : DEFAULTS.shape;
 }
 
 /** @param {string} s */

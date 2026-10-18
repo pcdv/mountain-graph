@@ -1,12 +1,14 @@
 // @ts-check
 /**
  * The terrain as a topographic map: tinted by height, contour lines each
- * half the height of the one above, the peaks named. Hovering a frame lights
+ * half the height of the one above, the peaks named; the divides between
+ * mountains, and the saddles joining them, marked )( and named. Hovering a frame lights
  * it in every mountain it stands in; what it is, and the callers of a
  * mountain clicked, show around the map (terrain-frame.js).
  */
 import {h} from '../lib/dom.js';
 import {contour, levels} from '../model/contours.js';
+import {divides} from '../model/divides.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
 import {palette, tint, hued, DEPTH} from './palette.js';
 
@@ -54,6 +56,7 @@ export function mapView(t, trees, selection, hues = null) {
   }
   ctx.putImageData(image, 0, 0);
   const lines = levels(t.top, LINES, t.top * DEPTH).map(level => contour(t.heights, t.width, t.height, level));
+  const divide = divides(t);
 
   const glow = document.createElement('canvas');
   glow.width = t.width;
@@ -98,6 +101,17 @@ export function mapView(t, trees, selection, hues = null) {
       }
     g.stroke();
 
+    g.lineWidth = 1.5 / scale;
+    g.strokeStyle = colors.text;
+    g.globalAlpha = 0.5;
+    g.beginPath();
+    for (let i = 0; i < divide.length; i += 4) {
+      g.moveTo(divide[i], divide[i + 1]);
+      g.lineTo(divide[i + 2], divide[i + 3]);
+    }
+    g.stroke();
+    g.globalAlpha = 1;
+
     const chosen = frame.chosen();
     if (chosen >= 0) {
       const m = t.mountains[chosen];
@@ -117,11 +131,11 @@ export function mapView(t, trees, selection, hues = null) {
     g.lineJoin = 'round';
     /** @type {number[][]} the boxes of the labels drawn, the highest peaks first */
     const taken = [];
-    t.mountains.forEach(m => {
-      const label = short(m.name);
+    /** @param {string} label @param {number} x @param {number} y @param {number} size of the font, px */
+    const name = (label, x, y, size) => {
       const w = g.measureText(label).width + 4;
-      const x = Math.max(w / 2, Math.min(t.width * scale - w / 2, m.x * scale)), y = m.y * scale;
-      const box = [x - w / 2, y - 8, x + w / 2, y + 8];
+      x = Math.max(w / 2, Math.min(t.width * scale - w / 2, x));
+      const box = [x - w / 2, y - size * 0.7, x + w / 2, y + size * 0.7];
       if (taken.some(b => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3]))
         return;
       taken.push(box);
@@ -130,7 +144,25 @@ export function mapView(t, trees, selection, hues = null) {
       g.strokeText(label, x, y);
       g.fillStyle = colors.text;
       g.fillText(label, x, y);
-    });
+    };
+    t.mountains.forEach(m => name(short(m.name), m.x * scale, m.y * scale, 11));
+
+    // the saddles, the highest first: )( across the way from one peak to the other
+    g.font = 'italic 10px system-ui, sans-serif';
+    const height = (/** @type {{x: number, y: number}} */ s) => t.heights[Math.floor(s.y) * t.width + Math.floor(s.x)];
+    for (const s of t.saddles.filter(s => s.join).sort((a, b) => height(b) - height(a))) {
+      const [a, b] = s.nodes.map(n => t.mountains[t.nodes[n].mountain]);
+      const angle = Math.atan2(b.y - a.y, b.x - a.x), x = s.x * scale, y = s.y * scale;
+      g.lineWidth = 1.5;
+      g.strokeStyle = colors.text;
+      for (const side of [0, Math.PI]) {
+        const cx = x + 9 * Math.cos(angle + side), cy = y + 9 * Math.sin(angle + side);
+        g.beginPath();
+        g.arc(cx, cy, 6, angle + side + Math.PI - 0.9, angle + side + Math.PI + 0.9);
+        g.stroke();
+      }
+      name(short(s.name), x, y + 13, 10);
+    }
     return scale;
   };
 

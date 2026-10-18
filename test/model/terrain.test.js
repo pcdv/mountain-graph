@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {terrain} from '../../web/js/model/terrain.js';
 import {layout, similarity} from '../../web/js/model/layout.js';
+import {divides} from '../../web/js/model/divides.js';
 
 /** A frame of a mountain: name, ms, callers. */
 const fr = (name, total, ...children) => ({name, total, self: total - children.reduce((s, c) => s + c.total, 0),
@@ -89,4 +90,50 @@ test('ridges: a single path points away from the middle of the mountains', () =>
   const away = Math.atan2(me.y - ma.y, me.x - ma.x), d = me.r / 2;
   assert.equal(node(me.x + d * Math.cos(away), me.y + d * Math.sin(away)), 'F');
   assert.notEqual(node(me.x - d * Math.cos(away), me.y - d * Math.sin(away)), 'F', 'not towards A');
+});
+
+test('ranges: a caller two mountains share drawn once, a saddle between them as high as its heavier side', () => {
+  // A and D both called by B, itself by the thread: B a saddle between them, the thread with it
+  const t = terrain([a, d], {shape: 'ranges', size: 201});
+  assert.deepEqual(t.saddles.map(x => x.name), ['B', '[t]']);
+  assert.deepEqual(t.saddles.map(x => x.join), [true, false], 'the paths join at B, then share the thread');
+  const [s] = t.saddles;
+  assert.deepEqual(s.nodes.map(n => t.nodes[n].total), [30, 10], 'the heaviest first');
+  const [ma, md] = t.mountains;
+  const along = (x, y) => (x - ma.x) * (md.x - ma.x) + (y - ma.y) * (md.y - ma.y);
+  const ab = along(md.x, md.y);
+  assert.ok(along(s.x, s.y) > 0 && along(s.x, s.y) < ab, 'between the peaks');
+  const i = Math.floor(s.y) * t.width + Math.floor(s.x);
+  assert.equal(t.nodes[t.cells[i]].name, 'B');
+  // B in A: 30 ms at depth 1 of 3
+  assert.ok(Math.abs(t.heights[i] - 20) < 2, `the saddle at ${t.heights[i]}`);
+  assert.ok(t.heights[i] < 40 && t.heights[i] > 0);
+});
+
+test('ranges: a caller most mountains share is not merged, nor one of mountains far apart', () => {
+  const x = (name, ms) => fr(name, ms, fr('run', ms));
+  const t = terrain([x('P', 40), x('Q', 30), x('R', 20), x('S', 10)], {shape: 'ranges', size: 101});
+  assert.equal(t.saddles.length, 0);
+  // B shared by A and D, but E set between them: the layout puts A and D side by side, so stretch
+  // the check through the rule itself: every saddle's mountains stand near the heaviest's
+  const r = terrain([a, e, d], {shape: 'ranges', size: 201});
+  for (const s of r.saddles) {
+    const [m0, ...ms] = s.nodes.map(n => r.mountains[r.nodes[n].mountain]);
+    for (const m of ms)
+      assert.ok(Math.hypot(m.x - m0.x, m.y - m0.y) <= 1.5 * (m.r + m0.r));
+  }
+});
+
+test('divides: where two mountains meet, broken at the saddle joining them', () => {
+  const ranged = terrain([a, d], {shape: 'ranges', size: 201});
+  const [s] = ranged.saddles;
+  const segments = divides(ranged);
+  for (let i = 0; i < segments.length; i += 4) {
+    const mx = (segments[i] + segments[i + 2]) / 2, my = (segments[i + 1] + segments[i + 3]) / 2;
+    assert.ok(Math.hypot(mx - s.x, my - s.y) >= s.reach, 'none at the saddle');
+  }
+  // ridges, not merged, and touching nowhere: no divide; a grid of two mountains side by side: one
+  const two = {width: 4, height: 1, cells: Int32Array.from([0, 0, 1, -1]), saddles: [],
+               nodes: [{mountain: 0}, {mountain: 1}], mountains: [{}, {}]};
+  assert.deepEqual(divides(two), [2, 0, 2, 1]);
 });

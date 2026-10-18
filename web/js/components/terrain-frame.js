@@ -121,10 +121,16 @@ function describe(t, children, n) {
                                   + `${(100 * node.total / peak.total).toFixed(1)}%`));
   };
   const node = t.nodes[n];
+  // a saddle: the time through it toward each peak it joins
+  const saddle = t.saddles.find(s => s.nodes.includes(n));
   return [
     h('div', null, h('b', null, node.name), ` ${Math.round(node.total).toLocaleString()} ms, `
       + `${(100 * node.total / peak.total).toFixed(1)}% of ${short(peak.name)}, `
       + `${node.depth} ${node.depth === 1 ? 'call' : 'calls'} down`),
+    ...saddle ? [h('div', null, 'A saddle: ', saddle.nodes.map(i => {
+      const m = t.mountains[t.nodes[i].mountain];
+      return `${Math.round(t.nodes[i].total).toLocaleString()} ms toward ${short(m.name)}`;
+    }).join(', '))] : [],
     h('ol', {class: 'path'},
       up.map(i => row(i, i === n ? 'here' : '')),
       on.map(i => row(i, 'on'))),

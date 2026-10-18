@@ -116,10 +116,20 @@ checked: exact figures, one path followed precisely.
 - One case behind it, on a server's profile, by class. On the test runs CPU self time was
   scattered: the landscape may help less there, by method above all.
 
+## M5: after the verdict
+
+- [x] 3D: the contour lines on the surface, its relief set by a slider, the labels of peaks out of
+  sight hidden; a single path's spur pointing away from the middle, not always left
+- [x] Coloured by package: a hue per root package (past the domain and the organisation), its
+  sub-packages near it; the height still sets how light; a caption names the roots
+- [x] Ranges: a caller that mountains side by side share drawn once, a saddle where their ridges
+  meet, its callers following it; divides between mountains, broken at their saddles; hovering a
+  saddle tells its time toward each peak. Not merged: callers most mountains share, nor those of
+  mountains far apart (their ridges would cross the map), nor the paths within one mountain
+
 ## Later
 
 - Time slider: `from` and `to` filter the samples already, the terrain redrawn as they move
 - Ranges by package or by pattern
-- Shared callers merged into one terrain: saddles, watersheds
 - The format named, and its specification taken out of jfr-web's docs
 - A view in jfr-web, if it proves itself
