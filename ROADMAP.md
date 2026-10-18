@@ -135,6 +135,12 @@ checked: exact figures, one path followed precisely.
 
 ## Later
 
+- JFR files read in the page, no server to convert them: a reader of the chunks, their metadata
+  (types described per chunk, so that JDK versions differ little) and constant pools, keeping the
+  execution and native samples (time, thread, stack) as a `Profile`; in a Web Worker, gzipped or
+  not. No official specification: tested on recordings of each JDK used (11, 17, 21). A module
+  beside `load.js`, which jfr-web could share
+
 - Time slider: `from` and `to` filter the samples already, the terrain redrawn as they move
 - Ranges by package or by pattern
 - The format named, and its specification taken out of jfr-web's docs
