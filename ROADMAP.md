@@ -103,7 +103,8 @@ peaks by class, ridges in 3D: a small text utility stood out as a peak of its ow
 CPU, eighth of the classes. In a flame graph its time is split among the many paths that call it,
 none of them wide. Its mountain led through schema parsing to its callers, and the JDK frames under
 it to regular expressions compiled on every call; rewritten without them, it ran 5 to 6 times
-faster. The landscape shows secondary bottlenecks, gathered, that a flame graph scatters.
+faster. The landscape shows secondary bottlenecks, gathered, that a flame graph scatters. In the
+next profile of the same server, with the rewrite, the utility no longer appears at all.
 
 Verdict (2026-10-18): the landscape is more useful than playing with a reversed flame graph to find
 what is worth a look. It gathers a method's, class's or package's time in one place, where a flame
