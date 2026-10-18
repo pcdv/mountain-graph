@@ -77,3 +77,34 @@ main {
 .error {
   color: var(--error);
 }
+
+h3 {
+  margin: 16px 0 4px;
+  font-size: 14px;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+th {
+  font-weight: 600;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.peaks .name {
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}

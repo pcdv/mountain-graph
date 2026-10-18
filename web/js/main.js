@@ -5,8 +5,13 @@
  */
 import {$, h, replace} from './lib/dom.js';
 import {loadProfile} from './load.js';
+import {peaks} from './model/peaks.js';
+import {peaksView} from './views/peaks.js';
 
 /** @typedef {import('./profile/profile.js').Profile} Profile */
+
+/** The frames hidden until the page lets them be chosen: a sample's time goes to the application. */
+const HIDE = '^(java|jdk|sun)\\.';
 
 const main = $('main', HTMLElement);
 const picker = $('picker', HTMLInputElement);
@@ -37,7 +42,7 @@ async function open(file) {
   replace(main, h('p', {class: 'muted'}, `Reading ${file.name}…`));
   try {
     const p = await loadProfile(file);
-    replace(main, summary(file.name, p));
+    replace(main, summary(file.name, p), peaksView(peaks(p, {all: true, hide: HIDE}), HIDE));
   }
   catch (e) {
     replace(main, h('p', {class: 'error'}, /** @type {Error} */ (e).message));
