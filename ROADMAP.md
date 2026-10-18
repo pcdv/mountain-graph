@@ -52,7 +52,7 @@ Not taken from the first notes: an importance score made of call counts (samplin
 Where the idea holds or fails, cheap to check.
 
 - [x] The peaks of a profile: self time, total time, share; the plain; the coverage
-- [ ] Their number, a coverage to reach, and `hide` changeable in the page
+- [x] Their number, a coverage to reach, and `hide` changeable in the page
 - [ ] Each peak's callers listed, down to the entry points
 - [ ] Tried on several real profiles: do 5 to 15 peaks cover most of the time?
 - [ ] Collapsed stacks read too (`a;b;c 12` per line), into the same `Profile`. Open: their

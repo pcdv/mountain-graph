@@ -108,3 +108,40 @@ th {
   font-size: 13px;
   overflow-wrap: anywhere;
 }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 16px;
+}
+
+.controls input {
+  font: inherit;
+  padding: 1px 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+}
+
+.controls input[type=number] {
+  width: 4em;
+}
+
+.controls .pattern {
+  width: 16em;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+
+.controls .invalid {
+  border-color: var(--error);
+}
+
+button.button {
+  font: inherit;
+  background: transparent;
+  color: inherit;
+}

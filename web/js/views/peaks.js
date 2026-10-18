@@ -10,15 +10,13 @@ import {h} from '../lib/dom.js';
 
 /**
  * @param {Peaks} r
- * @param {string} hide the pattern of the frames hidden, empty for none
  * @returns {HTMLElement}
  */
-export function peaksView(r, hide) {
+export function peaksView(r) {
   let covered = 0;
   return h('section', {class: 'peaks'},
     h('h3', null, `${r.peaks.length} peaks cover ${percent(r.coverage)} of ${ms(r.total)}`),
     h('p', {class: 'muted'},
-      hide ? h('span', null, 'Hidden: ', h('code', null, hide), '. ') : null,
       `The plain: ${ms(r.plain)} (${percent(r.total > 0 ? r.plain / r.total : 0)}), `
       + `${ms(r.bare)} of it with no method at the top.`),
     h('table', null,
