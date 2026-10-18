@@ -23,6 +23,9 @@ const THREE = /** @type {string} */ ('three'), CONTROLS = /** @type {string} */ 
 /** The height of the highest peak, as a share of the terrain's longer side. */
 const RELIEF = 0.16;
 
+/** How much the distance changes per pixel of wheel: e^(100 ZOOM), about 15%, per notch of a mouse. */
+const ZOOM = 0.0014;
+
 /** Frees the view shown last: a page has few WebGL contexts. */
 let release = () => {};
 
@@ -112,11 +115,21 @@ export function terrainView(t, trees, selection) {
     const camera = new T.PerspectiveCamera(40, 1, side / 100, side * 10);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
-    // not into the terrain, nor so close that zooming stops (it scales the distance), nor lost far away;
-    // a touchpad sends many wheel events
+    // not into the terrain, nor so close that zooming stops (it scales the distance), nor lost far away
     controls.minDistance = side / 10;
     controls.maxDistance = side * 4;
-    controls.zoomSpeed = 0.5;
+    // zoomed here in proportion to the wheel's delta: the controls zoom a whole step per event, and a
+    // touchpad sends dozens of small ones per gesture
+    controls.enableZoom = false;
+    renderer.domElement.addEventListener('wheel', (/** @type {WheelEvent} */ e) => {
+      e.preventDefault();
+      const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+      const offset = camera.position.clone().sub(controls.target);
+      const distance = Math.max(controls.minDistance, Math.min(controls.maxDistance,
+                                                               offset.length() * Math.exp(delta * ZOOM)));
+      camera.position.copy(controls.target).add(offset.setLength(distance));
+      controls.update();
+    }, {passive: false});
 
     const labels = h('div', {class: 'peak-labels'});
     const names = t.mountains.map(m => h('span', null, short(m.name)));
