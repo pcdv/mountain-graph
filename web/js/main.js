@@ -9,6 +9,7 @@ import {peaks, mountains} from './model/peaks.js';
 import {terrain} from './model/terrain.js';
 import {peaksView} from './views/peaks.js';
 import {mapView, HEIGHT, PANEL} from './views/map.js';
+import {terrainView, closeTerrainView} from './views/terrain3d.js';
 import {leaveOut} from './model/samples.js';
 import {peakControls, peakSettings} from './components/peak-controls.js';
 
@@ -49,7 +50,7 @@ async function open(file) {
     const selection = {chosen: ''};
     /** @type {{waits: string, kept: Profile, left: number} | null} the samples kept, while waits is the same */
     let kept = null;
-    const controls = peakControls(peakSettings(), ({grain, count, coverage, waits, hide, java, shape}) => {
+    const controls = peakControls(peakSettings(), ({grain, count, coverage, waits, hide, java, shape, view}) => {
       if (kept?.waits !== waits) {
         const {profile, left} = leaveOut(p, waits);
         kept = {waits, kept: profile, left};
@@ -62,7 +63,9 @@ async function open(file) {
       const width = main.clientWidth - 32 - (selection.chosen ? PANEL : 0);
       const aspect = Math.max(1, width / (HEIGHT * innerHeight));
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
-      replace(map, mapView(terrain(trees, {shape, aspect}), trees, selection));
+      const t = terrain(trees, {shape, aspect});
+      closeTerrainView();
+      replace(map, view === '3d' ? terrainView(t, trees, selection) : mapView(t, trees, selection));
       replace(table, peaksView(r, m, open, kept.left));
     });
     replace(main, summary(file.name, p), controls, map, table);

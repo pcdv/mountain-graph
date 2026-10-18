@@ -83,9 +83,14 @@ Where the idea holds or fails, cheap to check.
 
 ## M3: 3D terrain
 
-- [ ] three.js, pinned, from a CDN through an import map: the only dependency
-- [ ] The same height field as a displaced plane, orbit controls, peaks named
-- [ ] Hovering and clicking as on the map, sharing its picking
+- [x] three.js, pinned, from a CDN through an import map: the only dependency, loaded when the 3D
+  view is first shown
+- [x] The same height field as a displaced plane, orbit controls, peaks named; smoothed over two
+  cells, shape and tint, or cell-wide steps stripe the slopes
+- [x] Hovering and clicking as on the map, sharing its picking: the mouse's ray marched over the
+  heights to a cell, then the map's lookup
+- The map and both shapes stay beside the 3D view, whatever M4 says of it: each may tell
+  something the others don't
 
 ## M4: verdict
 

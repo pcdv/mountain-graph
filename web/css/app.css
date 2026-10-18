@@ -258,7 +258,7 @@ canvas.map {
   gap: 16px;
 }
 
-.map-holder {
+.map-side {
   flex: 1 1 480px;
   min-width: 0;
 }
@@ -288,4 +288,26 @@ canvas.map {
 
 canvas.map {
   cursor: pointer;
+}
+
+.map-holder.three {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.map-holder.three canvas {
+  display: block;
+  cursor: grab;
+}
+
+.peak-labels span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  color: var(--fg);
+  text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 2px var(--bg);
 }

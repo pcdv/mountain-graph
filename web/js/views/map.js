@@ -1,62 +1,44 @@
 // @ts-check
 /**
  * The terrain as a topographic map: tinted by height, contour lines each
- * half the height of the one above, the peaks named. Hovering a frame shows
- * its path from the peak and the heaviest way on to where execution entered,
- * and lights it in every mountain it stands in. Clicking a mountain shows its
- * callers beside the map.
+ * half the height of the one above, the peaks named. Hovering a frame lights
+ * it in every mountain it stands in; what it is, and the callers of a
+ * mountain clicked, show around the map (terrain-frame.js).
  */
 import {h} from '../lib/dom.js';
 import {contour, levels} from '../model/contours.js';
-import {callersTree} from '../components/callers.js';
+import {terrainFrame, short} from '../components/terrain-frame.js';
+import {palette, tint, DEPTH} from './palette.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
-/** @typedef {import('../model/terrain.js').TerrainNode} TerrainNode */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
 
-/** The most contour lines, and how far down they go below the highest peak. */
-const LINES = 9, DEPTH = 1 / 256;
+/** The most contour lines. */
+const LINES = 9;
 
-/** The most height of the map, as a share of the window's. */
+/** The most height of a view of the terrain, as a share of the window's. */
 export const HEIGHT = 0.7;
 
-/** The width taken by the callers beside the map, gap included, in px: that of .map-panel. */
+/** The width taken by the callers beside the terrain, gap included, in px: that of .map-panel. */
 export const PANEL = 396;
 
 /**
  * @param {Terrain} t
  * @param {Frame[]} trees the mountains it was raised from, in its order
- * @param {{chosen: string}} selection the name of the peak whose callers show, '' for none: kept up
- *        to date as mountains are clicked, so that the same one shows when the map is drawn again
+ * @param {{chosen: string}} selection the name of the peak whose callers show, '' for none
  * @returns {HTMLElement}
  */
 export function mapView(t, trees, selection) {
   const colors = palette();
   const canvas = h('canvas', {class: 'map'});
-  const info = h('div', {class: 'map-info muted'},
-                 'Hover the map: a frame, its path from the peak. Click a mountain: its callers.');
-  const holder = h('div', {class: 'map-holder'}, canvas, info);
-  const panel = h('aside', {class: 'map-panel'});
-  const section = h('section', {class: 'terrain'}, holder, panel);
-  let chosen = t.mountains.findIndex(m => m.name === selection.chosen);
-  /** @param {number} m the mountain whose callers show, -1 for none */
-  const choose = m => {
-    chosen = m;
-    selection.chosen = m < 0 ? '' : t.mountains[m].name;
-    panel.hidden = m < 0;
-    if (m < 0)
-      return;
-    const tree = trees[m];
-    panel.replaceChildren(
-      h('div', {class: 'panel-head'},
-        h('b', null, tree.name),
-        h('button', {type: 'button', class: 'button', title: 'Close', onclick: () => {
-          choose(-1);
-          scale = draw();
-        }}, '×')),
-      h('div', {class: 'muted'}, `${Math.round(tree.total).toLocaleString()} ms; its callers, the heaviest first:`),
-      callersTree(tree));
-  };
+  let scale = 1;
+  const frame = terrainFrame(t, trees, selection,
+                             'Hover the map: a frame, its path from the peak. Click a mountain: its callers.',
+                             () => {
+                               light();
+                               scale = draw();
+                             });
+  frame.holder.append(canvas);
 
   // the tint and the lines, drawn once at the terrain's resolution
   const land = document.createElement('canvas');
@@ -65,47 +47,33 @@ export function mapView(t, trees, selection) {
   const ctx = /** @type {CanvasRenderingContext2D} */ (land.getContext('2d'));
   const image = ctx.createImageData(t.width, t.height);
   for (let i = 0; i < t.heights.length; i++) {
-    const c = tint(colors, t.heights[i], t.top);
-    image.data.set(c, 4 * i);
+    image.data.set(tint(colors, t.heights[i], t.top), 4 * i);
     image.data[4 * i + 3] = 255;
   }
   ctx.putImageData(image, 0, 0);
   const lines = levels(t.top, LINES, t.top * DEPTH).map(level => contour(t.heights, t.width, t.height, level));
 
-  // the node lit, and the frames of the same name
-  const names = new Map();
-  const nameOf = new Int32Array(t.nodes.length);
-  t.nodes.forEach((n, i) => {
-    if (!names.has(n.name))
-      names.set(n.name, names.size);
-    nameOf[i] = names.get(n.name);
-  });
-  /** @type {number[][]} */
-  const children = t.nodes.map(() => []);
-  t.nodes.forEach((n, i) => n.parent >= 0 && children[n.parent].push(i));
-  let lit = -1;
   const glow = document.createElement('canvas');
   glow.width = t.width;
   glow.height = t.height;
   const glowing = /** @type {CanvasRenderingContext2D} */ (glow.getContext('2d'));
-  /** lights the cells of the frames named as the node lit */
+  /** lights the cells of the frames named as the one hovered */
   const light = () => {
     const image = glowing.createImageData(t.width, t.height);
-    if (lit >= 0) {
-      const name = nameOf[lit];
+    const lit = frame.lit();
+    if (lit >= 0)
       for (let i = 0; i < t.cells.length; i++) {
         const n = t.cells[i];
-        if (n >= 0 && nameOf[n] === name) {
+        if (frame.isLit(n)) {
           image.data.set(colors.lit, 4 * i);
           image.data[4 * i + 3] = n === lit ? 230 : 140;
         }
       }
-    }
     glowing.putImageData(image, 0, 0);
   };
 
   const draw = () => {
-    const width = holder.clientWidth || 800;
+    const width = frame.holder.clientWidth || 800;
     const scale = Math.min(width / t.width, HEIGHT * innerHeight / t.height);
     const ratio = devicePixelRatio || 1;
     canvas.style.width = `${t.width * scale}px`;
@@ -115,8 +83,7 @@ export function mapView(t, trees, selection) {
     const g = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
     g.setTransform(ratio * scale, 0, 0, ratio * scale, 0, 0);
     g.drawImage(land, 0, 0);
-
-    if (lit >= 0)
+    if (frame.lit() >= 0)
       g.drawImage(glow, 0, 0);
 
     g.lineWidth = 1 / scale;
@@ -129,6 +96,7 @@ export function mapView(t, trees, selection) {
       }
     g.stroke();
 
+    const chosen = frame.chosen();
     if (chosen >= 0) {
       const m = t.mountains[chosen];
       g.lineWidth = 2 / scale;
@@ -164,130 +132,16 @@ export function mapView(t, trees, selection) {
     return scale;
   };
 
-  let scale = 1;
-  choose(chosen);
   // drawn once in the page, to know its width, and again as it changes
-  new ResizeObserver(() => scale = draw()).observe(holder);
+  new ResizeObserver(() => scale = draw()).observe(frame.holder);
 
   /** @param {MouseEvent} e @returns {number} the node under the mouse, -1 on the plain */
   const nodeAt = e => {
     const x = Math.floor(e.offsetX / scale), y = Math.floor(e.offsetY / scale);
     return x >= 0 && y >= 0 && x < t.width && y < t.height ? t.cells[y * t.width + x] : -1;
   };
-  canvas.addEventListener('click', e => {
-    const n = nodeAt(e);
-    choose(n < 0 || t.nodes[n].mountain === chosen ? -1 : t.nodes[n].mountain);
-    scale = draw();
-  });
-  canvas.addEventListener('mousemove', e => {
-    const n = nodeAt(e);
-    if (n === lit)
-      return;
-    lit = n;
-    light();
-    scale = draw();
-    info.replaceChildren(...(n < 0 ? ['The plain.'] : describe(t, children, n)));
-  });
-  canvas.addEventListener('mouseleave', () => {
-    lit = -1;
-    light();
-    scale = draw();
-  });
-  return section;
-}
-
-/**
- * @param {Terrain} t
- * @param {number[][]} children of each node
- * @param {number} n the node hovered
- * @returns {Node[]}
- */
-function describe(t, children, n) {
-  /** @type {number[]} */
-  const up = [];
-  for (let i = n; i >= 0; i = t.nodes[i].parent)
-    up.unshift(i);
-  const peak = t.nodes[up[0]];
-  // the heaviest way on, to where execution entered
-  /** @type {number[]} */
-  const on = [];
-  for (let i = n; children[i].length > 0;) {
-    i = children[i].reduce((a, b) => t.nodes[b].total > t.nodes[a].total ? b : a);
-    on.push(i);
-  }
-  /** @param {number} i @param {string} cls */
-  const row = (i, cls) => {
-    const node = t.nodes[i];
-    return h('li', {class: cls}, node.name,
-      h('span', {class: 'muted'}, ` ${Math.round(node.total).toLocaleString()} ms, `
-                                  + `${(100 * node.total / peak.total).toFixed(1)}%`));
-  };
-  const node = t.nodes[n];
-  return [
-    h('div', null, h('b', null, node.name), ` ${Math.round(node.total).toLocaleString()} ms, `
-      + `${(100 * node.total / peak.total).toFixed(1)}% of ${short(peak.name)}, ${node.depth} ${node.depth === 1 ? 'call' : 'calls'} down`),
-    h('ol', {class: 'path'},
-      up.map(i => row(i, i === n ? 'here' : '')),
-      on.map(i => row(i, 'on'))),
-  ];
-}
-
-/**
- * @param {string} name of a method, class or package
- * @returns {string} its last two parts: "Class.method", "package.Class", "a.b"
- */
-function short(name) {
-  const paren = name.indexOf('(');
-  const parts = (paren > 0 ? name.substring(0, paren) : name).split('.');
-  return parts.slice(-2).join('.');
-}
-
-/**
- * @typedef {object} Palette
- * @property {number[][]} land rgb from the plain up to the highest peak
- * @property {string} line
- * @property {number[]} lit rgb of the frame hovered, and of those of its name
- * @property {string} text
- * @property {string} halo
- */
-
-/** @returns {Palette} from the page's style, light or dark */
-function palette() {
-  const style = getComputedStyle(document.documentElement);
-  const v = (/** @type {string} */ name) => style.getPropertyValue(name).trim();
-  return {
-    land: ['--plain', '--land-1', '--land-2', '--land-3', '--land-4', '--land-5'].map(name => rgb(v(name))),
-    line: v('--contour'),
-    lit: rgb(v('--lit')),
-    text: v('--fg'),
-    halo: v('--bg'),
-  };
-}
-
-/** @param {string} hex "#rrggbb" */
-function rgb(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  return [n >> 16 & 255, n >> 8 & 255, n & 255];
-}
-
-/**
- * The colour of a height: the plain at 0, then up the palette by halvings,
- * as the contour lines go.
- *
- * @param {Palette} colors
- * @param {number} height
- * @param {number} top
- * @returns {number[]}
- */
-function tint(colors, height, top) {
-  const land = colors.land;
-  if (height <= 0)
-    return land[0];
-  // 0 at the top, 1 at the lowest line
-  const lowest = Math.log2(1 / DEPTH);
-  const depth = Math.min(1, Math.log2(top / height) / lowest);
-  const at = 1 + (1 - depth) * (land.length - 2);
-  const i = Math.min(land.length - 2, Math.floor(at)), f = at - i;
-  const a = land[i], b = land[Math.min(land.length - 1, i + 1)];
-  return [0, 1, 2].map(k => Math.round(a[k] + (b[k] - a[k]) * f));
+  canvas.addEventListener('click', e => frame.click(nodeAt(e)));
+  canvas.addEventListener('mousemove', e => frame.hover(nodeAt(e)));
+  canvas.addEventListener('mouseleave', () => frame.hover(-1));
+  return frame.section;
 }

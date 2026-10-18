@@ -2,8 +2,8 @@
 /**
  * What sets the peaks: what each gathers, their most number, the coverage at
  * which no more are taken, the samples left out as waits, the frames hidden,
- * whether native samples count, and the shape of the mountains. Remembered in
- * the browser.
+ * whether native samples count, the shape of the mountains and the view they
+ * are shown in. Remembered in the browser.
  */
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
@@ -23,6 +23,7 @@ import {WAITS} from '../model/samples.js';
  * @property {boolean} java keeps the Java samples only, leaving out the native ones: those of
  *           threads blocked in native code (a socket read, a poll) weigh time waited, not CPU
  * @property {Shape} shape of the mountains: a massif or ridges
+ * @property {'map' | '3d'} view what shows them: a topographic map or a terrain in 3D
  */
 
 /**
@@ -32,7 +33,7 @@ import {WAITS} from '../model/samples.js';
  * @type {PeakSettings}
  */
 const DEFAULTS = {grain: 'method', count: 10, coverage: 1, waits: WAITS, hide: '^(java|javax|jdk|sun|com\\.sun)\\.',
-                  java: false, shape: 'massif'};
+                  java: false, shape: 'massif', view: 'map'};
 
 const KEY = 'mountaingraph.peaks.';
 
@@ -49,6 +50,7 @@ export function peakSettings() {
     hide: readSetting(KEY + 'hide') ?? DEFAULTS.hide,
     java: readSetting(KEY + 'java') === 'true',
     shape: readSetting(KEY + 'shape') === 'ridges' ? 'ridges' : DEFAULTS.shape,
+    view: readSetting(KEY + 'view') === '3d' ? '3d' : DEFAULTS.view,
   };
 }
 
@@ -69,6 +71,8 @@ export function peakControls(settings, changed) {
   const java = h('input', {type: 'checkbox', checked: settings.java});
   const shape = h('select', null, ['massif', 'ridges'].map(s =>
     h('option', {value: s, selected: s === settings.shape}, s)));
+  const view = h('select', null, [['map', 'a map'], ['3d', '3D']].map(([v, label]) =>
+    h('option', {value: v, selected: v === settings.view}, label)));
 
   const update = () => {
     for (const input of [waits, hide]) {
@@ -81,12 +85,13 @@ export function peakControls(settings, changed) {
       return;
     /** @type {PeakSettings} */
     const next = {grain: /** @type {Grain} */ (grain.value), count: n, coverage: c / 100, waits: waits.value,
-                  hide: hide.value, java: java.checked, shape: /** @type {Shape} */ (shape.value)};
+                  hide: hide.value, java: java.checked, shape: /** @type {Shape} */ (shape.value),
+                  view: view.value === '3d' ? '3d' : 'map'};
     for (const [key, value] of Object.entries(next))
       writeSetting(KEY + key, value);
     changed(next);
   };
-  for (const input of [grain, count, coverage, waits, hide, java, shape])
+  for (const input of [grain, count, coverage, waits, hide, java, shape, view])
     input.addEventListener('input', update);
   update();
 
@@ -101,7 +106,7 @@ export function peakControls(settings, changed) {
     h('label', {title: 'Leaves out the native samples: threads blocked in native code, waiting'},
       java, ' Java samples only (CPU)'),
     h('label', {title: 'A massif: each caller a sector as high as its time. Ridges: each a ridge out to it'},
-      'Mountains as ', shape),
+      'Mountains as ', shape, ' in ', view),
     h('button', {type: 'button', class: 'button', onclick: () => {
       grain.value = DEFAULTS.grain;
       count.value = String(DEFAULTS.count);
@@ -110,6 +115,7 @@ export function peakControls(settings, changed) {
       hide.value = DEFAULTS.hide;
       java.checked = DEFAULTS.java;
       shape.value = DEFAULTS.shape;
+      view.value = DEFAULTS.view;
       update();
     }}, 'Defaults'));
 }

@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MountainGraph</title>
   <link rel="stylesheet" href="css/app.css">
+  <!-- three.js, pinned: the only dependency, loaded when the 3D view is first shown -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
