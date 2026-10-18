@@ -55,6 +55,13 @@ Where the idea holds or fails, cheap to check.
 - [x] Their number, a coverage to reach, and `hide` changeable in the page
 - [x] Each peak's callers listed, down to the entry points
 - [ ] Tried on several real profiles: do 5 to 15 peaks cover most of the time?
+  - First seven (six test runs under Gradle, a server reloading its configuration): yes, 85 to 94%,
+    but only counting the native samples, whose threads are blocked waiting (a poll, an accept, a
+    socket read): those peaks are idle time.
+  - With the Java samples only (CPU), no: 15 peaks cover 41% of the server's time (49% with the
+    JDK hidden). In the test runs most CPU is a JDK thread generating random seeds, and with the JDK
+    hidden 15 peaks cover 10 to 16%: CPU self time is scattered. Peaks may have to gather methods
+    (by class or package, see Later), or a profile need more of them. A CPU-bound profile still to try.
 - [ ] Collapsed stacks read too (`a;b;c 12` per line), into the same `Profile`. Open: their
   counts weigh samples, not ms (`weights` per kind today), and they have no time, thread or
   operation
