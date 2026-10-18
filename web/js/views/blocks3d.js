@@ -13,8 +13,8 @@ import {tint, hued} from './palette.js';
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('./palette.js').Palette} Palette */
 
-/** The columns along the longer side of the terrain. */
-const COLUMNS = 120;
+/** The columns along the longer side of the terrain: at first, and their range. */
+export const COLUMNS = 200, FEWEST = 60, MOST = 360;
 
 /** The share of the columns of the plain, away from the mountains, where a tree grows. */
 const TREES = 0.012;
@@ -40,11 +40,14 @@ const PATH = [176, 160, 128], WOOD = [102, 81, 51], LEAVES = [58, 118, 40];
  *        own colours
  * @param {Palette} options.colors
  * @param {(rgb: number[]) => number[]} options.linear an sRGB colour, 0 to 255, in linear 0 to 1
+ * @param {number} [options.columns] along the longer side: the more, the smaller the blocks, and
+ *        the trees beside the mountains
  * @returns {Blocks}
  */
-export function blocks(T, t, {lift, hues, colors, linear}) {
+export function blocks(T, t, {lift, hues, colors, linear, columns = COLUMNS}) {
   const W = t.width, H = t.height;
-  const size = Math.max(1, Math.ceil(Math.max(W, H) / COLUMNS));
+  // cells are whole: as near the columns asked as they allow
+  const size = Math.max(1, Math.round(Math.max(W, H) / columns));
   const cols = Math.ceil(W / size), rows = Math.ceil(H / size);
 
   // each column: its highest cell, as many blocks as it is high

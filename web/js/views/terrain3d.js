@@ -16,7 +16,7 @@ import {terrainFrame, short} from '../components/terrain-frame.js';
 import {contour, levels} from '../model/contours.js';
 import {palette, tint, hued, DEPTH} from './palette.js';
 import {HEIGHT, LINES} from './map.js';
-import {blocks} from './blocks3d.js';
+import {blocks, COLUMNS, FEWEST, MOST} from './blocks3d.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -40,6 +40,7 @@ const ZOOM = 0.0014;
  * @property {number[]} [target]
  * @property {number} [relief] the height of the highest peak, as a share of the longer side
  * @property {boolean} [blocks] whether the land is built of blocks
+ * @property {number} [columns] of blocks, along the longer side
  */
 
 /** Frees the view shown last: a page has few WebGL contexts. */
@@ -172,6 +173,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     /** @type {import('./blocks3d.js').Blocks | null} */
     let cubes = null;
     let blocky = viewpoint.blocks ?? false;
+    let columns = viewpoint.columns ?? COLUMNS;
     const blockify = () => {
       if (cubes) {
         scene.remove(cubes.mesh);
@@ -179,7 +181,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
         cubes = null;
       }
       if (blocky) {
-        cubes = blocks(T, t, {lift, hues, colors, linear: rgb => Array.from(rgb, c => linear[c])});
+        cubes = blocks(T, t, {lift, hues, colors, columns, linear: rgb => Array.from(rgb, c => linear[c])});
         scene.add(cubes.mesh);
       }
       surface.visible = contours.visible = trailSegments.visible = !blocky;
@@ -236,13 +238,24 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
                                    blockify();
                                  redraw();
                                }});
+    // built again once let go: many blocks take a while
+    const fine = h('input', {type: 'range', min: FEWEST, max: MOST, step: 20, value: MOST + FEWEST - columns,
+                             title: 'Smaller blocks: larger mountains beside the trees',
+                             onchange: () => {
+                               viewpoint.columns = columns = MOST + FEWEST - Number(fine.value);
+                               blockify();
+                               redraw();
+                             }});
+    const size = h('label', {hidden: !blocky}, 'Block size ', fine);
     const cubed = h('input', {type: 'checkbox', checked: blocky, onchange: () => {
       viewpoint.blocks = blocky = cubed.checked;
+      size.hidden = !blocky;
       blockify();
       redraw();
     }});
     loading.replaceWith(renderer.domElement, labels,
-                        h('div', {class: 'relief'}, h('label', null, 'Relief ', slider), h('label', null, cubed, ' Blocks')));
+                        h('div', {class: 'relief'}, h('label', null, 'Relief ', slider), h('label', null, cubed, ' Blocks'),
+                          size));
 
     /**
      * @param {any} to a point, a Vector3
