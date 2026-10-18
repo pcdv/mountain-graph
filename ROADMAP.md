@@ -126,6 +126,12 @@ checked: exact figures, one path followed precisely.
   meet, its callers following it; divides between mountains, broken at their saddles; hovering a
   saddle tells its time toward each peak. Not merged: callers most mountains share, nor those of
   mountains far apart (their ridges would cross the map), nor the paths within one mountain
+- [x] Trails: a dashed path on the plain between mountains related through a caller (a quarter of
+  the smaller one's time or more), however far apart, named after it; at most three per mountain.
+  Pulling related mountains together in the layout does not do it: one related to several cannot
+  stand beside them all
+- [x] For fun, the 3D land in blocks: grass, dirt, stone, snow, or wool of the packages' hues;
+  the trails as paths of gravel, trees on the plain
 
 ## Later
 

@@ -3,7 +3,8 @@
  * The terrain in 3D: the same grid as the map, a plane whose points are
  * raised to the heights of its cells, tinted and lined as on the map, lit
  * from the north-west, turned and zoomed with the mouse, its relief made
- * higher or flatter. The peaks in sight are named; a frame
+ * higher or flatter, or built of blocks (blocks3d.js). The peaks in sight
+ * are named, and the trails between related mountains; a frame
  * hovered is lit in every mountain, and a mountain clicked shows its callers
  * (terrain-frame.js), as on the map.
  *
@@ -15,6 +16,7 @@ import {terrainFrame, short} from '../components/terrain-frame.js';
 import {contour, levels} from '../model/contours.js';
 import {palette, tint, hued, DEPTH} from './palette.js';
 import {HEIGHT, LINES} from './map.js';
+import {blocks} from './blocks3d.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -37,6 +39,7 @@ const ZOOM = 0.0014;
  * @property {number[]} [position]
  * @property {number[]} [target]
  * @property {number} [relief] the height of the highest peak, as a share of the longer side
+ * @property {boolean} [blocks] whether the land is built of blocks
  */
 
 /** Frees the view shown last: a page has few WebGL contexts. */
@@ -144,12 +147,14 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     const material = new T.MeshLambertMaterial({vertexColors: true, polygonOffset: true,
                                                 polygonOffsetFactor: 1, polygonOffsetUnits: 1});
     const scene = new T.Scene();
-    scene.add(new T.Mesh(geometry, material));
+    const surface = new T.Mesh(geometry, material);
+    scene.add(surface);
     // the colour of the map's lines, its alpha as the opacity: three.js colours have none
     const [r, g, b, a = 1] = (colors.line.match(/[\d.]+/g) || []).map(Number);
     const lineMaterial = new T.LineBasicMaterial({color: new T.Color(r / 255, g / 255, b / 255).convertSRGBToLinear(),
                                                   transparent: true, opacity: a});
-    scene.add(new T.LineSegments(lines, lineMaterial));
+    const contours = new T.LineSegments(lines, lineMaterial);
+    scene.add(contours);
 
     // the trails between related mountains, on the plain: the mountains hide them where they cross
     const trailLines = new T.BufferGeometry().setFromPoints(t.trails.flatMap(trail => {
@@ -162,6 +167,24 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     const trailSegments = new T.LineSegments(trailLines, trailMaterial);
     trailSegments.computeLineDistances();
     scene.add(trailSegments);
+
+    // or the land in blocks, built again as the relief changes
+    /** @type {import('./blocks3d.js').Blocks | null} */
+    let cubes = null;
+    let blocky = viewpoint.blocks ?? false;
+    const blockify = () => {
+      if (cubes) {
+        scene.remove(cubes.mesh);
+        cubes.dispose();
+        cubes = null;
+      }
+      if (blocky) {
+        cubes = blocks(T, t, {lift, hues, colors, linear: rgb => Array.from(rgb, c => linear[c])});
+        scene.add(cubes.mesh);
+      }
+      surface.visible = contours.visible = trailSegments.visible = !blocky;
+    };
+    blockify();
     scene.add(new T.HemisphereLight(0xffffff, 0x8a8170, 1.8));
     const sun = new T.DirectionalLight(0xffffff, 1.6);
     sun.position.set(-1, 1.6, -0.6);
@@ -209,9 +232,17 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
                                oninput: () => {
                                  viewpoint.relief = relief = Number(slider.value);
                                  raise();
+                                 if (blocky)
+                                   blockify();
                                  redraw();
                                }});
-    loading.replaceWith(renderer.domElement, labels, h('label', {class: 'relief'}, 'Relief ', slider));
+    const cubed = h('input', {type: 'checkbox', checked: blocky, onchange: () => {
+      viewpoint.blocks = blocky = cubed.checked;
+      blockify();
+      redraw();
+    }});
+    loading.replaceWith(renderer.domElement, labels,
+                        h('div', {class: 'relief'}, h('label', null, 'Relief ', slider), h('label', null, cubed, ' Blocks')));
 
     /**
      * @param {any} to a point, a Vector3
@@ -272,6 +303,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
           }
         }
       color.needsUpdate = true;
+      cubes?.light(n => frame.lit() < 0 || !frame.isLit(n) ? 0 : n === frame.lit() ? 0.9 : 0.55);
       const chosen = frame.chosen();
       ring.visible = chosen >= 0;
       if (chosen >= 0) {
@@ -374,6 +406,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
       lineMaterial.dispose();
       trailLines.dispose();
       trailMaterial.dispose();
+      cubes?.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
     };

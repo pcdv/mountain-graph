@@ -313,13 +313,19 @@ canvas.map {
   right: 8px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 14px;
   font-size: 12px;
   color: var(--fg);
   text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg);
 }
 
-.map-holder.three .relief input {
+.map-holder.three .relief label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-holder.three .relief input[type=range] {
   width: 100px;
 }
 
