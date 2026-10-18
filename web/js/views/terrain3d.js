@@ -44,7 +44,8 @@ export function terrainView(t, trees, selection) {
   release = () => gone = true;
   let redraw = () => {};
   const frame = terrainFrame(t, trees, selection,
-                             'Drag to turn, right-drag to move, scroll to zoom. Hover: a frame, its path from the peak. '
+                             'Drag to turn, right-drag to move, scroll to zoom, double-click to see it all again. '
+                             + 'Hover: a frame, its path from the peak. '
                              + 'Click a mountain: its callers.',
                              () => redraw());
   const loading = h('p', {class: 'muted'}, 'Loading three.js…');
@@ -111,6 +112,11 @@ export function terrainView(t, trees, selection) {
     const camera = new T.PerspectiveCamera(40, 1, side / 100, side * 10);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    // not into the terrain, nor so close that zooming stops (it scales the distance), nor lost far away;
+    // a touchpad sends many wheel events
+    controls.minDistance = side / 10;
+    controls.maxDistance = side * 4;
+    controls.zoomSpeed = 0.5;
 
     const labels = h('div', {class: 'peak-labels'});
     const names = t.mountains.map(m => h('span', null, short(m.name)));
@@ -164,8 +170,26 @@ export function terrainView(t, trees, selection) {
       }
       render();
     };
-    controls.addEventListener('change', render);
+    controls.addEventListener('change', () => {
+      // turning around a point of the terrain, however far it was moved
+      const target = controls.target;
+      const x = Math.max(-W / 2, Math.min(W / 2, target.x)), z = Math.max(-H / 2, Math.min(H / 2, target.z));
+      const y = Math.max(0, Math.min(lift(t.top), target.y));
+      if (x !== target.x || y !== target.y || z !== target.z) {
+        camera.position.add(new T.Vector3(x - target.x, y - target.y, z - target.z));
+        target.set(x, y, z);
+      }
+      render();
+    });
 
+    /** from the south, high, far enough for the whole width and depth to show */
+    const home = () => {
+      const half = Math.tan(camera.fov * Math.PI / 360);
+      const far = 1.1 * Math.max(W / 2 / (half * camera.aspect), H / 2 / half);
+      controls.target.set(0, 0, 0);
+      camera.position.set(0, 0.6 * far, 0.8 * far);
+      controls.update();
+    };
     let framed = false;
     const resize = () => {
       const width = frame.holder.clientWidth || 800, height = Math.round(HEIGHT * innerHeight);
@@ -173,11 +197,7 @@ export function terrainView(t, trees, selection) {
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       if (!framed) {
-        // from the south, high, far enough for the whole width and depth to show
-        const half = Math.tan(camera.fov * Math.PI / 360);
-        const far = 1.1 * Math.max(W / 2 / (half * camera.aspect), H / 2 / half);
-        camera.position.set(0, 0.6 * far, 0.8 * far);
-        controls.update();
+        home();
         framed = true;
       }
       render();
@@ -220,6 +240,10 @@ export function terrainView(t, trees, selection) {
         frame.hover(nodeAt(e));
     });
     canvas.addEventListener('mouseleave', () => frame.hover(-1));
+    canvas.addEventListener('dblclick', () => {
+      home();
+      render();
+    });
 
     release = () => {
       gone = true;
