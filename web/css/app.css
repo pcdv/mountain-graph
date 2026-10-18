@@ -318,6 +318,26 @@ canvas.map {
   width: 100px;
 }
 
+.hue-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.hue-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hue-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
 .peak-labels span {
   position: absolute;
   transform: translate(-50%, -50%);

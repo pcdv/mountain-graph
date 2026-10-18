@@ -12,6 +12,7 @@ import {mapView, HEIGHT, PANEL} from './views/map.js';
 import {terrainView, closeTerrainView} from './views/terrain3d.js';
 import {leaveOut} from './model/samples.js';
 import {packageHues} from './model/hues.js';
+import {hueLegend} from './components/hue-legend.js';
 import {peakControls, peakSettings} from './components/peak-controls.js';
 
 /** @typedef {import('./profile/profile.js').Profile} Profile */
@@ -67,9 +68,11 @@ async function open(file) {
       const aspect = Math.max(1, width / (HEIGHT * innerHeight));
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
       const t = terrain(trees, {shape, aspect});
-      const hues = colour === 'package' ? packageHues(t, grain) : null;
+      const coloured = colour === 'package' ? packageHues(t, grain) : null;
+      const hues = coloured?.hues ?? null;
       closeTerrainView();
-      replace(map, view === '3d' ? terrainView(t, trees, selection, viewpoint, hues) : mapView(t, trees, selection, hues));
+      replace(map, view === '3d' ? terrainView(t, trees, selection, viewpoint, hues) : mapView(t, trees, selection, hues),
+              coloured ? hueLegend(coloured.legend) : null);
       replace(table, peaksView(r, m, open, kept.left));
     });
     replace(main, summary(file.name, p), controls, map, table);

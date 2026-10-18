@@ -18,9 +18,19 @@
 const SPREAD = 0.7;
 
 /**
+ * A package as the caption names it.
+ *
+ * @typedef {object} Hue
+ * @property {string} name of the package
+ * @property {number} hue 0 to 1
+ * @property {number} share of the cells of the land in a package that its frames take
+ */
+
+/**
  * @param {Terrain} t
  * @param {Grain} grain what its peaks gather: a peak is a method, a class or a package
- * @returns {Float64Array} per node, its hue from 0 to 1; NaN for a frame in no package (a thread)
+ * @returns {{hues: Float64Array, legend: Hue[]}} per node, its hue from 0 to 1, NaN for a frame in
+ *          no package (a thread); and the packages that show, in the order of the wheel
  */
 export function packageHues(t, grain) {
   const packages = t.nodes.map(n => n.depth === 0 && grain === 'package' ? n.name
@@ -66,20 +76,27 @@ export function packageHues(t, grain) {
   };
   share(root, 0, 1);
 
-  /** @type {Map<string, number>} */
+  /** @type {Map<string, number>} unwrapped: in the order of the wheel */
   const hues = new Map();
-  return Float64Array.from(packages, p => {
-    if (!p)
-      return NaN;
-    let hue = hues.get(p);
-    if (hue === undefined) {
+  for (const p of new Set(packages))
+    if (p) {
       let at = root;
       for (const part of p.split('.'))
         at = /** @type {Pkg} */ (at.children.get(part));
-      hues.set(p, hue = ((at.hue % 1) + 1) % 1);
+      hues.set(p, at.hue);
     }
-    return hue;
-  });
+  const land = [...area.values()].reduce((s, a) => s + a, 0);
+  return {
+    hues: Float64Array.from(packages, p => p ? wrap(/** @type {number} */ (hues.get(p))) : NaN),
+    legend: [...area].map(([name, a]) => ({name, hue: /** @type {number} */ (hues.get(name)), share: a / land}))
+                     .sort((a, b) => a.hue - b.hue)
+                     .map(e => ({...e, hue: wrap(e.hue)})),
+  };
+}
+
+/** @param {number} hue @returns {number} on the wheel, 0 to 1 */
+function wrap(hue) {
+  return ((hue % 1) + 1) % 1;
 }
 
 /**
