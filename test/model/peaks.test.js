@@ -161,6 +161,8 @@ test('callees: what a peak called, hidden frames shown, and what ran at the top'
   assert.equal(tree.total, 50);
   assert.deepEqual(tree.children.map(c => `${c.name} ${c.total}`), ['java.util.HashMap.get 20']);
   assert.deepEqual(tops.map(t => `${t.name} ${t.ms}`), ['A.a 30', 'java.util.HashMap.get 20']);
+  // by kind, or else by package: A.a has none
+  assert.deepEqual(callees(p, hide, 'A.a').groups.map(g => `${g.name} ${g.ms}`), ['A 30', 'collections 20']);
   // B.b: A.a above it
   assert.deepEqual(callees(p, hide, 'B.b').tree.children.map(c => `${c.name} ${c.total}`), ['A.a 10']);
   // by class: its methods first
@@ -172,5 +174,8 @@ test('the kind of work of well known frames', () => {
   assert.equal(kindOf('sun.nio.ch.SocketDispatcher.write0'), 'network write');
   assert.equal(kindOf('jdk.internal.misc.Unsafe.park'), 'lock');
   assert.equal(kindOf('sun.nio.fs.WindowsNativeDispatcher.FindFirstFile0'), 'file I/O');
+  assert.equal(kindOf('java.lang.invoke.DirectMethodHandle$Holder.invokeVirtual'), 'reflection');
+  assert.equal(kindOf('com.sun.org.apache.xerces.internal.util.SymbolTable.addSymbol'), 'XML');
+  assert.equal(kindOf('java.util.HashMap.getNode'), 'collections');
   assert.equal(kindOf('A.a'), '');
 });

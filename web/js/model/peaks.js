@@ -174,9 +174,13 @@ export function mountains(p, filter, list, grain = 'method') {
 const KINDS = [
   ['compression', /\.(Deflater|Inflater|GZIP\w*|ZipFile|CRC32|Adler32)\.|\.zip\.|zstd|lz4|snappy/i],
   ['network write', /SocketDispatcher\.write|socketWrite|SocketOutputStream|\.Net\.send|NioSocketImpl\.write|SocketChannelImpl\.write/],
-  ['file I/O', /FileDispatcherImpl|FileOutputStream\.write|FileInputStream\.read|RandomAccessFile\.|UnixNativeDispatcher|WindowsNativeDispatcher|WinNTFileSystem|UnixFileSystem|FileChannelImpl/],
+  ['file I/O', /FileDispatcherImpl|FileOutputStream\.write|FileInputStream\.read|RandomAccessFile\.|FileDescriptor\.close|UnixNativeDispatcher|WindowsNativeDispatcher|WinNTFileSystem|UnixFileSystem|FileChannelImpl/],
   ['lock', /\.Unsafe\.park|\.Object\.wait|AbstractQueuedSynchronizer|\.locks\./],
   ['allocation', /Arrays\.copyOf|\.ensureCapacity|StringBuilder\.(append|<init>)|AbstractStringBuilder/],
+  ['reflection', /^java\.lang\.(invoke|reflect)\.|LambdaForm|\$\$Lambda|GeneratedMethodAccessor|DirectMethodHandleAccessor|^jdk\.internal\.reflect\./],
+  ['XML', /\.xerces\.|^javax\.xml\.|\.xml\.(parsers|stream|transform)\.|^org\.xml\.sax\.|^org\.w3c\.dom\./],
+  ['regex', /^java\.util\.regex\./],
+  ['collections', /^java\.util\.(HashMap|LinkedHashMap|TreeMap|ArrayList|HashSet|TreeSet|ArrayDeque|Collections|AbstractMap|AbstractList|ImmutableCollections|concurrent\.ConcurrentHashMap)\b/],
 ];
 
 /**
@@ -208,7 +212,9 @@ export function kindOf(name) {
  * @param {Filter} filter that the peaks were found with: its hidden frames are shown
  * @param {string} name of the peak
  * @param {Grain} [grain] that the peaks were found with
- * @returns {{tree: Frame, tops: Top[]}} its total is that of the samples the peak was in
+ * @returns {{tree: Frame, tops: Top[], groups: {name: string, ms: number}[]}} its total is that of
+ *          the samples the peak was in; the tops gathered by kind, or else by package (its first
+ *          three parts), the most first
  */
 export function callees(p, filter, name, grain = 'method') {
   const {root} = tree(p, {...filter, hide: '', merged: true, reversed: false});
@@ -257,8 +263,16 @@ export function callees(p, filter, name, grain = 'method') {
             children: [...m.children.values()].map(freeze).sort((a, b) => b.total - a.total)};
   };
   const frozen = freeze(top);
+  const list = [...tops].map(([n, ms]) => ({name: n, ms, kind: kindOf(n)})).sort((a, b) => b.ms - a.ms);
+  /** @type {Map<string, number>} */
+  const groups = new Map();
+  for (const t of list) {
+    const key = t.kind || owner(t.name, 'package').split('.').slice(0, 3).join('.');
+    groups.set(key, (groups.get(key) ?? 0) + t.ms);
+  }
   return {
     tree: frozen,
-    tops: [...tops].map(([n, ms]) => ({name: n, ms, kind: kindOf(n)})).sort((a, b) => b.ms - a.ms),
+    tops: list,
+    groups: [...groups].map(([n, ms]) => ({name: n, ms})).sort((a, b) => b.ms - a.ms),
   };
 }

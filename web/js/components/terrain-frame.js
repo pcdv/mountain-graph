@@ -14,6 +14,7 @@ import {callersTree} from './callers.js';
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
 /** @typedef {import('../model/peaks.js').Top} Top */
+/** @typedef {{tree: Frame, tops: Top[], groups: {name: string, ms: number}[]}} Called */
 
 const WIDTH = 'mountaingraph.panel.width';
 
@@ -29,7 +30,7 @@ export function panelWidth() {
  * @typedef {object} Selection
  * @property {string} chosen the name of the peak whose panel shows, '' for none
  * @property {'callers' | 'callees'} [tab] what the panel shows
- * @property {(name: string) => {tree: Frame, tops: Top[]}} [callees] what a peak called
+ * @property {(name: string) => Called} [callees] what a peak called
  */
 
 /**
@@ -145,14 +146,19 @@ export function terrainFrame(t, trees, selection, hint, redraw) {
 }
 
 /**
- * @param {{tree: Frame, tops: Top[]}} called what a peak called, and what ran at the top
+ * @param {Called} called what a peak called, and what ran at the top
  * @returns {HTMLElement[]}
  */
-function calleesOf({tree, tops}) {
+function calleesOf({tree, tops, groups}) {
   const total = tree.total;
   const shown = tops.slice(0, 8);
+  /** @param {number} ms */
+  const share = ms => `${(100 * ms / total).toFixed(0)}%`;
   return [
-    h('div', {class: 'muted'}, `${Math.round(total).toLocaleString()} ms it was in, no frame hidden. Ran at the top:`),
+    h('div', {class: 'muted'}, `${Math.round(total).toLocaleString()} ms it was in, no frame hidden. At the top:`),
+    h('div', {class: 'groups'}, groups.slice(0, 6).map(g => h('span', {class: 'kind', title: `${Math.round(g.ms)} ms`},
+                                                            `${g.name} ${share(g.ms)}`))),
+    h('div', {class: 'muted'}, 'The methods:'),
     h('ul', {class: 'tops'}, shown.map(top => h('li', null,
       h('span', {class: 'frame'}, top.name),
       h('span', {class: 'muted'}, ` ${Math.round(top.ms).toLocaleString()} ms, ${(100 * top.ms / total).toFixed(1)}%`),

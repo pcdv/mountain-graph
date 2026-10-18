@@ -298,6 +298,18 @@ canvas.map {
   font-size: 12px;
 }
 
+.map-panel .groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 8px;
+}
+
+.map-panel .groups .kind {
+  margin-left: 0;
+  font-size: 12px;
+}
+
 .map-panel .kind {
   margin-left: 6px;
   padding: 0 5px;
