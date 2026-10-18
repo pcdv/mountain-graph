@@ -43,10 +43,10 @@ async function open(file) {
     const table = h('div');
     /** @type {Set<string>} */
     const open = new Set();
-    const controls = peakControls(peakSettings(), ({count, coverage, hide, java}) => {
+    const controls = peakControls(peakSettings(), ({grain, count, coverage, hide, java}) => {
       const filter = {all: true, hide, java};
-      const r = peaks(p, filter, {count, coverage});
-      replace(table, peaksView(r, mountains(p, filter, r.peaks), open));
+      const r = peaks(p, filter, {count, coverage, grain});
+      replace(table, peaksView(r, mountains(p, filter, r.peaks, grain), open));
     });
     replace(main, summary(file.name, p), controls, table);
   }

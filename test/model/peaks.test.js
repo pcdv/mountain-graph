@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {decode, COMPILED, NO_OPERATION} from '../../web/js/profile/profile.js';
-import {peaks, mountains} from '../../web/js/model/peaks.js';
+import {peaks, mountains, owner} from '../../web/js/model/peaks.js';
 
 // strings: 0 "A.a", 1 "B.b", 2 "C.c", 3 "Main.run", 4 "java.util.HashMap.get", 5 "main"
 const strings = ['A.a', 'B.b', 'C.c', 'Main.run', 'java.util.HashMap.get', 'main'];
@@ -105,4 +105,50 @@ test('a mountain with frames hidden: their callers in their place', () => {
   const m = mountains(p, filter, peaks(p, filter, {count: 1}).peaks);
   assert.deepEqual(lines(m.get('A.a')).slice(0, 3), ['A.a 50', 'A.a;B.b 10', 'A.a;B.b;Main.run 10']);
   assert.equal(m.get('A.a').total, 50);
+});
+
+test('what a method belongs to: its class, inner classes with their outer, its package', () => {
+  assert.equal(owner('a.b.C$D.run', 'method'), 'a.b.C$D.run');
+  assert.equal(owner('a.b.C$D.run', 'class'), 'a.b.C');
+  assert.equal(owner('a.b.C$D.run', 'package'), 'a.b');
+  assert.equal(owner('C.run', 'package'), 'C', 'no package: its class');
+  assert.equal(owner('libc_read', 'class'), 'libc_read', 'not a qualified method: itself');
+});
+
+// a.X.f calls a.X.g, a.X.f calls b.Y.h; one sample on each
+const nested = decode({
+  version: 3,
+  weights: [10, 1],
+  start: '2026-10-18T08:00:00Z',
+  end: 1_000_000,
+  strings: ['a.X.f', 'a.X.g', 'b.Y.h', 'main'].map(s => ' ' + s),
+  stacks: [0, f(0), 1, f(1), 1, f(2)],
+  samples: {time: [0, 0], stack: [1, 2], thread: [0, 0], operation: [-1, -1], kind: [0, 0]},
+  threads: [[3, 1]],
+  operations: {name: [], start: [], duration: [], thread: [], detail: [], status: [], failed: [], error: [],
+               async: [], bytesIn: [], bytesOut: []},
+});
+
+test('peaks by class: a sample counts once in the total of a class it ran twice in', () => {
+  const r = peaks(nested, all, {grain: 'class'});
+  assert.deepEqual(names(r.peaks), ['a.X 10 20', 'b.Y 10 10']);
+  assert.equal(r.coverage, 1);
+});
+
+test('peaks by package', () => {
+  assert.deepEqual(names(peaks(p, all, {grain: 'package'}).peaks),
+                   ['A 30 50', 'java.util 20 20', 'Main 10 80', 'B 10 20', 'C 10 10']);
+});
+
+test("a class's mountain: its methods that ran, their callers under them", () => {
+  const r = peaks(nested, all, {grain: 'class'});
+  const m = mountains(nested, all, r.peaks, 'class');
+  assert.deepEqual(lines(m.get('a.X')), [
+    'a.X 10',
+    'a.X;a.X.g 10',
+    'a.X;a.X.g;a.X.f 10',
+    'a.X;a.X.g;a.X.f;[main tid=1] 10',
+    `a.X;a.X.g;a.X.f;[main tid=1];${NO_OPERATION} 10`,
+  ]);
+  assert.equal(m.get('b.Y').total, 10);
 });

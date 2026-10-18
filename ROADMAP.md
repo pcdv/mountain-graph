@@ -65,6 +65,8 @@ Where the idea holds or fails, cheap to check.
   - Gathered, over the CPU time reaching a method with the JDK hidden (not idle JDK threads), 15
     peaks cover: by method 51% of the server, 25 to 30% of the test runs; by class 71%, 36 to 49%;
     by package 92%, 53 to 65%. The grain of the peaks matters as much as hiding the JDK.
+- [x] Peaks gathered by method, class or package, chosen in the page: a class's or package's
+  mountain has its methods that ran as its first ring, their callers further down
 - [ ] Collapsed stacks read too (`a;b;c 12` per line), into the same `Profile`. Open: their
   counts weigh samples, not ms (`weights` per kind today), and they have no time, thread or
   operation
