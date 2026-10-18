@@ -73,10 +73,11 @@ Where the idea holds or fails, cheap to check.
 
 ## M2: 2D topographic map
 
-- [ ] Height field of the mountains (massif first), placed by the callers they share
-- [ ] Map on a canvas: contour lines (marching squares, no dependency), tinted by height, peaks
-  named
-- [ ] Hovering: the path from the peak down to the entry point, ms and share
+- [x] Height field of the mountains (massif first), placed by the callers they share
+- [x] Map on a canvas: contour lines (marching squares, no dependency), tinted by height, peaks
+  named. Lines and tint by halvings of the highest peak, so that small peaks show
+- [x] Hovering: the path from the peak down to the entry point, ms and share; the frame lit in every
+  mountain it stands in
 - [ ] Clicking a peak: its callers in a side panel
 - [ ] Ridges, switchable with massif
 

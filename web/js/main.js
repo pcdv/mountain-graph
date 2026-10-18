@@ -1,12 +1,14 @@
 // @ts-check
 /**
- * The page: a profile picked or dropped, then what it holds. The views to
- * come (peaks, map, terrain) each get their own module under views/.
+ * The page: a profile picked or dropped, then its peaks, as a map of their
+ * mountains and as a table. Each view has its own module under views/.
  */
 import {$, h, replace} from './lib/dom.js';
 import {loadProfile} from './load.js';
 import {peaks, mountains} from './model/peaks.js';
+import {massif} from './model/terrain.js';
 import {peaksView} from './views/peaks.js';
+import {mapView} from './views/map.js';
 import {peakControls, peakSettings} from './components/peak-controls.js';
 
 /** @typedef {import('./profile/profile.js').Profile} Profile */
@@ -40,15 +42,17 @@ async function open(file) {
   replace(main, h('p', {class: 'muted'}, `Reading ${file.name}…`));
   try {
     const p = await loadProfile(file);
-    const table = h('div');
+    const map = h('div'), table = h('div');
     /** @type {Set<string>} */
     const open = new Set();
     const controls = peakControls(peakSettings(), ({grain, count, coverage, hide, java}) => {
       const filter = {all: true, hide, java};
       const r = peaks(p, filter, {count, coverage, grain});
-      replace(table, peaksView(r, mountains(p, filter, r.peaks, grain), open));
+      const m = mountains(p, filter, r.peaks, grain);
+      replace(map, mapView(massif(r.peaks.flatMap(peak => m.get(peak.name) ?? []))));
+      replace(table, peaksView(r, m, open));
     });
-    replace(main, summary(file.name, p), controls, table);
+    replace(main, summary(file.name, p), controls, map, table);
   }
   catch (e) {
     replace(main, h('p', {class: 'error'}, /** @type {Error} */ (e).message));

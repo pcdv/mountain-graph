@@ -182,3 +182,71 @@ button.button {
   color: var(--accent);
   font-weight: 600;
 }
+
+/* the map: the plain, then the land from low to high */
+:root {
+  --plain: #f3f0e8;
+  --land-1: #d3e5c3;
+  --land-2: #a9cb8e;
+  --land-3: #e0c77f;
+  --land-4: #c48a52;
+  --land-5: #7f4f2c;
+  --contour: rgba(90, 70, 45, 0.45);
+  --lit: #d9480f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --plain: #1c1f22;
+    --land-1: #233528;
+    --land-2: #2f5236;
+    --land-3: #6a5a34;
+    --land-4: #8c6a48;
+    --land-5: #e8c9a0;
+    --contour: rgba(225, 215, 195, 0.3);
+    --lit: #ff8a50;
+  }
+}
+
+.terrain {
+  margin-top: 16px;
+}
+
+canvas.map {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: crosshair;
+}
+
+.map-info {
+  margin-top: 6px;
+  max-height: 240px;
+  overflow: auto;
+  font-size: 13px;
+}
+
+.map-info b {
+  color: var(--fg);
+  font-family: ui-monospace, monospace;
+}
+
+.map-info .path {
+  margin: 4px 0 0;
+  padding-left: 28px;
+  font-family: ui-monospace, monospace;
+}
+
+.map-info .path li {
+  color: var(--fg);
+}
+
+.map-info .path li.here {
+  color: var(--lit);
+  font-weight: 600;
+}
+
+.map-info .path li.on {
+  color: var(--muted);
+}
