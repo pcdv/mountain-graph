@@ -1,16 +1,16 @@
 // @ts-check
 /**
- * A hue for each frame of a terrain, from its package: the packages that
- * branch first share the colour wheel, each sub-package takes a part of its
+ * A hue for each frame of a terrain, from its package: the root packages
+ * share the colour wheel, each sub-package takes a part of its
  * parent's share, so that the packages of a part of the code have hues near
  * each other, and those of unrelated libraries distinct ones. Each share is
  * as large as what shows of the package on the terrain: the hues go where
  * the land is. A package with a single sub-package passes it its whole
  * share: a chain of them (com.example.server) keeps one hue.
  *
- * The caption names the root packages only, those whose hues stand apart:
- * where each chain from the top first branches or has frames of its own,
- * past a leading domain (com, org).
+ * The packages that branch first are the root packages, past a leading
+ * domain and the organisation under it (com.example.server, not com or
+ * com.example): they share the colour wheel, and the caption names them.
  *
  * No DOM: tested with Node.
  */
@@ -81,6 +81,28 @@ export function packageHues(t, grain) {
       at.own = true;
     }
 
+  /**
+   * The root packages, in the order of the wheel: where each chain from the top first branches or
+   * has frames of its own, past a leading domain and the organisation under it. A package with
+   * frames above that is a root for those frames only, its sub-packages roots of their own.
+   *
+   * @type {{at: Pkg, name: string, whole: boolean, area: number}[]}
+   */
+  const roots = [];
+  /** @param {Pkg} at @param {string} name @param {number} depth */
+  const find = (at, name, depth) => {
+    const past = depth >= (DOMAINS.has(name.split('.')[0]) ? 3 : 1);
+    if (past && (at.own || at.children.size !== 1)) {
+      roots.push({at, name, whole: true, area: at.area});
+      return;
+    }
+    if (at.own)
+      roots.push({at, name, whole: false, area: Math.max(1, area.get(name) ?? 0)});
+    for (const part of [...at.children.keys()].sort())
+      find(/** @type {Pkg} */ (at.children.get(part)), name ? `${name}.${part}` : part, depth + 1);
+  };
+  find(root, '', 0);
+
   /** @param {Pkg} pkg @param {number} from @param {number} to its share of the wheel */
   const share = (pkg, from, to) => {
     pkg.hue = (from + to) / 2;
@@ -94,7 +116,18 @@ export function packageHues(t, grain) {
       at += width;
     }
   };
-  share(root, 0, 1);
+  // the roots share the wheel, as the children of a package do
+  const total = roots.reduce((s, r) => s + r.area, 0);
+  const spread = roots.length === 1 ? 1 : SPREAD;
+  let from = 0;
+  for (const r of roots) {
+    const width = r.area / total, middle = from + width / 2;
+    if (r.whole)
+      share(r.at, middle - width * spread / 2, middle + width * spread / 2);
+    else
+      r.at.hue = middle;
+    from += width;
+  }
 
   /** @type {Map<string, number>} */
   const hues = new Map();
@@ -106,20 +139,10 @@ export function packageHues(t, grain) {
       hues.set(p, wrap(at.hue));
     }
 
-  /** @type {Hue[]} in the order of the wheel: that of the children */
-  const legend = [];
-  /** @param {Pkg} at @param {string} name @param {number} depth */
-  const roots = (at, name, depth) => {
-    const past = depth >= (DOMAINS.has(name.split('.')[0]) ? 2 : 1);
-    if (past && (at.own || at.children.size !== 1)) {
-      if (at.shows > 0)
-        legend.push({name, hue: wrap(at.hue), share: at.shows / root.shows});
-      return;
-    }
-    for (const part of [...at.children.keys()].sort())
-      roots(/** @type {Pkg} */ (at.children.get(part)), name ? `${name}.${part}` : part, depth + 1);
-  };
-  roots(root, '', 0);
+  /** @type {Hue[]} */
+  const legend = roots.map(r => ({name: r.name, hue: wrap(r.at.hue),
+                                  share: (r.whole ? r.at.shows : area.get(r.name) ?? 0) / (root.shows || 1)}))
+                      .filter(e => e.share > 0);
   return {hues: Float64Array.from(packages, p => p ? /** @type {number} */ (hues.get(p)) : NaN), legend};
 }
 

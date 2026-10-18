@@ -41,9 +41,11 @@ test('the caption: the root packages that show, in the order of the wheel, with 
                   ['flak.core.F.m', 1], ['[main]', 2]);
   t.cells = [0, 0, 1, 2, 3, 4, 5, -1];
   const {hues, legend} = packageHues(t, 'method');
-  // past the domain, where each first branches (com.x, flak) or has frames (org.lib)
-  assert.deepEqual(legend.map(e => e.name), ['com.x', 'flak', 'org.lib']);
-  assert.deepEqual(legend.map(e => e.share), [3 / 6, 2 / 6, 1 / 6]);
+  // past the domain and the organisation: com.x.db, com.x.web; where flak first branches; org.lib
+  // has frames of its own
+  assert.deepEqual(legend.map(e => e.name), ['com.x.db', 'com.x.web', 'flak', 'org.lib']);
+  assert.deepEqual(legend.map(e => e.share), [1 / 6, 2 / 6, 2 / 6, 1 / 6]);
+  assert.equal(legend[1].hue, hues[0]);
   const between = (h, a, b) => Math.min(a, b) <= h && h <= Math.max(a, b);
-  assert.ok(between(legend[0].hue, hues[0], hues[2]), 'com.x amid its sub-packages');
+  assert.ok(between(legend[2].hue, hues[3], hues[4]), 'flak amid its sub-packages');
 });
