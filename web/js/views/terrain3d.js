@@ -26,6 +26,16 @@ const RELIEF = 0.16;
 /** How much the distance changes per pixel of wheel: e^(100 ZOOM), about 15%, per notch of a mouse. */
 const ZOOM = 0.0014;
 
+/**
+ * Where the camera is, and the point it turns around, in units of the
+ * terrain's longer side: the same place over a terrain made larger or
+ * smaller by a setting.
+ *
+ * @typedef {object} Viewpoint
+ * @property {number[]} [position]
+ * @property {number[]} [target]
+ */
+
 /** Frees the view shown last: a page has few WebGL contexts. */
 let release = () => {};
 
@@ -39,9 +49,11 @@ export function closeTerrainView() {
  * @param {Terrain} t
  * @param {Frame[]} trees the mountains it was raised from, in its order
  * @param {{chosen: string}} selection the name of the peak whose callers show, '' for none
+ * @param {Viewpoint} viewpoint where the camera was, kept up to date as it moves, so that it stays
+ *        there when the view is built again; empty at first, for a view of the whole terrain
  * @returns {HTMLElement}
  */
-export function terrainView(t, trees, selection) {
+export function terrainView(t, trees, selection, viewpoint) {
   closeTerrainView();
   let gone = false;
   release = () => gone = true;
@@ -192,6 +204,8 @@ export function terrainView(t, trees, selection) {
         camera.position.add(new T.Vector3(x - target.x, y - target.y, z - target.z));
         target.set(x, y, z);
       }
+      viewpoint.position = camera.position.toArray().map((/** @type {number} */ v) => v / side);
+      viewpoint.target = target.toArray().map((/** @type {number} */ v) => v / side);
       render();
     });
 
@@ -210,7 +224,13 @@ export function terrainView(t, trees, selection) {
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       if (!framed) {
-        home();
+        if (viewpoint.position && viewpoint.target) {
+          camera.position.fromArray(viewpoint.position.map(v => v * side));
+          controls.target.fromArray(viewpoint.target.map(v => v * side));
+          controls.update();
+        }
+        else
+          home();
         framed = true;
       }
       render();

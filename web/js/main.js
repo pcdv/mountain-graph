@@ -48,6 +48,8 @@ async function open(file) {
     /** @type {Set<string>} */
     const open = new Set();
     const selection = {chosen: ''};
+    /** @type {import('./views/terrain3d.js').Viewpoint} the 3D view's camera, kept as settings change */
+    const viewpoint = {};
     /** @type {{waits: string, kept: Profile, left: number} | null} the samples kept, while waits is the same */
     let kept = null;
     const controls = peakControls(peakSettings(), ({grain, count, coverage, waits, hide, java, shape, view}) => {
@@ -65,7 +67,7 @@ async function open(file) {
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
       const t = terrain(trees, {shape, aspect});
       closeTerrainView();
-      replace(map, view === '3d' ? terrainView(t, trees, selection) : mapView(t, trees, selection));
+      replace(map, view === '3d' ? terrainView(t, trees, selection, viewpoint) : mapView(t, trees, selection));
       replace(table, peaksView(r, m, open, kept.left));
     });
     replace(main, summary(file.name, p), controls, map, table);
