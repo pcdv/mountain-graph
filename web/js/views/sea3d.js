@@ -13,7 +13,7 @@
 export const LEVEL = 0.004, DEEP = 0.05;
 
 /** How far from land the bed goes down most of the way, as a share of the longer side. */
-const SHELF = 0.08;
+const SHELF = 0.035;
 
 /** Over how far from the land's edges the bed goes down to the deepest, as a share of the longer side. */
 const EDGE = 0.06;
@@ -54,7 +54,8 @@ export const HAZE = 0xe8a07c, SUN = 0xffc89a;
 /** The bed's colours, from the shore to the deepest, sRGB. */
 const BED = /** @type {[number, number[]][]} */ ([
   [0, [214, 198, 146]],
-  [0.15, [96, 150, 150]],
+  [0.06, [70, 130, 140]],
+  [0.3, [40, 84, 112]],
   [1, [26, 54, 84]],
 ]);
 

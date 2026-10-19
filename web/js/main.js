@@ -7,6 +7,7 @@
 import {$, h, replace} from './lib/dom.js';
 import {loadProfile} from './load.js';
 import {readSetting, writeSetting} from './lib/settings.js';
+import {keepFile, lastFile} from './last-file.js';
 import {peaks, mountains} from './model/peaks.js';
 import {callees} from './model/callees.js';
 import {terrain} from './model/terrain.js';
@@ -45,6 +46,31 @@ document.addEventListener('drop', e => {
     open(file);
 });
 
+/** Where what is shown is kept, for the page opened again. */
+const VIEW = 'mountaingraph.view';
+
+/** Keeps what is shown. */
+let remember = () => {};
+addEventListener('pagehide', () => remember());
+document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && remember());
+
+/**
+ * @returns {{open: string[], chosen: string, tab: 'callers' | 'callees' | undefined,
+ *            viewpoint: import('./views/terrain3d.js').Viewpoint}} as kept last, or nothing shown
+ */
+function remembered() {
+  try {
+    const v = JSON.parse(readSetting(VIEW) ?? '{}');
+    return {open: Array.isArray(v.open) ? v.open.filter((/** @type {any} */ o) => typeof o === 'string') : [],
+            chosen: typeof v.chosen === 'string' ? v.chosen : '',
+            tab: v.tab === 'callees' ? 'callees' : v.tab === 'callers' ? 'callers' : undefined,
+            viewpoint: v.viewpoint && typeof v.viewpoint === 'object' ? v.viewpoint : {}};
+  }
+  catch {
+    return {open: [], chosen: '', tab: undefined, viewpoint: {}};
+  }
+}
+
 /** Shows the profile open again, laid out in the window's shape. */
 let relayout = () => {};
 /** @type {number | undefined} */
@@ -62,13 +88,18 @@ async function open(file) {
   replace(main, h('p', {class: 'muted'}, `Reading ${file.name}…`));
   try {
     const p = await loadProfile(file);
+    keepFile(file);
     const map = h('div', {class: 'stage-view'}), table = h('div', {class: 'table-body'});
+    // as left when the page was last closed: the rows unfolded, the peak chosen, the 3D camera
+    const kept0 = remembered();
     /** @type {Set<string>} */
-    const open = new Set();
+    const open = new Set(kept0.open);
     /** @type {import('./components/terrain-frame.js').Selection} */
-    const selection = {chosen: ''};
+    const selection = {chosen: kept0.chosen, tab: kept0.tab};
     /** @type {import('./views/terrain3d.js').Viewpoint} the 3D view's camera, kept as settings change */
-    const viewpoint = {};
+    const viewpoint = kept0.viewpoint;
+    remember = () => writeSetting(VIEW, JSON.stringify({open: [...open], chosen: selection.chosen,
+                                                        tab: selection.tab, viewpoint}));
     /** @type {{waits: string, kept: Profile, left: number} | null} the samples kept, while waits is the same */
     let kept = null;
     // the view fills the window under the bar: there first, to take its shape from
@@ -144,3 +175,6 @@ function floating(title, key, body) {
   pane.addEventListener('toggle', () => writeSetting(setting, pane.open ? 'open' : 'closed'));
   return pane;
 }
+
+// the profile opened last, shown again
+lastFile().then(file => file && open(file));
