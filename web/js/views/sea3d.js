@@ -2,10 +2,11 @@
 /**
  * The 3D land as an archipelago: the plain under the sea, its bed going down
  * away from the coasts, the land sloping to beaches, then grass, forest, rock
- * and snow up the mountains. The heights and colours of each cell, and the
- * water: terrain3d.js raises and lights them.
+ * and snow up the mountains, bumped and rocky where steep. The heights and
+ * colours of each cell, the water, and a sky at sunset: terrain3d.js raises
+ * and lights them.
  *
- * Needs three.js only for the water, given by the caller.
+ * Needs three.js only for the water and the sky, given by the caller.
  */
 
 /** The sea's surface, over the plain, and its deepest bed under it: shares of the longer side. */
@@ -29,6 +30,26 @@ const LAND = /** @type {[number, number[]][]} */ ([
   [0.75, [138, 133, 126]],
   [0.86, [244, 245, 248]],
 ]);
+
+/** The bumps of the land, as a share of the longer side. */
+export const BUMP = 0.008;
+
+/** The colour of rock, where the land is steep, sRGB. */
+const ROCK = [112, 104, 94];
+
+/** The sky at sunset, sRGB: [height over the horizon, 0 to 1, rgb]; under it the sea far away. */
+const SKY = /** @type {[number, number[]][]} */ ([
+  [-1, [24, 46, 72]],
+  [-0.02, [70, 82, 104]],
+  [0, [255, 176, 110]],
+  [0.06, [246, 130, 92]],
+  [0.18, [186, 92, 116]],
+  [0.4, [84, 64, 120]],
+  [1, [30, 32, 70]],
+]);
+
+/** The haze toward the horizon, and the warm low sun, as three.js colours. */
+export const HAZE = 0xe8a07c, SUN = 0xffc89a;
 
 /** The bed's colours, from the shore to the deepest, sRGB. */
 const BED = /** @type {[number, number[]][]} */ ([
@@ -59,7 +80,7 @@ export function shores(heights, width, height) {
     const x = i % width, y = Math.floor(i / width);
     // down to the deepest toward the edges, where the bed beyond the land is
     const edge = Math.min(x, y, width - 1 - x, height - 1 - y) / (EDGE * side);
-    return Math.max((1 - Math.exp(-d / (SHELF * side))) * (0.85 + 0.15 * noise(x, y)), 1 - edge);
+    return Math.max((1 - Math.exp(-d / (SHELF * side))) * (0.85 + 0.15 * noise(x, y, 9)), 1 - edge);
   });
   return {depth, inland};
 }
@@ -74,12 +95,56 @@ export function ramp(inland) {
 }
 
 /**
+ * @param {number} x of a cell
+ * @param {number} y
+ * @returns {number} the bump there, -0.5 to 0.5: a few scales of noise
+ */
+export function bump(x, y) {
+  return 0.5 * noise(x, y, 3) + 0.32 * noise(x + 101, y + 57, 7) + 0.18 * noise(x + 13, y + 211, 19) - 0.5;
+}
+
+/**
  * @param {number} up the share of the highest peak's height, 0 to 1
  * @param {number} inland cells from the sea: sand along it
+ * @param {number} steep how steep, 0 to 1: rock
+ * @param {number} x of the cell, for its grain
+ * @param {number} y
  * @returns {number[]} sRGB
  */
-export function landColour(up, inland) {
-  return inland <= 1.5 ? LAND[0][1] : along(LAND, up);
+export function landColour(up, inland, steep, x, y) {
+  const c = inland <= 1.5 ? LAND[0][1] : along(LAND, up);
+  // rock where steep, but under the snow
+  const r = up < 0.8 ? steep : steep * Math.max(0, (0.9 - up) / 0.1);
+  const grain = 0.86 + 0.28 * noise(x, y, 2);
+  return c.map((v, i) => Math.min(255, Math.round((v + r * (ROCK[i] - v)) * grain)));
+}
+
+/**
+ * A dome of sky at sunset around the land, its lower half the sea far away.
+ *
+ * @param {any} T three.js
+ * @param {number} radius
+ * @returns {{mesh: any, dispose: () => void}}
+ */
+export function sky(T, radius) {
+  const geometry = new T.SphereGeometry(radius, 48, 32);
+  const p = geometry.attributes.position;
+  const colours = new Float32Array(p.count * 3);
+  /** @param {number} c */
+  const linear = c => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  for (let i = 0; i < p.count; i++) {
+    // the sun low in the west: warmer that way
+    const up = p.getY(i) / radius, west = Math.max(0, -p.getX(i) / radius);
+    const c = along(SKY, up - 0.05 * west * (up > 0 ? 1 : 0));
+    colours.set(c.map(linear), 3 * i);
+  }
+  geometry.setAttribute('color', new T.BufferAttribute(colours, 3));
+  const material = new T.MeshBasicMaterial({vertexColors: true, side: T.BackSide, fog: false, depthWrite: false});
+  const mesh = new T.Mesh(geometry, material);
+  return {mesh, dispose: () => (geometry.dispose(), material.dispose())};
 }
 
 /**
@@ -166,10 +231,10 @@ export function distance(inside, width, height) {
 /**
  * @param {number} x
  * @param {number} y
- * @returns {number} smooth value noise, 0 to 1, over a few cells
+ * @param {number} S its scale, cells
+ * @returns {number} smooth value noise, 0 to 1, over S cells
  */
-function noise(x, y) {
-  const S = 9;
+function noise(x, y, S) {
   const fx = x / S, fy = y / S, x0 = Math.floor(fx), y0 = Math.floor(fy);
   const u = fx - x0, v = fy - y0;
   /** @param {number} i @param {number} j */

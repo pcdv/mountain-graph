@@ -17,7 +17,7 @@ import {terrainFrame, short} from '../components/terrain-frame.js';
 import {contour, levels} from '../model/contours.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST, MOST} from './blocks3d.js';
-import {sea, shores, ramp, landColour, bedColour, LEVEL, DEEP} from './sea3d.js';
+import {sea, sky, shores, ramp, bump, landColour, bedColour, LEVEL, DEEP, BUMP, HAZE, SUN} from './sea3d.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -118,8 +118,15 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     /** @type {import('./sea3d.js').Shores | null} found when first shown */
     let shore = null;
     /** @param {number} i a cell @returns {number} its y */
-    const ground = i => !islands ? lift(smooth[i])
-      : smooth[i] > 0 ? lift(smooth[i]) * ramp(shore?.inland[i] ?? 0) : -(shore?.depth[i] ?? 0) * DEEP * side;
+    const ground = i => {
+      if (!islands)
+        return lift(smooth[i]);
+      if (smooth[i] <= 0)
+        return -(shore?.depth[i] ?? 0) * DEEP * side;
+      // bumped, less on the beaches
+      const r = ramp(shore?.inland[i] ?? 0);
+      return lift(smooth[i]) * r + bump(i % W, Math.floor(i / W)) * BUMP * side * r;
+    };
 
     /** sets the heights of the surface and of the lines to the relief */
     const raise = () => {
@@ -153,8 +160,13 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     const base = new Float32Array(3 * W * H);
     const paint = () => {
       for (let i = 0; i < W * H; i++) {
+        const x = i % W, y = Math.floor(i / W);
+        // how steep, from the heights around, raised: rock past a slope of three in one
+        const slope = () => Math.hypot(position.getY(Math.min(i + 1, W * H - 1)) - position.getY(Math.max(i - 1, 0)),
+                                       position.getY(Math.min(i + W, W * H - 1)) - position.getY(Math.max(i - W, 0))) / 2;
         const height = !islands || !shore ? tint(colors, smooth[i], t.top)
-          : smooth[i] > 0 ? landColour(Math.sqrt(smooth[i] / t.top) * ramp(shore.inland[i]), shore.inland[i])
+          : smooth[i] > 0 ? landColour(Math.sqrt(smooth[i] / t.top) * ramp(shore.inland[i]), shore.inland[i],
+                                       Math.max(0, Math.min(1, (slope() - 3) / 3)), x, y)
           : bedColour(shore.depth[i]);
         const c = hues && t.cells[i] >= 0 ? hued(height, hues[t.cells[i]]) : height;
         base[3 * i] = linear[c[0]], base[3 * i + 1] = linear[c[1]], base[3 * i + 2] = linear[c[2]];
@@ -208,17 +220,24 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
       // islands without the lines: the land and the sea tell the heights
       contours.visible = !blocky && !islands;
       water.mesh.visible = islands && !blocky;
+      dome.mesh.visible = islands;
+      scene.fog = islands ? haze : null;
+      sun.color.set(islands ? SUN : 0xffffff);
     };
     const water = sea(T, side);
     scene.add(water.mesh);
+    // a sky at sunset, hazy toward the horizon, the sun low and warm
+    const dome = sky(T, side * 9);
+    scene.add(dome.mesh);
+    const haze = new T.Fog(HAZE, side * 1.6, side * 7);
     // the trails on the water, as sea lanes
     const flood = () => trailSegments.position.y = islands ? LEVEL * side : 0;
     flood();
-    blockify();
     scene.add(new T.HemisphereLight(0xffffff, 0x8a8170, 1.8));
     const sun = new T.DirectionalLight(0xffffff, 1.6);
     sun.position.set(-1, 1.6, -0.6);
     scene.add(sun);
+    blockify();
 
     // the mountain clicked, circled at its foot
     const ring = new T.LineLoop(
@@ -230,7 +249,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     const renderer = new T.WebGLRenderer({antialias: true});
     renderer.setPixelRatio(devicePixelRatio || 1);
     renderer.setClearColor(colors.halo);
-    const camera = new T.PerspectiveCamera(40, 1, side / 100, side * 10);
+    const camera = new T.PerspectiveCamera(40, 1, side / 100, side * 14);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
     // not into the terrain, nor so close that zooming stops (it scales the distance), nor lost far away
@@ -262,6 +281,11 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
                                oninput: () => {
                                  viewpoint.relief = relief = Number(slider.value);
                                  raise();
+                                 if (islands) {
+                                   // steeper or flatter: more rock or less
+                                   paint();
+                                   color.array.set(base);
+                                 }
                                  if (blocky)
                                    blockify();
                                  redraw();
@@ -457,6 +481,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
       trailMaterial.dispose();
       cubes?.dispose();
       water.dispose();
+      dome.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
     };
