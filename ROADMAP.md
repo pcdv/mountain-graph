@@ -130,6 +130,8 @@ checked: exact figures, one path followed precisely.
   the smaller one's time or more), however far apart, named after it; at most three per mountain.
   Pulling related mountains together in the layout does not do it: one related to several cannot
   stand beside them all
+- [x] Islands: the plain a sea, its bed deeper away from the coasts; beaches, grass, forest, rock
+  and snow up the mountains; the trails as sea lanes
 - [x] For fun, the 3D land in blocks: grass, dirt, stone, snow, or wool of the packages' hues;
   the trails as paths of gravel, trees on the plain
 

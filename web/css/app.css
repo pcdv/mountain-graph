@@ -436,6 +436,10 @@ canvas.map {
 }
 
 .map-holder.three .relief {
+  padding: 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--float);
   position: absolute;
   top: 12px;
   left: 50%;

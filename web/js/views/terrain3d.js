@@ -3,7 +3,8 @@
  * The terrain in 3D: the same grid as the map, a plane whose points are
  * raised to the heights of its cells, tinted and lined as on the map, lit
  * from the north-west, turned and zoomed with the mouse, its relief made
- * higher or flatter, or built of blocks (blocks3d.js). The peaks in sight
+ * higher or flatter, built of blocks (blocks3d.js), or islands in a sea
+ * (sea3d.js). The peaks in sight
  * are named, and the trails between related mountains; a frame
  * hovered is lit in every mountain, and a mountain clicked shows its callers
  * (terrain-frame.js), as on the map.
@@ -16,6 +17,7 @@ import {terrainFrame, short} from '../components/terrain-frame.js';
 import {contour, levels} from '../model/contours.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST, MOST} from './blocks3d.js';
+import {sea, shores, ramp, landColour, bedColour, LEVEL, DEEP} from './sea3d.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -40,6 +42,7 @@ const ZOOM = 0.0014;
  * @property {number} [relief] the height of the highest peak, as a share of the longer side
  * @property {boolean} [blocks] whether the land is built of blocks
  * @property {number} [columns] of blocks, along the longer side
+ * @property {boolean} [islands] whether the plain is a sea, the mountains islands
  */
 
 /** Frees the view shown last: a page has few WebGL contexts. */
@@ -110,10 +113,20 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     const lines = new T.BufferGeometry();
     lines.setAttribute('position', new T.BufferAttribute(points, 3));
 
+    // or the plain a sea, the mountains islands in it
+    let islands = viewpoint.islands ?? false;
+    /** @type {import('./sea3d.js').Shores | null} found when first shown */
+    let shore = null;
+    /** @param {number} i a cell @returns {number} its y */
+    const ground = i => !islands ? lift(smooth[i])
+      : smooth[i] > 0 ? lift(smooth[i]) * ramp(shore?.inland[i] ?? 0) : -(shore?.depth[i] ?? 0) * DEEP * side;
+
     /** sets the heights of the surface and of the lines to the relief */
     const raise = () => {
+      if (islands && !shore)
+        shore = shores(smooth, W, H);
       for (let i = 0; i < W * H; i++)
-        position.setY(i, lift(smooth[i]));
+        position.setY(i, ground(i));
       position.needsUpdate = true;
       geometry.computeVertexNormals();
       geometry.computeBoundingSphere();
@@ -121,8 +134,11 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
       segments.forEach((s, l) => {
         // a little above: a line across a square can cut under the two triangles drawing it
         const y = lift(steps[l]) + side / 2000;
-        for (let i = 0; i < s.length; i += 2, k += 3)
-          points[k] = y;
+        for (let i = 0; i < s.length; i += 2, k += 3) {
+          // islands: on the land lowered toward their beaches
+          const cell = Math.min(H - 1, Math.round(s[i + 1])) * W + Math.min(W - 1, Math.round(s[i]));
+          points[k] = islands ? Math.min(y, ground(cell) + side / 2000) : y;
+        }
       });
       lines.attributes.position.needsUpdate = true;
       lines.computeBoundingSphere();
@@ -135,11 +151,16 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
       return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
     });
     const base = new Float32Array(3 * W * H);
-    for (let i = 0; i < W * H; i++) {
-      const height = tint(colors, smooth[i], t.top);
-      const c = hues && t.cells[i] >= 0 ? hued(height, hues[t.cells[i]]) : height;
-      base[3 * i] = linear[c[0]], base[3 * i + 1] = linear[c[1]], base[3 * i + 2] = linear[c[2]];
-    }
+    const paint = () => {
+      for (let i = 0; i < W * H; i++) {
+        const height = !islands || !shore ? tint(colors, smooth[i], t.top)
+          : smooth[i] > 0 ? landColour(Math.sqrt(smooth[i] / t.top) * ramp(shore.inland[i]), shore.inland[i])
+          : bedColour(shore.depth[i]);
+        const c = hues && t.cells[i] >= 0 ? hued(height, hues[t.cells[i]]) : height;
+        base[3 * i] = linear[c[0]], base[3 * i + 1] = linear[c[1]], base[3 * i + 2] = linear[c[2]];
+      }
+    };
+    paint();
     const lit = colors.lit.map(c => linear[c]);
     const color = new T.BufferAttribute(base.slice(), 3);
     geometry.setAttribute('color', color);
@@ -183,8 +204,16 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
         cubes = blocks(T, t, {lift, hues, colors, columns, linear: rgb => Array.from(rgb, c => linear[c])});
         scene.add(cubes.mesh);
       }
-      surface.visible = contours.visible = trailSegments.visible = !blocky;
+      surface.visible = trailSegments.visible = !blocky;
+      // islands without the lines: the land and the sea tell the heights
+      contours.visible = !blocky && !islands;
+      water.mesh.visible = islands && !blocky;
     };
+    const water = sea(T, side);
+    scene.add(water.mesh);
+    // the trails on the water, as sea lanes
+    const flood = () => trailSegments.position.y = islands ? LEVEL * side : 0;
+    flood();
     blockify();
     scene.add(new T.HemisphereLight(0xffffff, 0x8a8170, 1.8));
     const sun = new T.DirectionalLight(0xffffff, 1.6);
@@ -252,9 +281,17 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
       blockify();
       redraw();
     }});
+    const isles = h('input', {type: 'checkbox', checked: islands, onchange: () => {
+      viewpoint.islands = islands = isles.checked;
+      raise();
+      paint();
+      flood();
+      blockify();
+      redraw();
+    }});
     loading.replaceWith(renderer.domElement, labels,
-                        h('div', {class: 'relief'}, h('label', null, 'Relief ', slider), h('label', null, cubed, ' Blocks'),
-                          size));
+                        h('div', {class: 'relief'}, h('label', null, 'Relief ', slider), h('label', null, isles, ' Islands'),
+                          h('label', null, cubed, ' Blocks'), size));
 
     /**
      * @param {any} to a point, a Vector3
@@ -419,6 +456,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
       trailLines.dispose();
       trailMaterial.dispose();
       cubes?.dispose();
+      water.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
     };
