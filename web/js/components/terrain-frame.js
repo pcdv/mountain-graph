@@ -13,7 +13,7 @@ import {callersTree} from './callers.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
-/** @typedef {import('../model/peaks.js').Top} Top */
+/** @typedef {import('../model/callees.js').Top} Top */
 /** @typedef {{tree: Frame, tops: Top[], groups: {name: string, ms: number}[]}} Called */
 
 const WIDTH = 'mountaingraph.panel.width';

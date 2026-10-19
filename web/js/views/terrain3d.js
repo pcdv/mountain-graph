@@ -14,8 +14,7 @@
 import {h} from '../lib/dom.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
 import {contour, levels} from '../model/contours.js';
-import {palette, tint, hued, DEPTH} from './palette.js';
-import {HEIGHT, LINES} from './map.js';
+import {palette, tint, hued, DEPTH, HEIGHT, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST, MOST} from './blocks3d.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */

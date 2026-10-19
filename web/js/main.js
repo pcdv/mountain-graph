@@ -5,10 +5,12 @@
  */
 import {$, h, replace} from './lib/dom.js';
 import {loadProfile} from './load.js';
-import {peaks, mountains, callees} from './model/peaks.js';
+import {peaks, mountains} from './model/peaks.js';
+import {callees} from './model/callees.js';
 import {terrain} from './model/terrain.js';
 import {peaksView} from './views/peaks.js';
-import {mapView, HEIGHT} from './views/map.js';
+import {mapView} from './views/map.js';
+import {HEIGHT} from './views/palette.js';
 import {panelWidth} from './components/terrain-frame.js';
 import {terrainView, closeTerrainView} from './views/terrain3d.js';
 import {leaveOut} from './model/samples.js';

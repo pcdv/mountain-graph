@@ -11,16 +11,10 @@ import {h} from '../lib/dom.js';
 import {contour, levels} from '../model/contours.js';
 import {divides} from '../model/divides.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
-import {palette, tint, hued, DEPTH} from './palette.js';
+import {palette, tint, hued, DEPTH, LINES, HEIGHT} from './palette.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
-
-/** The most contour lines. */
-export const LINES = 9;
-
-/** The most height of a view of the terrain, as a share of the window's. */
-export const HEIGHT = 0.7;
 
 /**
  * @param {Terrain} t

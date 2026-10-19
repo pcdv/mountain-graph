@@ -81,3 +81,9 @@ export function hued(color, hue) {
   };
   return [f(0), f(8), f(4)];
 }
+
+/** The most contour lines. */
+export const LINES = 9;
+
+/** The most height of a view of the terrain, as a share of the window's. */
+export const HEIGHT = 0.7;
