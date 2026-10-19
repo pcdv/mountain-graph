@@ -525,15 +525,32 @@ canvas.map {
 
 .knobs {
   display: grid;
-  grid-template-columns: auto 140px 3em;
+  grid-template-columns: auto 20px 120px 20px 3.5em;
   align-items: center;
   gap: 2px 10px;
   padding: 4px 0 6px;
   font-size: 12px;
 }
 
-.knobs label {
+.knobs .knob {
   display: contents;
+}
+
+.knobs .nudge {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.knobs .nudge:hover {
+  border-color: var(--fg);
 }
 
 .knobs .value {

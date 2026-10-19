@@ -82,15 +82,15 @@ test('ridges: the peak highest, a ridge out to each caller, lower as it goes; th
     assert.equal(t.cells[i] < 0, t.heights[i] === 0);
 });
 
-test("ridges on a foot: a low dome as wide as the mountain, its cells the massif's", () => {
+test("ridges on a foot: a low cone as wide as the mountain, its cells the massif's", () => {
   const t = terrain([a], {shape: 'ridges', size: 101, tuning: {foot: 0.25}});
   const m = t.mountains[0];
   const at = (x, y) => t.heights[Math.floor(y) * t.width + Math.floor(x)];
   const node = (x, y) => t.nodes[t.cells[Math.floor(y) * t.width + Math.floor(x)]]?.name;
-  // between the ridges, 2.5 rings out of three: a quarter of the peak's 40 ms, times 1 - (2.5/3)²
-  const [x, y] = [m.x + 2.5 * m.r / 3 * Math.cos(Math.PI / 4), m.y + 2.5 * m.r / 3 * Math.sin(Math.PI / 4)];
-  assert.ok(Math.abs(at(x, y) - 10 * (1 - 25 / 36)) < 1, `${at(x, y)}`);
-  assert.equal(node(x, y), '[t]', "the massif's sector there");
+  // between the ridges, halfway out: a quarter of the peak's 40 ms, times (1 - 1/2)²
+  const [x, y] = [m.x + m.r / 2 * Math.cos(Math.PI / 4), m.y + m.r / 2 * Math.sin(Math.PI / 4)];
+  assert.ok(Math.abs(at(x, y) - 10 / 4) < 0.5, `${at(x, y)}`);
+  assert.equal(node(x, y), 'B', "the massif's sector there");
   assert.equal(at(m.x + m.r + 1, m.y), 0, 'the plain past its radius');
 });
 

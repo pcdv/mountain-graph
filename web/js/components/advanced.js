@@ -71,13 +71,26 @@ export function advanced(changed) {
   };
   const rows = KNOBS.map(knob => {
     const out = h('span', {class: 'value'}, String(values[knob.key]));
+    const set = () => {
+      values[knob.key] = Number(input.value);
+      out.textContent = input.value;
+      save();
+    };
     const input = h('input', {type: 'range', min: knob.min, max: knob.max, step: knob.step, value: values[knob.key],
-                              oninput: () => out.textContent = input.value,
-                              onchange: () => {
-                                values[knob.key] = Number(input.value);
-                                save();
-                              }});
-    return {knob, input, out, row: h('label', {title: knob.title}, h('span', null, knob.label), input, out)};
+                              oninput: () => out.textContent = input.value, onchange: set});
+    // a step at a time: easier than dragging
+    /** @param {number} by -1 or 1 */
+    const nudge = by => h('button', {type: 'button', class: 'nudge', title: by < 0 ? 'Less' : 'More', onclick: () => {
+      const was = input.value;
+      if (by < 0)
+        input.stepDown();
+      else
+        input.stepUp();
+      if (input.value !== was)
+        set();
+    }}, by < 0 ? '−' : '+');
+    return {knob, input, out, row: h('div', {class: 'knob', title: knob.title}, h('span', null, knob.label), nudge(-1), input,
+                                     nudge(1), out)};
   });
   const reset = h('button', {type: 'button', class: 'button', onclick: () => {
     /** @type {any} */

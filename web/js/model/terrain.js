@@ -69,7 +69,7 @@ import {layout, relations} from './layout.js';
  * What can be tuned of how a terrain is raised, defaults in TUNING.
  *
  * @typedef {object} Tuning
- * @property {number} foot ridges and ranges: the height of the low dome under them, as a share of the
+ * @property {number} foot ridges and ranges: the height of the low cone under them, as a share of the
  *           peak's, as wide as the mountain, so that its bulk shows its weight; 0 for none
  * @property {number} ridge the widest ridge, the peak's, as a share of its mountain's radius
  * @property {number} near how far apart two mountains may stand, as a share of the sum of their
@@ -379,8 +379,9 @@ function stance(t, m, depths, n) {
 }
 
 /**
- * The foot of a mountain: a low dome as wide as it, its cells the massif's,
- * so that its bulk shows its weight under the ridges.
+ * The foot of a mountain: a low cone as wide as it, sloping all the way
+ * (not a dome, flat on top: a pancake), its cells the massif's, so that its
+ * bulk shows its weight under the ridges.
  *
  * @param {Terrain} t
  * @param {Placed} m
@@ -397,7 +398,7 @@ function foot(t, m, byDepth) {
       return;
     const depth = Math.min(byDepth.length - 1, Math.floor(r / band));
     const n = sectorAt(t.nodes, byDepth[depth], angle(dx, dy, -m.turn));
-    raise(t, i, high * (1 - d * d), n >= 0 ? n : m.node);
+    raise(t, i, high * (1 - d) * (1 - d), n >= 0 ? n : m.node);
   });
 }
 
