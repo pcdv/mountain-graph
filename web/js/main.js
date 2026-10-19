@@ -1,17 +1,17 @@
 // @ts-check
 /**
  * The page: a profile picked or dropped, then its peaks, as a map of their
- * mountains and as a table. Each view has its own module under views/.
+ * mountains filling the window under a bar of controls, and as a table
+ * floating over it. Each view has its own module under views/.
  */
 import {$, h, replace} from './lib/dom.js';
 import {loadProfile} from './load.js';
+import {readSetting, writeSetting} from './lib/settings.js';
 import {peaks, mountains} from './model/peaks.js';
 import {callees} from './model/callees.js';
 import {terrain} from './model/terrain.js';
 import {peaksView} from './views/peaks.js';
 import {mapView} from './views/map.js';
-import {HEIGHT} from './views/palette.js';
-import {panelWidth} from './components/terrain-frame.js';
 import {terrainView, closeTerrainView} from './views/terrain3d.js';
 import {leaveOut} from './model/samples.js';
 import {packageHues} from './model/hues.js';
@@ -22,6 +22,7 @@ import {peakControls, peakSettings} from './components/peak-controls.js';
 
 const main = $('main', HTMLElement);
 const picker = $('picker', HTMLInputElement);
+const bar = $('bar', HTMLElement);
 
 picker.addEventListener('change', () => {
   if (picker.files && picker.files[0])
@@ -44,12 +45,24 @@ document.addEventListener('drop', e => {
     open(file);
 });
 
+/** Shows the profile open again, laid out in the window's shape. */
+let relayout = () => {};
+/** @type {number | undefined} */
+let resizing;
+addEventListener('resize', () => {
+  clearTimeout(resizing);
+  resizing = setTimeout(() => relayout(), 300);
+});
+
 /** @param {File} file */
 async function open(file) {
+  relayout = () => {};
+  main.classList.remove('stage');
+  replace(bar);
   replace(main, h('p', {class: 'muted'}, `Reading ${file.name}…`));
   try {
     const p = await loadProfile(file);
-    const map = h('div'), table = h('div');
+    const map = h('div', {class: 'stage-view'}), table = h('div', {class: 'table-body'});
     /** @type {Set<string>} */
     const open = new Set();
     /** @type {import('./components/terrain-frame.js').Selection} */
@@ -58,7 +71,14 @@ async function open(file) {
     const viewpoint = {};
     /** @type {{waits: string, kept: Profile, left: number} | null} the samples kept, while waits is the same */
     let kept = null;
-    const controls = peakControls(peakSettings(), ({grain, count, coverage, waits, hide, java, shape, view, colour}) => {
+    // the view fills the window under the bar: there first, to take its shape from
+    replace(bar, summary(file.name, p));
+    main.classList.add('stage');
+    replace(main, map, floating('Peaks', 'table', table));
+    /** @param {import('./components/peak-controls.js').PeakSettings} settings */
+    const show = settings => {
+      last = settings;
+      const {grain, count, coverage, waits, hide, java, shape, view, colour} = settings;
       if (kept?.waits !== waits) {
         const {profile, left} = leaveOut(p, waits);
         kept = {waits, kept: profile, left};
@@ -67,11 +87,9 @@ async function open(file) {
       const filter = {all: true, hide, java};
       const r = peaks(q, filter, {count, coverage, grain});
       const m = mountains(q, filter, r.peaks, grain);
-      // as wide as the page allows, less the callers beside it: the mountains spread in its shape
       selection.callees = name => callees(q, filter, name, grain);
-      // less the panel, its splitter and the gaps
-      const width = main.clientWidth - 32 - (selection.chosen ? panelWidth() + 22 : 0);
-      const aspect = Math.max(1, width / (HEIGHT * innerHeight));
+      // the mountains spread in the window's shape
+      const aspect = Math.max(1, main.clientWidth / Math.max(1, main.clientHeight));
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
       const t = terrain(trees, {shape, aspect});
       const coloured = colour === 'package' ? packageHues(t, grain) : null;
@@ -80,8 +98,13 @@ async function open(file) {
       replace(map, view === '3d' ? terrainView(t, trees, selection, viewpoint, hues) : mapView(t, trees, selection, hues),
               coloured ? hueLegend(coloured.legend) : null);
       replace(table, peaksView(r, m, open, kept.left));
-    });
-    replace(main, summary(file.name, p), controls, map, table);
+    };
+    /** @type {import('./components/peak-controls.js').PeakSettings | null} */
+    let last = null;
+    bar.append(peakControls(peakSettings(), show));
+    // laid out again in the window's shape, the bar in place, and as it is resized
+    relayout = () => last && show(last);
+    relayout();
   }
   catch (e) {
     replace(main, h('p', {class: 'error'}, /** @type {Error} */ (e).message));
@@ -97,11 +120,27 @@ function summary(name, p) {
   for (let i = 0; i < p.kind.length; i++)
     if (p.stack[i] >= 0)
       ms += p.weights[p.kind[i]];
-  return h('section', null,
-    h('h2', null, name),
-    h('p', null,
+  return h('div', {class: 'summary'},
+    h('b', null, name),
+    h('span', {class: 'muted'},
       `${p.kind.length.toLocaleString()} samples (${Math.round(ms).toLocaleString()} ms with a stack), `
       + `${p.parent.length.toLocaleString()} stack nodes, ${p.threads.length} threads, `
       + `${p.operations.count.toLocaleString()} operations, recorded from ${p.start} `
       + `for ${(p.end / 1e9).toFixed(1)} s.`));
+}
+
+/**
+ * A pane floating over the view, folded or not as last left.
+ *
+ * @param {string} title
+ * @param {string} key under which its state is remembered
+ * @param {HTMLElement} body
+ * @returns {HTMLElement}
+ */
+function floating(title, key, body) {
+  const setting = `mountaingraph.float.${key}`;
+  const pane = h('details', {class: `floating ${key}`}, h('summary', null, title), body);
+  pane.open = readSetting(setting) === 'open';
+  pane.addEventListener('toggle', () => writeSetting(setting, pane.open ? 'open' : 'closed'));
+  return pane;
 }

@@ -58,16 +58,18 @@ export function terrainFrame(t, trees, selection, hint, redraw) {
   const info = h('div', {class: 'map-info muted'}, hint);
   const holder = h('div', {class: 'map-holder'});
   const panel = h('aside', {class: 'map-panel'});
-  panel.style.flexBasis = `${panelWidth()}px`;
+  panel.style.width = `${panelWidth()}px`;
   const split = h('div', {class: 'map-split', title: 'Drag to widen the panel'});
-  const section = h('section', {class: 'terrain'}, h('div', {class: 'map-side'}, holder, info), split, panel);
+  // the view fills the section; the line and the panel float over it
+  const dock = h('div', {class: 'map-dock'}, split, panel);
+  const section = h('section', {class: 'terrain'}, holder, info, dock);
   split.addEventListener('pointerdown', e => {
     split.setPointerCapture(e.pointerId);
     const right = panel.getBoundingClientRect().right;
     /** @param {PointerEvent} m */
     const move = m => {
-      const w = Math.max(240, Math.min(section.clientWidth - 320, right - m.clientX));
-      panel.style.flexBasis = `${w}px`;
+      const w = Math.max(240, Math.min(section.clientWidth - 120, right - m.clientX));
+      panel.style.width = `${w}px`;
     };
     split.addEventListener('pointermove', move);
     split.addEventListener('pointerup', () => {
@@ -95,7 +97,7 @@ export function terrainFrame(t, trees, selection, hint, redraw) {
   const choose = m => {
     chosen = m;
     selection.chosen = m < 0 ? '' : t.mountains[m].name;
-    panel.hidden = split.hidden = m < 0;
+    dock.hidden = m < 0;
     if (m < 0)
       return;
     const tree = trees[m];

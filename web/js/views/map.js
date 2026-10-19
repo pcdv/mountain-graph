@@ -11,7 +11,7 @@ import {h} from '../lib/dom.js';
 import {contour, levels} from '../model/contours.js';
 import {divides} from '../model/divides.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
-import {palette, tint, hued, DEPTH, LINES, HEIGHT} from './palette.js';
+import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -71,8 +71,8 @@ export function mapView(t, trees, selection, hues = null) {
   };
 
   const draw = () => {
-    const width = frame.holder.clientWidth || 800;
-    const scale = Math.min(width / t.width, HEIGHT * innerHeight / t.height);
+    const width = frame.holder.clientWidth || 800, high = frame.holder.clientHeight || 600;
+    const scale = Math.min(width / t.width, high / t.height);
     const ratio = devicePixelRatio || 1;
     canvas.style.width = `${t.width * scale}px`;
     canvas.style.height = `${t.height * scale}px`;

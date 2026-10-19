@@ -14,7 +14,7 @@
 import {h} from '../lib/dom.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
 import {contour, levels} from '../model/contours.js';
-import {palette, tint, hued, DEPTH, HEIGHT, LINES} from './palette.js';
+import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST, MOST} from './blocks3d.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
@@ -349,7 +349,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     };
     let framed = false;
     const resize = () => {
-      const width = frame.holder.clientWidth || 800, height = Math.round(HEIGHT * innerHeight);
+      const width = frame.holder.clientWidth || 800, height = frame.holder.clientHeight || 600;
       renderer.setSize(width, height);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
