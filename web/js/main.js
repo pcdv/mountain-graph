@@ -18,6 +18,7 @@ import {leaveOut} from './model/samples.js';
 import {packageHues} from './model/hues.js';
 import {hueLegend} from './components/hue-legend.js';
 import {peakControls, peakSettings} from './components/peak-controls.js';
+import {advanced, tuning} from './components/advanced.js';
 
 /** @typedef {import('./profile/profile.js').Profile} Profile */
 
@@ -105,7 +106,12 @@ async function open(file) {
     // the view fills the window under the bar: there first, to take its shape from
     replace(bar, summary(file.name, p));
     main.classList.add('stage');
-    replace(main, map, floating('Peaks', 'table', table));
+    let tuned = tuning();
+    replace(main, map, h('div', {class: 'floats'}, floating('Peaks', 'table', table),
+                         floating('Advanced', 'advanced', advanced(t => {
+                           tuned = t;
+                           relayout();
+                         }))));
     /** @param {import('./components/peak-controls.js').PeakSettings} settings */
     const show = settings => {
       last = settings;
@@ -122,11 +128,11 @@ async function open(file) {
       // the mountains spread in the window's shape
       const aspect = Math.max(1, main.clientWidth / Math.max(1, main.clientHeight));
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
-      const t = terrain(trees, {shape, aspect});
+      const t = terrain(trees, {shape, aspect, tuning: tuned});
       const coloured = colour === 'package' ? packageHues(t, grain) : null;
       const hues = coloured?.hues ?? null;
       closeTerrainView();
-      replace(map, view === '3d' ? terrainView(t, trees, selection, viewpoint, hues) : mapView(t, trees, selection, hues),
+      replace(map, view === '3d' ? terrainView(t, trees, selection, viewpoint, hues, tuned) : mapView(t, trees, selection, hues),
               coloured ? hueLegend(coloured.legend) : null);
       replace(table, peaksView(r, m, open, kept.left));
     };

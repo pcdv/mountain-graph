@@ -62,6 +62,21 @@ import {layout, relations} from './layout.js';
  * @property {number} top the height of the highest peak, ms
  * @property {Saddle[]} saddles where mountains meet, ranges only
  * @property {Trail[]} trails between mountains related, however far apart
+ * @property {Tuning} tuning what it was raised with
+ */
+
+/**
+ * What can be tuned of how a terrain is raised, defaults in TUNING.
+ *
+ * @typedef {object} Tuning
+ * @property {number} foot ridges and ranges: the height of the low dome under them, as a share of the
+ *           peak's, as wide as the mountain, so that its bulk shows its weight; 0 for none
+ * @property {number} ridge the widest ridge, the peak's, as a share of its mountain's radius
+ * @property {number} near how far apart two mountains may stand, as a share of the sum of their
+ *           radii, for a caller they share to be merged: further, its ridges would cross the map
+ * @property {number} trail the least share of the smaller one's time through a caller two mountains
+ *           share, for a trail
+ * @property {number} trails the most trails from a mountain, the strongest first
  */
 
 /**
@@ -94,23 +109,11 @@ import {layout, relations} from './layout.js';
  * @property {number} [size] the cells along the longer side of the grid
  * @property {number} [aspect] the width over the height of the space the terrain is shown in: the
  *           mountains are gathered in an ellipse of that shape
+ * @property {Partial<Tuning>} [tuning] the defaults (TUNING) changed
  */
 
-/** The widest ridge, the peak's, as a share of its mountain's radius. */
-const RIDGE = 0.18;
-
-/**
- * How far apart two mountains may stand, as a share of the sum of their
- * radii, for a caller they share to be merged: further, its ridges would
- * cross the map.
- */
-const NEAR = 1.5;
-
-/** The least share of the smaller one's time through a caller two mountains share, for a trail. */
-const TRAIL = 0.25;
-
-/** The most trails from a mountain, the strongest first. */
-const TRAILS = 3;
+/** @type {Tuning} */
+export const TUNING = {foot: 0.1, ridge: 0.18, near: 1.5, trail: 0.25, trails: 3};
 
 /**
  * @param {Frame[]} trees the mountains, each a peak and its callers as mountains() gives them, the
@@ -118,7 +121,7 @@ const TRAILS = 3;
  * @param {TerrainOptions} [options]
  * @returns {Terrain}
  */
-export function terrain(trees, {shape = 'massif', size = 600, aspect = 1} = {}) {
+export function terrain(trees, {shape = 'massif', size = 600, aspect = 1, tuning = {}} = {}) {
   /** @type {TerrainNode[]} */
   const nodes = [];
   /** @type {number[]} the index of each peak */
@@ -172,6 +175,7 @@ export function terrain(trees, {shape = 'massif', size = 600, aspect = 1} = {}) 
     top,
     saddles: [],
     trails: [],
+    tuning: {...TUNING, ...tuning},
   };
   const cx = circles.reduce((s, c) => s + c.x, 0) / (circles.length || 1);
   const cy = circles.reduce((s, c) => s + c.y, 0) / (circles.length || 1);
@@ -210,13 +214,13 @@ function trails(t, trees) {
   const pairs = [];
   for (let a = 0; a < n; a++)
     for (let b = a + 1; b < n; b++)
-      if (share[a * n + b] >= TRAIL && !joined.has(a * n + b))
+      if (share[a * n + b] >= t.tuning.trail && !joined.has(a * n + b))
         pairs.push(a * n + b);
   pairs.sort((p, q) => share[q] - share[p]);
   const from = new Int32Array(n);
   for (const p of pairs) {
     const a = Math.floor(p / n), b = p % n;
-    if (from[a] >= TRAILS || from[b] >= TRAILS)
+    if (from[a] >= t.tuning.trails || from[b] >= t.tuning.trails)
       continue;
     from[a]++;
     from[b]++;
@@ -259,6 +263,7 @@ function massif(t, m, byDepth) {
  * @param {number[][]} byDepth
  */
 function ridges(t, m, byDepth) {
+  foot(t, m, byDepth);
   dome(t, m);
   for (let depth = 1; depth < byDepth.length; depth++)
     for (const n of byDepth[depth])
@@ -274,6 +279,7 @@ function ridges(t, m, byDepth) {
  * @param {number[][][]} rings per mountain, per depth, its nodes by angle
  */
 function ranges(t, rings) {
+  rings.forEach((byDepth, k) => foot(t, t.mountains[k], byDepth));
   /** @type {Stance[]} where each node would stand on its own mountain */
   const own = new Array(t.nodes.length);
   rings.forEach((byDepth, k) => byDepth.flat().forEach(n => own[n] = stance(t, t.mountains[k], byDepth.length, n)));
@@ -295,7 +301,7 @@ function ranges(t, rings) {
   /** @param {number} a @param {number} b mountains @returns {boolean} whether they stand side by side */
   const near = (a, b) => {
     const ma = t.mountains[a], mb = t.mountains[b];
-    return Math.hypot(ma.x - mb.x, ma.y - mb.y) <= NEAR * (ma.r + mb.r);
+    return Math.hypot(ma.x - mb.x, ma.y - mb.y) <= t.tuning.near * (ma.r + mb.r);
   };
   /** how far each node moves, x and y */
   const move = new Float64Array(2 * t.nodes.length);
@@ -369,7 +375,30 @@ function stance(t, m, depths, n) {
   const a = (node.a0 + node.a1) / 2 + m.turn, d = node.depth * m.r / depths;
   const share = peak.total > 0 ? node.total / peak.total : 0;
   return {x: m.x + d * Math.cos(a), y: m.y + d * Math.sin(a), h: node.total * (1 - node.depth / depths),
-          w: RIDGE * m.r * Math.sqrt(share)};
+          w: t.tuning.ridge * m.r * Math.sqrt(share)};
+}
+
+/**
+ * The foot of a mountain: a low dome as wide as it, its cells the massif's,
+ * so that its bulk shows its weight under the ridges.
+ *
+ * @param {Terrain} t
+ * @param {Placed} m
+ * @param {number[][]} byDepth
+ */
+function foot(t, m, byDepth) {
+  const high = t.tuning.foot * t.nodes[m.node].total;
+  if (high <= 0)
+    return;
+  const band = m.r / byDepth.length;
+  eachCell(t, m.x, m.y, m.r, m.r, (i, dx, dy) => {
+    const r = Math.hypot(dx, dy), d = r / m.r;
+    if (d >= 1)
+      return;
+    const depth = Math.min(byDepth.length - 1, Math.floor(r / band));
+    const n = sectorAt(t.nodes, byDepth[depth], angle(dx, dy, -m.turn));
+    raise(t, i, high * (1 - d * d), n >= 0 ? n : m.node);
+  });
 }
 
 /**
@@ -379,7 +408,7 @@ function stance(t, m, depths, n) {
  * @param {Placed} m
  */
 function dome(t, m) {
-  const peak = t.nodes[m.node], widest = RIDGE * m.r;
+  const peak = t.nodes[m.node], widest = t.tuning.ridge * m.r;
   eachCell(t, m.x, m.y, widest, widest, (i, dx, dy) => {
     const d = Math.hypot(dx, dy) / widest;
     if (d < 1)

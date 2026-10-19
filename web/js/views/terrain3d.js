@@ -17,7 +17,7 @@ import {terrainFrame, short} from '../components/terrain-frame.js';
 import {contour, levels} from '../model/contours.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST, MOST} from './blocks3d.js';
-import {sea, sky, shores, ramp, bump, landColour, bedColour, LEVEL, DEEP, BUMP, HAZE, SUN} from './sea3d.js';
+import {sea, sky, shores, ramp, bump, landColour, bedColour, LEVEL, DEEP, HAZE, SUN, SEA_TUNING} from './sea3d.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -45,6 +45,17 @@ const ZOOM = 0.0014;
  * @property {boolean} [islands] whether the plain is a sea, the mountains islands
  */
 
+/**
+ * What can be tuned of the 3D view, the islands' with it.
+ *
+ * @typedef {{curve: number} & import('./sea3d.js').SeaTuning} ViewTuning
+ * curve: heights as the time to that power: 0.5, its square root, lets small peaks show; 1 makes them
+ * as high as their time
+ */
+
+/** @type {ViewTuning} */
+export const VIEW_TUNING = {curve: 0.5, ...SEA_TUNING};
+
 /** Frees the view shown last: a page has few WebGL contexts. */
 let release = () => {};
 
@@ -61,9 +72,11 @@ export function closeTerrainView() {
  * @param {Viewpoint} viewpoint where the camera was, kept up to date as it moves, so that it stays
  *        there when the view is built again; empty at first, for a view of the whole terrain
  * @param {Float64Array | null} [hues] per node, the hue of its package (hues.js); none to colour by height only
+ * @param {Partial<ViewTuning>} [tuning] the defaults (VIEW_TUNING) changed
  * @returns {HTMLElement}
  */
-export function terrainView(t, trees, selection, viewpoint, hues = null) {
+export function terrainView(t, trees, selection, viewpoint, hues = null, tuning = {}) {
+  const tuned = {...VIEW_TUNING, ...tuning};
   closeTerrainView();
   let gone = false;
   release = () => gone = true;
@@ -90,7 +103,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     const W = t.width, H = t.height, side = Math.max(W, H);
     let relief = viewpoint.relief ?? RELIEF;
     /** @param {number} height ms @returns {number} its y */
-    const lift = height => t.top > 0 && height > 0 ? Math.sqrt(height / t.top) * relief * side : 0;
+    const lift = height => t.top > 0 && height > 0 ? (height / t.top) ** tuned.curve * relief * side : 0;
 
     // a point per cell, row 0 the farthest
     const geometry = new T.PlaneGeometry(W - 1, H - 1, W - 1, H - 1);
@@ -125,7 +138,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
         return -(shore?.depth[i] ?? 0) * DEEP * side;
       // bumped, less on the beaches
       const r = ramp(shore?.inland[i] ?? 0);
-      return lift(smooth[i]) * r + bump(i % W, Math.floor(i / W)) * BUMP * side * r;
+      return lift(smooth[i]) * r + bump(i % W, Math.floor(i / W)) * tuned.bump * side * r;
     };
 
     /** sets the heights of the surface and of the lines to the relief */
@@ -161,12 +174,12 @@ export function terrainView(t, trees, selection, viewpoint, hues = null) {
     const paint = () => {
       for (let i = 0; i < W * H; i++) {
         const x = i % W, y = Math.floor(i / W);
-        // how steep, from the heights around, raised: rock past a slope of three in one
+        // how steep, from the heights around, raised: rock past a slope as tuned
         const slope = () => Math.hypot(position.getY(Math.min(i + 1, W * H - 1)) - position.getY(Math.max(i - 1, 0)),
                                        position.getY(Math.min(i + W, W * H - 1)) - position.getY(Math.max(i - W, 0))) / 2;
         const height = !islands || !shore ? tint(colors, smooth[i], t.top)
-          : smooth[i] > 0 ? landColour(Math.sqrt(smooth[i] / t.top) * ramp(shore.inland[i]), shore.inland[i],
-                                       Math.max(0, Math.min(1, (slope() - 3) / 3)), x, y)
+          : smooth[i] > 0 ? landColour((smooth[i] / t.top) ** tuned.curve * ramp(shore.inland[i]), shore.inland[i],
+                                       Math.max(0, Math.min(1, (slope() - tuned.rock) / tuned.rock)), x, y)
           : bedColour(shore.depth[i]);
         const c = hues && t.cells[i] >= 0 ? hued(height, hues[t.cells[i]]) : height;
         base[3 * i] = linear[c[0]], base[3 * i + 1] = linear[c[1]], base[3 * i + 2] = linear[c[2]];

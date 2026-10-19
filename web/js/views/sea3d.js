@@ -31,8 +31,16 @@ const LAND = /** @type {[number, number[]][]} */ ([
   [0.86, [244, 245, 248]],
 ]);
 
-/** The bumps of the land, as a share of the longer side. */
-export const BUMP = 0.008;
+/**
+ * What can be tuned of the islands.
+ *
+ * @typedef {object} SeaTuning
+ * @property {number} bump how high the bumps of the land, as a share of the longer side
+ * @property {number} rock the slope rock starts at, rising so many cells per cell; all rock at twice
+ */
+
+/** @type {SeaTuning} */
+export const SEA_TUNING = {bump: 0.008, rock: 3};
 
 /** The colour of rock, where the land is steep, sRGB. */
 const ROCK = [112, 104, 94];

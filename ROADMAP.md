@@ -136,6 +136,12 @@ checked: exact figures, one path followed precisely.
 - [x] For fun, the 3D land in blocks: grass, dirt, stone, snow, or wool of the packages' hues;
   the trails as paths of gravel, trees on the plain
 
+- [x] Weight shown in every shape: ridges and ranges stand on a low foot as wide as the mountain;
+  the 3D heights' curve set from the square root (small peaks show) to linear (the costliest the
+  highest)
+- [x] Advanced settings, remembered: the foot, the ridges' width, the saddles' reach, the trails'
+  threshold and number, the 3D height curve, the islands' bumps and rock
+
 ## Later
 
 - JFR files read in the page, no server to convert them: a reader of the chunks, their metadata
