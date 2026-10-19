@@ -74,7 +74,7 @@ const BED = /** @type {[number, number[]][]} */ ([
  */
 
 /**
- * @param {ArrayLike<number>} heights row after row, 0 on the plain
+ * @param {ArrayLike<number>} heights row after row: over 0 on land, the rest under the sea
  * @param {number} width
  * @param {number} height
  * @returns {Shores}

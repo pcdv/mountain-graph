@@ -113,7 +113,7 @@ import {layout, relations} from './layout.js';
  */
 
 /** @type {Tuning} */
-export const TUNING = {foot: 0.1, ridge: 0.18, near: 1.5, trail: 0.25, trails: 3};
+export const TUNING = {foot: 0, ridge: 0.18, near: 1.5, trail: 0.25, trails: 3};
 
 /**
  * @param {Frame[]} trees the mountains, each a peak and its callers as mountains() gives them, the

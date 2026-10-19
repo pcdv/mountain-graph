@@ -54,7 +54,7 @@ const ZOOM = 0.0014;
  */
 
 /** @type {ViewTuning} */
-export const VIEW_TUNING = {curve: 0.5, ...SEA_TUNING};
+export const VIEW_TUNING = {curve: 0.65, ...SEA_TUNING};
 
 /** Frees the view shown last: a page has few WebGL contexts. */
 let release = () => {};
@@ -134,7 +134,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     const ground = i => {
       if (!islands)
         return lift(smooth[i]);
-      if (smooth[i] <= 0)
+      if (!(shore?.inland[i]))
         return -(shore?.depth[i] ?? 0) * DEEP * side;
       // bumped, less on the beaches
       const r = ramp(shore?.inland[i] ?? 0);
@@ -143,8 +143,10 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
 
     /** sets the heights of the surface and of the lines to the relief */
     const raise = () => {
-      if (islands && !shore)
-        shore = shores(smooth, W, H);
+      // the land is what rises over the sea: lower, it is the bed, not a shelf under the water;
+      // found again as the relief changes
+      if (islands)
+        shore = shores(Float64Array.from(smooth, h => lift(h) - LEVEL * side), W, H);
       for (let i = 0; i < W * H; i++)
         position.setY(i, ground(i));
       position.needsUpdate = true;
@@ -178,7 +180,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
         const slope = () => Math.hypot(position.getY(Math.min(i + 1, W * H - 1)) - position.getY(Math.max(i - 1, 0)),
                                        position.getY(Math.min(i + W, W * H - 1)) - position.getY(Math.max(i - W, 0))) / 2;
         const height = !islands || !shore ? tint(colors, smooth[i], t.top)
-          : smooth[i] > 0 ? landColour((smooth[i] / t.top) ** tuned.curve * ramp(shore.inland[i]), shore.inland[i],
+          : shore.inland[i] > 0 ? landColour((smooth[i] / t.top) ** tuned.curve * ramp(shore.inland[i]), shore.inland[i],
                                        Math.max(0, Math.min(1, (slope() - tuned.rock) / tuned.rock)), x, y)
           : bedColour(shore.depth[i]);
         const c = hues && t.cells[i] >= 0 ? hued(height, hues[t.cells[i]]) : height;
