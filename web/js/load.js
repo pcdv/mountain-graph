@@ -8,7 +8,7 @@ import {decode, VERSION} from './profile/profile.js';
 /** @typedef {import('./profile/profile.js').Profile} Profile */
 
 /**
- * A profile in the format of jfr-web (version 3), as /api/sessions/:id/profile
+ * A profile in the format of jfr-web (version 4), as /api/sessions/:id/profile
  * sends it or a static export holds it, gzipped or not.
  *
  * @param {File} file

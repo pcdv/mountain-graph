@@ -6,6 +6,8 @@
  */
 import {$, h, replace} from './lib/dom.js';
 import {loadProfile} from './load.js';
+import {weightOf} from './profile/profile.js';
+import {amount} from './lib/format.js';
 import {readSetting, writeSetting} from './lib/settings.js';
 import {keepFile, lastFile} from './last-file.js';
 import {peaks, mountains} from './model/peaks.js';
@@ -96,7 +98,7 @@ async function open(file) {
     /** @type {Set<string>} */
     const open = new Set(kept0.open);
     /** @type {import('./components/terrain-frame.js').Selection} */
-    const selection = {chosen: kept0.chosen, tab: kept0.tab};
+    const selection = {chosen: kept0.chosen, tab: kept0.tab, unit: p.unit};
     /** @type {import('./views/terrain3d.js').Viewpoint} the 3D view's camera, kept as settings change */
     const viewpoint = kept0.viewpoint;
     remember = () => writeSetting(VIEW, JSON.stringify({open: [...open], chosen: selection.chosen,
@@ -134,7 +136,7 @@ async function open(file) {
       closeTerrainView();
       replace(map, view === '3d' ? terrainView(t, trees, selection, viewpoint, hues, tuned) : mapView(t, trees, selection, hues),
               coloured ? hueLegend(coloured.legend) : null);
-      replace(table, peaksView(r, m, open, kept.left));
+      replace(table, peaksView(r, m, open, kept.left, p.unit));
     };
     /** @type {import('./components/peak-controls.js').PeakSettings | null} */
     let last = null;
@@ -156,11 +158,11 @@ function summary(name, p) {
   let ms = 0;
   for (let i = 0; i < p.kind.length; i++)
     if (p.stack[i] >= 0)
-      ms += p.weights[p.kind[i]];
+      ms += weightOf(p, i);
   return h('div', {class: 'summary'},
     h('b', null, name),
     h('span', {class: 'muted'},
-      `${p.kind.length.toLocaleString()} samples (${Math.round(ms).toLocaleString()} ms with a stack), `
+      `${p.kind.length.toLocaleString()} samples (${amount(ms, p.unit)} with a stack), `
       + `${p.parent.length.toLocaleString()} stack nodes, ${p.threads.length} threads, `
       + `${p.operations.count.toLocaleString()} operations, recorded from ${p.start} `
       + `for ${(p.end / 1e9).toFixed(1)} s.`));

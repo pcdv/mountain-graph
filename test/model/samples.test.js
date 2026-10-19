@@ -8,7 +8,8 @@ const strings = ['app.Server.loop', 'app.Work.run', 'main', 'sun.nio.ch.WEPoll.w
 
 // nodes: 0 Server.loop, 1 > WEPoll.wait, 2 Work.run
 const p = decode({
-  version: 3,
+  version: 4,
+  unit: 'ms',
   weights: [10, 20],
   start: '2026-10-18T08:00:00Z',
   end: 1_000_000,

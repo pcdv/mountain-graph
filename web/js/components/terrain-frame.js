@@ -10,6 +10,7 @@
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {callersTree} from './callers.js';
+import {amount} from '../lib/format.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -31,6 +32,7 @@ export function panelWidth() {
  * @property {string} chosen the name of the peak whose panel shows, '' for none
  * @property {'callers' | 'callees'} [tab] what the panel shows
  * @property {(name: string) => Called} [callees] what a peak called
+ * @property {'ms' | 'bytes'} [unit] what the weights count, as the profile tells; ms when not told
  */
 
 /**
@@ -55,6 +57,7 @@ export function panelWidth() {
  * @returns {TerrainFrame}
  */
 export function terrainFrame(t, trees, selection, hint, redraw) {
+  const unit = selection.unit ?? 'ms';
   const info = h('div', {class: 'map-info muted'}, hint);
   const holder = h('div', {class: 'map-holder'});
   const panel = h('aside', {class: 'map-panel'});
@@ -116,9 +119,9 @@ export function terrainFrame(t, trees, selection, hint, redraw) {
           redraw();
         }}, '×')),
       ...called ? [h('div', {class: 'panel-tabs'}, button('callers'), button('callees'))] : [],
-      ...tab === 'callees' && called ? calleesOf(called(tree.name)) : [
-        h('div', {class: 'muted'}, `${Math.round(tree.total).toLocaleString()} ms at the top; its callers, the heaviest first:`),
-        callersTree(tree),
+      ...tab === 'callees' && called ? calleesOf(called(tree.name), unit) : [
+        h('div', {class: 'muted'}, `${amount(tree.total, unit)} at the top; its callers, the heaviest first:`),
+        callersTree(tree, 'callers', unit),
       ]);
   };
   choose(chosen);
@@ -133,7 +136,7 @@ export function terrainFrame(t, trees, selection, hint, redraw) {
       if (n === lit)
         return;
       lit = n;
-      info.replaceChildren(...(n < 0 ? [hint] : describe(t, children, n)));
+      info.replaceChildren(...(n < 0 ? [hint] : describe(t, children, n, unit)));
       redraw();
     },
     click: n => {
@@ -149,25 +152,26 @@ export function terrainFrame(t, trees, selection, hint, redraw) {
 
 /**
  * @param {Called} called what a peak called, and what ran at the top
+ * @param {'ms' | 'bytes'} unit
  * @returns {HTMLElement[]}
  */
-function calleesOf({tree, tops, groups}) {
+function calleesOf({tree, tops, groups}, unit) {
   const total = tree.total;
   const shown = tops.slice(0, 8);
   /** @param {number} ms */
   const share = ms => `${(100 * ms / total).toFixed(0)}%`;
   return [
-    h('div', {class: 'muted'}, `${Math.round(total).toLocaleString()} ms it was in, no frame hidden. At the top:`),
-    h('div', {class: 'groups'}, groups.slice(0, 6).map(g => h('span', {class: 'kind', title: `${Math.round(g.ms)} ms`},
+    h('div', {class: 'muted'}, `${amount(total, unit)} it was in, no frame hidden. At the top:`),
+    h('div', {class: 'groups'}, groups.slice(0, 6).map(g => h('span', {class: 'kind', title: amount(g.ms, unit)},
                                                             `${g.name} ${share(g.ms)}`))),
     h('div', {class: 'muted'}, 'The methods:'),
     h('ul', {class: 'tops'}, shown.map(top => h('li', null,
       h('span', {class: 'frame'}, top.name),
-      h('span', {class: 'muted'}, ` ${Math.round(top.ms).toLocaleString()} ms, ${(100 * top.ms / total).toFixed(1)}%`),
+      h('span', {class: 'muted'}, ` ${amount(top.ms, unit)}, ${(100 * top.ms / total).toFixed(1)}%`),
       top.kind ? h('span', {class: 'kind'}, top.kind) : null))),
     ...tops.length > shown.length ? [h('div', {class: 'muted'}, `and ${tops.length - shown.length} more`)] : [],
     h('div', {class: 'muted'}, 'What it called, the heaviest first:'),
-    callersTree(tree, 'callees'),
+    callersTree(tree, 'callees', unit),
   ];
 }
 
@@ -175,9 +179,10 @@ function calleesOf({tree, tops, groups}) {
  * @param {Terrain} t
  * @param {number[][]} children of each node
  * @param {number} n the node hovered
+ * @param {'ms' | 'bytes'} unit
  * @returns {Node[]}
  */
-function describe(t, children, n) {
+function describe(t, children, n, unit) {
   /** @type {number[]} */
   const up = [];
   for (let i = n; i >= 0; i = t.nodes[i].parent)
@@ -194,19 +199,19 @@ function describe(t, children, n) {
   const row = (i, cls) => {
     const node = t.nodes[i];
     return h('li', {class: cls}, node.name,
-      h('span', {class: 'muted'}, ` ${Math.round(node.total).toLocaleString()} ms, `
+      h('span', {class: 'muted'}, ` ${amount(node.total, unit)}, `
                                   + `${(100 * node.total / peak.total).toFixed(1)}%`));
   };
   const node = t.nodes[n];
   // a saddle: the time through it toward each peak it joins
   const saddle = t.saddles.find(s => s.nodes.includes(n));
   return [
-    h('div', null, h('b', null, node.name), ` ${Math.round(node.total).toLocaleString()} ms, `
+    h('div', null, h('b', null, node.name), ` ${amount(node.total, unit)}, `
       + `${(100 * node.total / peak.total).toFixed(1)}% of ${short(peak.name)}, `
       + `${node.depth} ${node.depth === 1 ? 'call' : 'calls'} down`),
     ...saddle ? [h('div', null, 'A saddle: ', saddle.nodes.map(i => {
       const m = t.mountains[t.nodes[i].mountain];
-      return `${Math.round(t.nodes[i].total).toLocaleString()} ms toward ${short(m.name)}`;
+      return `${amount(t.nodes[i].total, unit)} toward ${short(m.name)}`;
     }).join(', '))] : [],
     h('ol', {class: 'path'},
       up.map(i => row(i, i === n ? 'here' : '')),

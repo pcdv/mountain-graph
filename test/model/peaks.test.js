@@ -10,7 +10,8 @@ const f = string => string << 3 | COMPILED;
 // nodes, depth first: 0 Main.run, 1 > A.a, 2 > A.a > HashMap.get, 3 > B.b,
 // 4 > B.b > A.a, 5 > C.c
 const p = decode({
-  version: 3,
+  version: 4,
+  unit: 'ms',
   weights: [10, 1],
   start: '2026-10-18T08:00:00Z',
   end: 1_000_000,
@@ -117,7 +118,8 @@ test('what a method belongs to: its class, inner classes with their outer, its p
 
 // a.X.f calls a.X.g, a.X.f calls b.Y.h; one sample on each
 const nested = decode({
-  version: 3,
+  version: 4,
+  unit: 'ms',
   weights: [10, 1],
   start: '2026-10-18T08:00:00Z',
   end: 1_000_000,

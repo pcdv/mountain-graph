@@ -7,6 +7,7 @@
  */
 import {h} from '../lib/dom.js';
 import {callersTree} from '../components/callers.js';
+import {amount} from '../lib/format.js';
 
 /** @typedef {import('../model/peaks.js').Peaks} Peaks */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -17,9 +18,12 @@ import {callersTree} from '../components/callers.js';
  * @param {Set<string>} open the names of the peaks whose mountain shows, kept up to date as they
  *        are clicked: the same set given again keeps them open when the table is drawn again
  * @param {number} [left] ms of the samples left out before, as waits
+ * @param {'ms' | 'bytes'} [unit] what the weights count, as the profile tells
  * @returns {HTMLElement}
  */
-export function peaksView(r, mountains, open, left = 0) {
+export function peaksView(r, mountains, open, left = 0, unit = 'ms') {
+  /** @param {number} n */
+  const ms = n => amount(n, unit);
   let covered = 0;
   return h('section', {class: 'peaks'},
     h('h3', null, `${r.peaks.length} peaks cover ${percent(r.coverage)} of ${ms(r.total)}`),
@@ -44,7 +48,7 @@ export function peaksView(r, mountains, open, left = 0) {
           const show = () => {
             below.hidden = !open.has(peak.name);
             if (!below.hidden && mountain && !cell.firstChild)
-              cell.append(callersTree(mountain));
+              cell.append(callersTree(mountain, 'callers', unit));
           };
           show();
           const row = h('tr', {class: 'peak', title: 'Its callers', onclick: () => {
@@ -63,10 +67,6 @@ export function peaksView(r, mountains, open, left = 0) {
         }))));
 }
 
-/** @param {number} n */
-function ms(n) {
-  return `${Math.round(n).toLocaleString()} ms`;
-}
 
 /** @param {number} share 0 to 1 */
 function percent(share) {

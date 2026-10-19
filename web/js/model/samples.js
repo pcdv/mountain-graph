@@ -9,6 +9,8 @@
  * No DOM: tested with Node.
  */
 
+import {weightOf} from '../profile/profile.js';
+
 /** @typedef {import('../profile/profile.js').Profile} Profile */
 
 /**
@@ -45,7 +47,7 @@ export function leaveOut(p, pattern) {
   for (let i = 0; i < p.stack.length; i++) {
     const top = p.stack[i];
     if (top >= 0 && matches[p.frame[top] >>> 3])
-      left += p.weights[p.kind[i]];
+      left += weightOf(p, i);
     else
       kept.push(i);
   }
