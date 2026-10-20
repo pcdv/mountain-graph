@@ -42,6 +42,27 @@ export function histogram(p, filter, count) {
  */
 
 /**
+ * @param {any} i what was kept of an interval: not to be trusted
+ * @param {number} ms the duration of the recording it is applied to
+ * @returns {Interval | null} it if it is a part of the recording, none otherwise
+ */
+export function checked(i, ms) {
+  if (!i || typeof i !== 'object')
+    return null;
+  const {from, to} = i;
+  const ok = (/** @type {any} */ v) => v === undefined || (typeof v === 'number' && v >= 0 && v <= ms / 1000);
+  if (!ok(from) || !ok(to) || (from === undefined && to === undefined) || (from ?? 0) >= (to ?? ms / 1000))
+    return null;
+  /** @type {Interval} */
+  const kept = {};
+  if (from !== undefined)
+    kept.from = from;
+  if (to !== undefined)
+    kept.to = to;
+  return kept;
+}
+
+/**
  * @param {number} a where a selection began, as a share of the timeline's width: 0 to 1
  * @param {number} b where it ended, before or after a
  * @param {number} ms the duration of the recording

@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {decode, COMPILED} from '../../web/js/profile/profile.js';
-import {span, histogram, interval} from '../../web/js/model/timeline.js';
+import {span, histogram, interval, checked} from '../../web/js/model/timeline.js';
 
 // a recording of 4 s with a sample at 0, 1, 1.5 and 3.9 s, 10 ms each
 const p = decode({
@@ -47,4 +47,14 @@ test('an empty selection, or all the recording, is no interval', () => {
   assert.equal(interval(0.5, 0.5, 4000), null);
   assert.equal(interval(-1, 2, 4000), null, 'dragged past both ends');
   assert.deepEqual(interval(-1, 0.5, 4000), {to: 2}, 'dragged past the start');
+});
+
+test('an interval kept is trusted only if it is a part of the recording', () => {
+  assert.deepEqual(checked({from: 1, to: 3}, 4000), {from: 1, to: 3});
+  assert.deepEqual(checked({to: 2}, 4000), {to: 2});
+  assert.deepEqual(checked({from: 2, junk: 1}, 4000), {from: 2}, 'nothing else kept');
+  for (const bad of [null, undefined, 3, 'x', {}, {from: 3, to: 1}, {from: 2, to: 2}, {from: -1}, {to: 5}, {from: '1'},
+                     {from: 4}])
+    assert.equal(checked(bad, 4000), null, JSON.stringify(bad));
+  assert.equal(checked({from: 1}, 0), null, 'a recording with no time');
 });

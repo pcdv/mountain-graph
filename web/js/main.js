@@ -9,7 +9,7 @@ import {loadProfiles} from './load.js';
 import {weightOf} from './profile/profile.js';
 import {amount} from './model/units.js';
 import {readSetting, writeSetting} from './lib/settings.js';
-import {keepFile, lastFile} from './last-file.js';
+import {keepFile, lastFile, keepInterval, lastInterval} from './last-file.js';
 import {peaks, mountains, held as heldPeaks} from './model/peaks.js';
 import {callees} from './model/callees.js';
 import {terrain, anchorOf} from './model/terrain.js';
@@ -23,7 +23,7 @@ import {hueLegend} from './components/hue-legend.js';
 import {peakControls, peakSettings} from './components/peak-controls.js';
 import {advanced, tuning} from './components/advanced.js';
 import {timeline} from './components/timeline.js';
-import {span} from './model/timeline.js';
+import {span, checked} from './model/timeline.js';
 
 /** @typedef {import('./profile/profile.js').Profile} Profile */
 
@@ -93,8 +93,11 @@ const HOLD = 'mountaingraph.timeline.hold';
 /** Which sampling of a file with several is shown, kept. */
 const SAMPLING = 'mountaingraph.sampling';
 
-/** @param {File} file */
-async function open(file) {
+/**
+ * @param {File} file
+ * @param {boolean} [again] the file kept last, opened again: its interval in focus comes back with it
+ */
+async function open(file, again = false) {
   relayout = () => {};
   main.classList.remove('stage');
   replace(bar);
@@ -103,9 +106,11 @@ async function open(file) {
   replace(main, h('p', {class: 'muted'}, `Reading ${file.name}…`));
   try {
     const samplings = await loadProfiles(file);
-    keepFile(file);
+    const focus = again ? await lastInterval() : null;
+    if (!again)
+      keepFile(file);
     const wanted = samplings.findIndex(s => s.key === readSetting(SAMPLING));
-    display(file.name, samplings, Math.max(0, wanted));
+    display(file.name, samplings, Math.max(0, wanted), focus);
   }
   catch (e) {
     replace(main, h('p', {class: 'error'}, /** @type {Error} */ (e).message));
@@ -118,8 +123,9 @@ async function open(file) {
  * @param {string} name of the file
  * @param {import('./load.js').Sampling[]} samplings
  * @param {number} which the one shown
+ * @param {any} [saved] an interval of the recording to focus on, as kept: checked here
  */
-function display(name, samplings, which) {
+function display(name, samplings, which, saved = null) {
   relayout = () => {};
   main.classList.remove('stage');
   replace(strip);
@@ -140,7 +146,7 @@ function display(name, samplings, which) {
     /** @type {{waits: string, kept: Profile, left: number} | null} the samples kept, while waits is the same */
     let kept = null;
     /** @type {import('./model/timeline.js').Interval | null} the part of the recording in focus, none for all */
-    let focus = null;
+    let focus = checked(saved, span(p));
     let hold = readSetting(HOLD) === 'true';
     /** @type {{key: string, peaks: import('./model/peaks.js').Peak[], anchor: import('./model/terrain.js').Anchor} | null}
      *  the peaks of the whole recording and where they stand, while the settings are the same */
@@ -150,12 +156,13 @@ function display(name, samplings, which) {
       if (JSON.stringify(i) === JSON.stringify(focus))
         return;
       focus = i;
+      keepInterval(i);
       relayout();
     }, hold, on => {
       hold = on;
       writeSetting(HOLD, String(on));
       relayout();
-    }) : null;
+    }, focus) : null;
     if (stripped) {
       replace(strip, stripped.element);
       strip.hidden = false;
@@ -164,7 +171,7 @@ function display(name, samplings, which) {
     replace(bar, summary(name, p), samplingChoice(samplings, which, to => {
       writeSetting(SAMPLING, samplings[to].key);
       remember();
-      display(name, samplings, to);
+      display(name, samplings, to, focus);
     }));
     main.classList.add('stage');
     let tuned = tuning();
@@ -285,4 +292,4 @@ function floating(title, key, body) {
 }
 
 // the profile opened last, shown again
-lastFile().then(file => file && open(file));
+lastFile().then(file => file && open(file, true));

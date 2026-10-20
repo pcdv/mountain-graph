@@ -7,7 +7,7 @@
  */
 import {h} from '../lib/dom.js';
 import * as fmt from '../lib/format.js';
-import {histogram, interval} from '../model/timeline.js';
+import {histogram, interval, span} from '../model/timeline.js';
 
 /** @typedef {import('../profile/profile.js').Profile} Profile */
 /** @typedef {import('../profile/profile.js').Filter} Filter */
@@ -31,10 +31,11 @@ const clock = ms => ms >= 10_000 ? fmt.duration(ms) : `${(ms / 1000).toFixed(2)}
  *        recording, while the pointer moves and when it is released
  * @param {boolean} holding whether the peaks of the whole recording are kept in focus
  * @param {(on: boolean) => void} hold given whether they are, when it is changed
+ * @param {Interval | null} [initial] the interval selected at first
  * @returns {{element: HTMLElement, update: (p: Profile, filter: Filter) => void}} the strip, and what
  *          draws it again for the samples kept (filter: no interval, the whole recording shows)
  */
-export function timeline(changed, holding, hold) {
+export function timeline(changed, holding, hold, initial = null) {
   const canvas = h('canvas', {class: 'timeline-plot'});
   const label = h('span', {class: 'timeline-label muted'});
   const clear = h('button', {type: 'button', class: 'button', hidden: true, title: 'Back to the whole recording'},
@@ -191,6 +192,12 @@ export function timeline(changed, holding, hold) {
   return {
     element,
     update(p, filter) {
+      if (initial) {
+        const ms = span(p);
+        if (ms > 0)
+          chosen = [(initial.from ?? 0) * 1000 / ms, initial.to !== undefined ? initial.to * 1000 / ms : 1];
+        initial = null;
+      }
       if (p !== profile || filter.java !== kept.java)
         data = {span: 0, ms: new Float64Array(0)};
       profile = p;
