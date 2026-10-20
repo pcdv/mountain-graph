@@ -14,6 +14,7 @@
  */
 import {h} from '../lib/dom.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
+import {FADE} from '../components/crossfade.js';
 import {contour, levels} from '../model/contours.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST, MOST} from './blocks3d.js';
@@ -56,11 +57,16 @@ const ZOOM = 0.0014;
 /** @type {ViewTuning} */
 export const VIEW_TUNING = {curve: 0.65, ...SEA_TUNING};
 
-/** Frees the view shown last: a page has few WebGL contexts. */
+/** Frees the view shown last, and those still being built before it: a page has few WebGL contexts. */
 let release = () => {};
+
+/** Stops the view being built, if it has not shown yet: another takes its place. */
+let pending = () => {};
 
 /** Frees the 3D view shown, if any: when another view takes its place. */
 export function closeTerrainView() {
+  pending();
+  pending = () => {};
   release();
   release = () => {};
 }
@@ -73,13 +79,28 @@ export function closeTerrainView() {
  *        there when the view is built again; empty at first, for a view of the whole terrain
  * @param {Float64Array | null} [hues] per node, the hue of its package (hues.js); none to colour by height only
  * @param {Partial<ViewTuning>} [tuning] the defaults (VIEW_TUNING) changed
+ * @param {() => void} [shown] called once the view has drawn, or could not: it may then replace
+ *        the one shown before, which is kept until it has faded out (crossfade.js) and not freed
+ *        by this call
  * @returns {HTMLElement}
  */
-export function terrainView(t, trees, selection, viewpoint, hues = null, tuning = {}) {
+export function terrainView(t, trees, selection, viewpoint, hues = null, tuning = {}, shown = () => {}) {
   const tuned = {...VIEW_TUNING, ...tuning};
-  closeTerrainView();
-  let gone = false;
-  release = () => gone = true;
+  // the view before this one stays on show, so freed only once this one has taken over
+  const before = release;
+  let gone = false, disposed = false;
+  // one built before this one showed is of no use any more
+  pending();
+  const abort = () => gone = true;
+  pending = abort;
+  const settle = () => {
+    if (pending === abort)
+      pending = () => {};
+  };
+  release = () => {
+    gone = true;
+    before();
+  };
   let redraw = () => {};
   const frame = terrainFrame(t, trees, selection,
                              'Drag to turn, right-drag to move, scroll to zoom, double-click to see it all again. '
@@ -90,7 +111,11 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
   frame.holder.append(loading);
   frame.holder.classList.add('three');
 
-  build().catch(e => loading.textContent = `three.js could not be loaded: ${e.message}`);
+  build().catch(e => {
+    loading.textContent = `three.js could not be loaded: ${e.message}`;
+    settle();
+    shown();
+  });
   return frame.section;
 
   async function build() {
@@ -438,6 +463,13 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
         else
           home();
         framed = true;
+        // drawn at its size: it can show over the view before it, which is freed once faded out
+        render();
+        settle();
+        if (!gone) {
+          shown();
+          setTimeout(before, FADE + 50);
+        }
       }
       render();
     };
@@ -485,7 +517,10 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     });
 
     release = () => {
-      gone = true;
+      if (disposed)
+        return;
+      disposed = gone = true;
+      before();
       observer.disconnect();
       controls.dispose();
       geometry.dispose();

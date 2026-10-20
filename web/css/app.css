@@ -363,6 +363,17 @@ canvas.map {
   height: 100%;
 }
 
+.terrain.entering {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.terrain.entering.shown {
+  opacity: 1;
+  transition: opacity 250ms ease-in;
+}
+
 .terrain > .map-holder {
   position: absolute;
   inset: 0;

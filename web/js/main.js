@@ -16,6 +16,7 @@ import {terrain} from './model/terrain.js';
 import {peaksView} from './views/peaks.js';
 import {mapView} from './views/map.js';
 import {terrainView, closeTerrainView} from './views/terrain3d.js';
+import {crossfade} from './components/crossfade.js';
 import {leaveOut} from './model/samples.js';
 import {packageHues} from './model/hues.js';
 import {hueLegend} from './components/hue-legend.js';
@@ -181,9 +182,14 @@ function display(name, samplings, which) {
       const t = terrain(trees, {shape, aspect, tuning: tuned});
       const coloured = colour === 'package' ? packageHues(t, grain) : null;
       const hues = coloured?.hues ?? null;
-      closeTerrainView();
-      replace(map, view === '3d' ? terrainView(t, trees, selection, viewpoint, hues, tuned) : mapView(t, trees, selection, hues),
-              coloured ? hueLegend(coloured.legend) : null);
+      const legend = coloured ? hueLegend(coloured.legend) : null;
+      if (view === '3d')
+        // over the view shown, which stays until the new one has drawn: no blank frame
+        crossfade(map, shown => terrainView(t, trees, selection, viewpoint, hues, tuned, shown), ...legend ? [legend] : []);
+      else {
+        closeTerrainView();
+        replace(map, mapView(t, trees, selection, hues), legend);
+      }
       replace(table, peaksView(r, m, open, kept.left, p.unit));
     };
     /** @type {import('./components/peak-controls.js').PeakSettings | null} */
