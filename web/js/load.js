@@ -4,12 +4,13 @@
  * the File given.
  */
 import {decode, VERSION} from './profile/profile.js';
+import {isCollapsed, readCollapsed} from './profile/collapsed.js';
 
 /** @typedef {import('./profile/profile.js').Profile} Profile */
 
 /**
  * A profile in the format of jfr-web (version 4, or 3), as /api/sessions/:id/profile
- * sends it or a static export holds it, gzipped or not.
+ * sends it or a static export holds it, or collapsed stacks (collapsed.js), gzipped or not.
  *
  * @param {File} file
  * @returns {Promise<Profile>}
@@ -17,6 +18,16 @@ import {decode, VERSION} from './profile/profile.js';
  */
 export async function loadProfile(file) {
   const text = await readText(file);
+  if (!text.trimStart().startsWith('{')) {
+    if (!isCollapsed(text))
+      throw new Error(`${file.name} is neither a profile of jfr-web nor collapsed stacks.`);
+    try {
+      return readCollapsed(text);
+    }
+    catch (e) {
+      throw new Error(`${file.name}: ${/** @type {Error} */ (e).message}`);
+    }
+  }
   let doc;
   try {
     doc = JSON.parse(text);

@@ -34,3 +34,11 @@ test('another version is refused in words for the user', async () => {
   await assert.rejects(loadProfile(file(2, 'old.json')), /old\.json is a profile of version 2/);
   await assert.rejects(loadProfile(file(5, 'new.json')), /new\.json is a profile of version 5/);
 });
+
+test('collapsed stacks load, gzipped or not', async () => {
+  const p = await loadProfile(new File(['main;run 3\nmain;work 2\n'], 'a.folded'));
+  assert.equal(p.unit, 'samples');
+  assert.equal(p.stack.length, 2);
+  await assert.rejects(loadProfile(new File(['hello\n'], 'x.txt')), /x\.txt is neither/);
+  await assert.rejects(loadProfile(new File(['a 1\nb\n'], 'y.txt')), /y\.txt: Line 2/);
+});

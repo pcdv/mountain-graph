@@ -10,7 +10,7 @@
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {callersTree} from './callers.js';
-import {amount} from '../lib/format.js';
+import {amount} from '../model/units.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -32,7 +32,7 @@ export function panelWidth() {
  * @property {string} chosen the name of the peak whose panel shows, '' for none
  * @property {'callers' | 'callees'} [tab] what the panel shows
  * @property {(name: string) => Called} [callees] what a peak called
- * @property {'ms' | 'bytes'} [unit] what the weights count, as the profile tells; ms when not told
+ * @property {import('../model/units.js').Unit} [unit] what the weights count, as the profile tells; ms when not told
  */
 
 /**
@@ -152,7 +152,7 @@ export function terrainFrame(t, trees, selection, hint, redraw) {
 
 /**
  * @param {Called} called what a peak called, and what ran at the top
- * @param {'ms' | 'bytes'} unit
+ * @param {import('../model/units.js').Unit} unit
  * @returns {HTMLElement[]}
  */
 function calleesOf({tree, tops, groups}, unit) {
@@ -179,7 +179,7 @@ function calleesOf({tree, tops, groups}, unit) {
  * @param {Terrain} t
  * @param {number[][]} children of each node
  * @param {number} n the node hovered
- * @param {'ms' | 'bytes'} unit
+ * @param {import('../model/units.js').Unit} unit
  * @returns {Node[]}
  */
 function describe(t, children, n, unit) {

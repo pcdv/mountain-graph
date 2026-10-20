@@ -10,21 +10,21 @@
  */
 import {h} from '../lib/dom.js';
 import {mainType, SYNTHETIC} from '../profile/profile.js';
-import {amount} from '../lib/format.js';
+import {amount} from '../model/units.js';
 
 /** @typedef {import('../profile/profile.js').Frame} Frame */
 
 /**
  * How a tree is listed: its total, what the children of a frame are, and what the weights count.
  *
- * @typedef {{total: number, noun: string, unit: 'ms' | 'bytes'}} Tree
+ * @typedef {{total: number, noun: string, unit: import('../model/units.js').Unit}} Tree
  */
 
 
 /**
  * @param {Frame} mountain the tree of the peak, as mountains() or callees() gives it
  * @param {string} [noun] what the children of a frame are: callers, or callees
- * @param {'ms' | 'bytes'} [unit] what the weights count, as the profile tells
+ * @param {import('../model/units.js').Unit} [unit] what the weights count, as the profile tells
  * @returns {HTMLElement}
  */
 export function callersTree(mountain, noun = 'callers', unit = 'ms') {

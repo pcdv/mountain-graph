@@ -67,9 +67,10 @@ Where the idea holds or fails, cheap to check.
     by package 92%, 53 to 65%. The grain of the peaks matters as much as hiding the JDK.
 - [x] Peaks gathered by method, class or package, chosen in the page: a class's or package's
   mountain has its methods that ran as its first ring, their callers further down
-- [ ] Collapsed stacks read too (`a;b;c 12` per line), into the same `Profile`. Open: their
-  counts weigh samples, not ms (`weights` per kind today), and they have no time, thread or
-  operation
+- [x] Collapsed stacks read too (`a;b;c 12` per line), into the same `Profile` (`profile/collapsed.js`).
+  Each line is a sample weighing its count, in a unit `samples` that jfr-web's format has no room
+  for, so `model/units.js` formats it. No time, a single thread, no operation. perf's `_[k]`,
+  `_[j]`, `_[i]` give the frame type. Tried on the 78 collapsed files of FlameGraph's `test/results`
 
 ## M2: 2D topographic map
 

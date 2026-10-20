@@ -7,7 +7,7 @@
 import {$, h, replace} from './lib/dom.js';
 import {loadProfile} from './load.js';
 import {weightOf} from './profile/profile.js';
-import {amount} from './lib/format.js';
+import {amount} from './model/units.js';
 import {readSetting, writeSetting} from './lib/settings.js';
 import {keepFile, lastFile} from './last-file.js';
 import {peaks, mountains} from './model/peaks.js';
@@ -161,11 +161,13 @@ function summary(name, p) {
       ms += weightOf(p, i);
   return h('div', {class: 'summary'},
     h('b', null, name),
-    h('span', {class: 'muted'},
-      `${p.kind.length.toLocaleString()} samples (${amount(ms, p.unit)} with a stack), `
-      + `${p.parent.length.toLocaleString()} stack nodes, ${p.threads.length} threads, `
-      + `${p.operations.count.toLocaleString()} operations, recorded from ${p.start} `
-      + `for ${(p.end / 1e9).toFixed(1)} s.`));
+    h('span', {class: 'muted'}, p.start
+      ? `${p.kind.length.toLocaleString()} samples (${amount(ms, p.unit)} with a stack), `
+        + `${p.parent.length.toLocaleString()} stack nodes, ${p.threads.length} threads, `
+        + `${p.operations.count.toLocaleString()} operations, recorded from ${p.start} `
+        + `for ${(p.end / 1e9).toFixed(1)} s.`
+      : `Collapsed stacks: ${p.kind.length.toLocaleString()} distinct, ${amount(ms, p.unit)}, `
+        + `${p.parent.length.toLocaleString()} stack nodes.`));
 }
 
 /**
