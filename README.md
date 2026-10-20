@@ -19,16 +19,22 @@ npm test        # the tests of the modules without DOM
 
 ## Input
 
-For now, the profile format of [jfr-web](https://github.com/pcdv/jfr-web) (version 3), as
-`GET /api/sessions/:id/profile` sends it, gzipped or not: front-coded strings, the tree of stacks,
-the samples as columns. A static export of jfr-web (`jfr-web export <file.jfr> -o <dir>`) holds
-one per recording under `data/`: `static.json` maps `api/sessions/<id>/profile` to its file.
+A file picked or dropped, gzipped or not, in one of three formats, told by its first bytes:
 
-Collapsed stacks, the text format of [FlameGraph](https://github.com/brendangregg/FlameGraph)'s
-`stackcollapse` scripts, are to be read too (see the [roadmap](ROADMAP.md)): any profiler can
-produce them.
+- **JFR recordings** (`.jfr`, JDK 11 and later), read in the page. They hold two kinds of samples,
+  which weigh different things, so both are read and a *Samples* choice in the top bar switches
+  between the wall clock (Java and native samples, weighing time) and the allocations (weighing
+  bytes). There are no operations in a recording read this way.
+- **The profile format of [jfr-web](https://github.com/pcdv/jfr-web)** (version 4, or 3), as
+  `GET /api/sessions/:id/profile` sends it: front-coded strings, the tree of stacks, the samples as
+  columns. A static export of jfr-web (`jfr-web export <file.jfr> -o <dir>`) holds one per
+  recording under `data/`: `static.json` maps `api/sessions/<id>/profile` to its file.
+- **Collapsed stacks**, the text format of [FlameGraph](https://github.com/brendangregg/FlameGraph)'s
+  `stackcollapse` scripts (`a;b;c 12` per line), which any profiler can produce. Their counts
+  are samples, with no time, thread or operation.
 
-Profiles tried locally go in `samples/`, which git ignores.
+Profiles tried locally go in `samples/`, which git ignores. `test/fixtures/` holds a small real
+recording, with the program it was made from.
 
 ## Code
 

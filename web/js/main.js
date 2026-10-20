@@ -5,7 +5,7 @@
  * floating over it. Each view has its own module under views/.
  */
 import {$, h, replace} from './lib/dom.js';
-import {loadProfile} from './load.js';
+import {loadProfiles} from './load.js';
 import {weightOf} from './profile/profile.js';
 import {amount} from './model/units.js';
 import {readSetting, writeSetting} from './lib/settings.js';
@@ -83,6 +83,9 @@ addEventListener('resize', () => {
   resizing = setTimeout(() => relayout(), 300);
 });
 
+/** Which sampling of a file with several is shown, kept. */
+const SAMPLING = 'mountaingraph.sampling';
+
 /** @param {File} file */
 async function open(file) {
   relayout = () => {};
@@ -90,8 +93,28 @@ async function open(file) {
   replace(bar);
   replace(main, h('p', {class: 'muted'}, `Reading ${file.name}…`));
   try {
-    const p = await loadProfile(file);
+    const samplings = await loadProfiles(file);
     keepFile(file);
+    const wanted = samplings.findIndex(s => s.key === readSetting(SAMPLING));
+    display(file.name, samplings, Math.max(0, wanted));
+  }
+  catch (e) {
+    replace(main, h('p', {class: 'error'}, /** @type {Error} */ (e).message));
+  }
+}
+
+/**
+ * Shows one sampling of a file.
+ *
+ * @param {string} name of the file
+ * @param {import('./load.js').Sampling[]} samplings
+ * @param {number} which the one shown
+ */
+function display(name, samplings, which) {
+  relayout = () => {};
+  main.classList.remove('stage');
+  try {
+    const p = samplings[which].profile;
     const map = h('div', {class: 'stage-view'}), table = h('div', {class: 'table-body'});
     // as left when the page was last closed: the rows unfolded, the peak chosen, the 3D camera
     const kept0 = remembered();
@@ -106,7 +129,11 @@ async function open(file) {
     /** @type {{waits: string, kept: Profile, left: number} | null} the samples kept, while waits is the same */
     let kept = null;
     // the view fills the window under the bar: there first, to take its shape from
-    replace(bar, summary(file.name, p));
+    replace(bar, summary(name, p), samplingChoice(samplings, which, to => {
+      writeSetting(SAMPLING, samplings[to].key);
+      remember();
+      display(name, samplings, to);
+    }));
     main.classList.add('stage');
     let tuned = tuning();
     replace(main, map, h('div', {class: 'floats'}, floating('Peaks', 'table', table),
@@ -148,6 +175,22 @@ async function open(file) {
   catch (e) {
     replace(main, h('p', {class: 'error'}, /** @type {Error} */ (e).message));
   }
+}
+
+/**
+ * @param {import('./load.js').Sampling[]} samplings
+ * @param {number} which the one shown
+ * @param {(to: number) => void} choose
+ * @returns {HTMLElement | null} what tells which samples count, when the file holds several kinds
+ */
+function samplingChoice(samplings, which, choose) {
+  if (samplings.length < 2)
+    return null;
+  const select = h('select', {title: 'What the samples count'},
+                   samplings.map((s, i) => h('option', {value: String(i)}, s.label)));
+  select.value = String(which);
+  select.addEventListener('change', () => choose(Number(select.value)));
+  return h('label', {class: 'sampling'}, 'Samples ', select);
 }
 
 /**

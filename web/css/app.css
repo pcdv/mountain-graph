@@ -58,6 +58,10 @@ header {
   font-size: 12px;
 }
 
+#bar .sampling {
+  font-size: 12px;
+}
+
 /* a profile open: the view fills the window under the header, the rest floats over it */
 body:has(main.stage) {
   display: flex;

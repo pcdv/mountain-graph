@@ -145,11 +145,17 @@ checked: exact figures, one path followed precisely.
 
 ## Later
 
-- JFR files read in the page, no server to convert them: a reader of the chunks, their metadata
-  (types described per chunk, so that JDK versions differ little) and constant pools, keeping the
-  execution and native samples (time, thread, stack) as a `Profile`; in a Web Worker, gzipped or
-  not. No official specification: tested on recordings of each JDK used (11, 17, 21). A module
-  beside `load.js`, which jfr-web could share
+- [x] JFR files read in the page, no server to convert them (`profile/jfr.js`): the chunks, their
+  metadata (types described per chunk) and constant pools, keeping the execution, native and
+  allocation samples as two `Profile`s from a single pass (wall clock in ms, allocations in
+  bytes), a *Samples* choice in the top bar. Weights of the wall clock as jfr-web's: the period
+  asked, or the one observed. Checked against `jfr print` on 3-chunk recordings of JDK 21, and
+  on `test/fixtures/work.jfr.gz`.
+  - [ ] Tried on recordings of JDK 11 and 17, and of async-profiler (its events differ:
+    `jdk.ObjectAllocationInNewTLAB`, `profiler.WallClockSample`)
+  - [ ] In a Web Worker: a recording of hundreds of MB blocks the page while it is read
+  - [ ] Operations, which jfr-web builds from flak's events: none here
+  - [ ] Shared with jfr-web, which reads recordings on the server
 
 - Time slider: `from` and `to` filter the samples already, the terrain redrawn as they move
 - Ranges by package or by pattern
