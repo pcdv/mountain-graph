@@ -21,12 +21,15 @@ import {packageHues} from './model/hues.js';
 import {hueLegend} from './components/hue-legend.js';
 import {peakControls, peakSettings} from './components/peak-controls.js';
 import {advanced, tuning} from './components/advanced.js';
+import {timeline} from './components/timeline.js';
+import {span} from './model/timeline.js';
 
 /** @typedef {import('./profile/profile.js').Profile} Profile */
 
 const main = $('main', HTMLElement);
 const picker = $('picker', HTMLInputElement);
 const bar = $('bar', HTMLElement);
+const strip = $('timeline', HTMLElement);
 
 picker.addEventListener('change', () => {
   if (picker.files && picker.files[0])
@@ -91,6 +94,8 @@ async function open(file) {
   relayout = () => {};
   main.classList.remove('stage');
   replace(bar);
+  replace(strip);
+  strip.hidden = true;
   replace(main, h('p', {class: 'muted'}, `Reading ${file.name}…`));
   try {
     const samplings = await loadProfiles(file);
@@ -113,6 +118,8 @@ async function open(file) {
 function display(name, samplings, which) {
   relayout = () => {};
   main.classList.remove('stage');
+  replace(strip);
+  strip.hidden = true;
   try {
     const p = samplings[which].profile;
     const map = h('div', {class: 'stage-view'}), table = h('div', {class: 'table-body'});
@@ -128,6 +135,19 @@ function display(name, samplings, which) {
                                                         tab: selection.tab, viewpoint}));
     /** @type {{waits: string, kept: Profile, left: number} | null} the samples kept, while waits is the same */
     let kept = null;
+    /** @type {import('./model/timeline.js').Interval | null} the part of the recording in focus, none for all */
+    let focus = null;
+    // only a recording with a time has a timeline
+    const stripped = span(p) > 0 ? timeline(i => {
+      if (JSON.stringify(i) === JSON.stringify(focus))
+        return;
+      focus = i;
+      relayout();
+    }) : null;
+    if (stripped) {
+      replace(strip, stripped.element);
+      strip.hidden = false;
+    }
     // the view fills the window under the bar: there first, to take its shape from
     replace(bar, summary(name, p), samplingChoice(samplings, which, to => {
       writeSetting(SAMPLING, samplings[to].key);
@@ -150,7 +170,8 @@ function display(name, samplings, which) {
         kept = {waits, kept: profile, left};
       }
       const q = kept.kept;
-      const filter = {all: true, hide, java};
+      stripped?.update(q, {all: true, java});
+      const filter = {all: true, hide, java, ...focus};
       const r = peaks(q, filter, {count, coverage, grain});
       const m = mountains(q, filter, r.peaks, grain);
       selection.callees = name => callees(q, filter, name, grain);

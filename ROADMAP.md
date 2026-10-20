@@ -157,7 +157,13 @@ checked: exact figures, one path followed precisely.
   - [ ] Operations, which jfr-web builds from flak's events: none here
   - [ ] Shared with jfr-web, which reads recordings on the server
 
-- Time slider: `from` and `to` filter the samples already, the terrain redrawn as they move
+- [x] A timeline under the top bar (`components/timeline.js`, `model/timeline.js`): the weight of the
+  samples over the recording, on which an interval is dragged, its edges adjusted, to focus the
+  landscape on it (`from` and `to` of `profile.js`' filter); a click or *Clear* gives the whole
+  recording back. The terrain is built again when the pointer is released, not while it moves. None
+  for collapsed stacks, which have no time.
+  - [ ] The interval kept with the file, and moved as a window along the recording
+  - [ ] Peaks that stay put while the interval moves, to compare two intervals
 - Ranges by package or by pattern
 - The format named, and its specification taken out of jfr-web's docs
 - A view in jfr-web, if it proves itself
