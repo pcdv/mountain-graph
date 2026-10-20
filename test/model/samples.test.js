@@ -46,3 +46,9 @@ test('no pattern, or an invalid one: the profile itself', () => {
   assert.equal(leaveOut(p, '(').profile, p);
   assert.equal(leaveOut(p, 'nothing').profile, p);
 });
+
+test('the weight of each sample kept stays with it', () => {
+  const weighted = {...p, weight: Float64Array.from(p.stack, (_, i) => 100 + i)};
+  const {profile} = leaveOut(weighted, WAITS);
+  assert.deepEqual([...profile.weight], [101, 103, 104]);
+});

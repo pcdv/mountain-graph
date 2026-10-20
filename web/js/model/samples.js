@@ -61,6 +61,7 @@ export function leaveOut(p, pattern) {
       thread: Int32Array.from(kept, i => p.thread[i]),
       operation: Int32Array.from(kept, i => p.operation[i]),
       kind: Uint8Array.from(kept, i => p.kind[i]),
+      weight: p.weight && Float64Array.from(kept, i => /** @type {Float64Array} */ (p.weight)[i]),
     },
     left,
   };
