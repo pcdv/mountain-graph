@@ -1,9 +1,9 @@
 // @ts-check
 /**
  * A strip showing the weight of the samples over the recording, on which an interval is dragged to
- * focus the landscape on it. Dragging an edge of the interval adjusts it, a click clears it. The
- * interval is given when the pointer is released, not while it moves: the landscape is built
- * again each time.
+ * focus the landscape on it. Dragging an edge of the interval adjusts it, dragging inside slides it
+ * along the recording, a click outside clears it. The interval is given while the pointer moves,
+ * at most every LIVE ms, and when it is released: the landscape is built again each time.
  */
 import {h} from '../lib/dom.js';
 import * as fmt from '../lib/format.js';
@@ -15,6 +15,8 @@ import {histogram, interval} from '../model/timeline.js';
 
 /** How near an edge of the interval a pointer is to take it, in px. */
 const GRAB = 6;
+/** How long the landscape waits for a drag to go on before it follows it, ms. */
+const LIVE = 150;
 /** The widest a bucket of the plot is, in px. */
 const BUCKET = 3;
 
@@ -95,56 +97,88 @@ export function timeline(changed) {
     return Math.min(1, Math.max(0, (e.clientX - r.left) / Math.max(1, r.width)));
   };
 
-  /** @type {{fixed: number, moved: boolean, edge: boolean} | null} the drag going on, from the edge not moved */
+  /**
+   * @typedef {object} Drag
+   * @property {number} fixed the edge of a new or resized selection that does not move
+   * @property {boolean} moved whether the pointer went further than a click's jitter
+   * @property {boolean} keep whether the selection stays if it did not move: it was touched, not clicked off
+   * @property {{offset: number, width: number} | undefined} [slide] where in the selection it was taken,
+   *           and its width, when it moves whole
+   */
+  /** @type {Drag | null} the drag going on */
   let drag = null;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let live;
+  /** Tells the interval now chosen. */
+  const emit = () => {
+    live = undefined;
+    changed(chosen ? interval(chosen[0], chosen[1], data.span) : null);
+  };
+  /** @param {number} x @returns {'edge' | 'inside' | 'outside'} where a pointer is, as to the selection */
+  const where = x => {
+    if (!chosen)
+      return 'outside';
+    const grab = GRAB / Math.max(1, canvas.clientWidth);
+    const lo = Math.min(...chosen), hi = Math.max(...chosen);
+    return Math.abs(x - lo) <= grab || Math.abs(x - hi) <= grab ? 'edge' : x > lo && x < hi ? 'inside' : 'outside';
+  };
   canvas.addEventListener('pointerdown', e => {
     if (!profile || data.span <= 0)
       return;
-    const x = at(e), grab = GRAB / Math.max(1, canvas.clientWidth);
-    const [lo, hi] = chosen ? [Math.min(...chosen), Math.max(...chosen)] : [NaN, NaN];
-    if (chosen && Math.abs(x - lo) <= grab)
-      drag = {fixed: hi, moved: false, edge: true};
-    else if (chosen && Math.abs(x - hi) <= grab)
-      drag = {fixed: lo, moved: false, edge: true};
+    const x = at(e);
+    const lo = chosen ? Math.min(...chosen) : NaN, hi = chosen ? Math.max(...chosen) : NaN;
+    const part = where(x);
+    if (part === 'edge')
+      drag = {fixed: Math.abs(x - lo) <= Math.abs(x - hi) ? hi : lo, moved: false, keep: true};
+    else if (part === 'inside')
+      drag = {fixed: x, moved: false, keep: true, slide: {offset: x - lo, width: hi - lo}};
     else
-      drag = {fixed: x, moved: false, edge: false};
+      drag = {fixed: x, moved: false, keep: false};
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', e => {
     const x = at(e);
     if (!drag) {
-      const grab = GRAB / Math.max(1, canvas.clientWidth);
-      const near = chosen && chosen.some(c => Math.abs(c - x) <= grab);
-      canvas.style.cursor = near ? 'ew-resize' : 'crosshair';
+      const part = where(x);
+      canvas.style.cursor = part === 'edge' ? 'ew-resize' : part === 'inside' ? 'grab' : 'crosshair';
       return;
     }
     // a few px of jitter in a click is no selection
     if (!drag.moved && Math.abs(x - drag.fixed) * canvas.clientWidth < 3)
       return;
     drag.moved = true;
-    chosen = [drag.fixed, x];
+    if (drag.slide) {
+      const lo = Math.max(0, Math.min(1 - drag.slide.width, x - drag.slide.offset));
+      chosen = [lo, lo + drag.slide.width];
+      canvas.style.cursor = 'grabbing';
+    }
+    else
+      chosen = [drag.fixed, x];
     draw();
+    // the landscape follows, as often as it can be built
+    live ??= setTimeout(emit, LIVE);
   });
   const release = () => {
     if (!drag)
       return;
     const was = drag;
     drag = null;
-    // an edge only touched keeps the selection
-    if (was.edge && !was.moved)
+    clearTimeout(live);
+    live = undefined;
+    // a selection only touched is kept
+    if (was.keep && !was.moved)
       return;
-    const i = was.moved && chosen ? interval(chosen[0], chosen[1], data.span) : null;
-    if (!i)
+    if (!was.moved || !chosen || !interval(chosen[0], chosen[1], data.span))
       chosen = null;
     draw();
-    changed(i);
+    emit();
   };
   canvas.addEventListener('pointerup', release);
   canvas.addEventListener('pointercancel', release);
   clear.addEventListener('click', () => {
     chosen = null;
     draw();
-    changed(null);
+    emit();
   });
   new ResizeObserver(() => draw()).observe(canvas);
 
