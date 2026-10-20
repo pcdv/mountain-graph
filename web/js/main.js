@@ -10,9 +10,9 @@ import {weightOf} from './profile/profile.js';
 import {amount} from './model/units.js';
 import {readSetting, writeSetting} from './lib/settings.js';
 import {keepFile, lastFile} from './last-file.js';
-import {peaks, mountains} from './model/peaks.js';
+import {peaks, mountains, held as heldPeaks} from './model/peaks.js';
 import {callees} from './model/callees.js';
-import {terrain} from './model/terrain.js';
+import {terrain, anchorOf} from './model/terrain.js';
 import {peaksView} from './views/peaks.js';
 import {mapView} from './views/map.js';
 import {terrainView, closeTerrainView} from './views/terrain3d.js';
@@ -87,6 +87,9 @@ addEventListener('resize', () => {
   resizing = setTimeout(() => relayout(), 300);
 });
 
+/** Whether the peaks of the whole recording are kept in focus, kept. */
+const HOLD = 'mountaingraph.timeline.hold';
+
 /** Which sampling of a file with several is shown, kept. */
 const SAMPLING = 'mountaingraph.sampling';
 
@@ -138,11 +141,19 @@ function display(name, samplings, which) {
     let kept = null;
     /** @type {import('./model/timeline.js').Interval | null} the part of the recording in focus, none for all */
     let focus = null;
+    let hold = readSetting(HOLD) === 'true';
+    /** @type {{key: string, peaks: import('./model/peaks.js').Peak[], anchor: import('./model/terrain.js').Anchor} | null}
+     *  the peaks of the whole recording and where they stand, while the settings are the same */
+    let whole = null;
     // only a recording with a time has a timeline
     const stripped = span(p) > 0 ? timeline(i => {
       if (JSON.stringify(i) === JSON.stringify(focus))
         return;
       focus = i;
+      relayout();
+    }, hold, on => {
+      hold = on;
+      writeSetting(HOLD, String(on));
       relayout();
     }) : null;
     if (stripped) {
@@ -173,13 +184,30 @@ function display(name, samplings, which) {
       const q = kept.kept;
       stripped?.update(q, {all: true, java});
       const filter = {all: true, hide, java, ...focus};
-      const r = peaks(q, filter, {count, coverage, grain});
-      const m = mountains(q, filter, r.peaks, grain);
-      selection.callees = name => callees(q, filter, name, grain);
       // the mountains spread in the window's shape
       const aspect = Math.max(1, main.clientWidth / Math.max(1, main.clientHeight));
+      /** @type {import('./model/terrain.js').Anchor | undefined} */
+      let anchor;
+      /** @type {import('./model/peaks.js').Peaks} */
+      let r;
+      if (hold && focus) {
+        // the peaks of the whole recording, where they stand there: those the interval has shrink in place
+        const everything = {all: true, hide, java};
+        const key = JSON.stringify([waits, hide, java, grain, count, coverage, aspect]);
+        if (whole?.key !== key) {
+          const w = peaks(q, everything, {count, coverage, grain});
+          const wm = mountains(q, everything, w.peaks, grain);
+          whole = {key, peaks: w.peaks, anchor: anchorOf(w.peaks.flatMap(peak => wm.get(peak.name) ?? []), aspect)};
+        }
+        r = heldPeaks(q, filter, whole.peaks.map(peak => peak.name), grain);
+        anchor = whole.anchor;
+      }
+      else
+        r = peaks(q, filter, {count, coverage, grain});
+      const m = mountains(q, filter, r.peaks, grain);
+      selection.callees = name => callees(q, filter, name, grain);
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
-      const t = terrain(trees, {shape, aspect, tuning: tuned});
+      const t = terrain(trees, {shape, aspect, tuning: tuned, anchor});
       const coloured = colour === 'package' ? packageHues(t, grain) : null;
       const hues = coloured?.hues ?? null;
       const legend = coloured ? hueLegend(coloured.legend) : null;

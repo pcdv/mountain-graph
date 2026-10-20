@@ -104,16 +104,39 @@ import {layout, relations} from './layout.js';
  */
 
 /**
+ * Where the mountains of a landscape stand and how large they are, to raise another with the same
+ * peaks in the same places and on the same scale: its mountains grow and shrink where they are.
+ *
+ * @typedef {object} Anchor
+ * @property {number} top the time of the highest peak: the scale of heights and radii, ms
+ * @property {Map<string, {x: number, y: number, r: number}>} circles by the name of the peak, as
+ *           layout() places them
+ */
+
+/**
  * @typedef {object} TerrainOptions
  * @property {Shape} [shape] massif by default
  * @property {number} [size] the cells along the longer side of the grid
  * @property {number} [aspect] the width over the height of the space the terrain is shown in: the
  *           mountains are gathered in an ellipse of that shape
  * @property {Partial<Tuning>} [tuning] the defaults (TUNING) changed
+ * @property {Anchor} [anchor] the places and scale of another landscape's peaks (anchorOf): the
+ *           mountains stand where its peaks do, on its grid, nothing is laid out. None is larger than
+ *           in that landscape if its samples are a part of the other's
  */
 
 /** @type {Tuning} */
 export const TUNING = {foot: 0, ridge: 0.18, near: 1.5, trail: 0.25, trails: 3};
+
+/**
+ * @param {Frame[]} trees the mountains of a landscape, as given to terrain()
+ * @param {number} [aspect] as for terrain()
+ * @returns {Anchor} where its mountains stand
+ */
+export function anchorOf(trees, aspect = 1) {
+  const top = trees.reduce((max, t) => Math.max(max, t.total), 0);
+  return {top, circles: new Map(layout(trees, top, aspect).map((c, i) => [trees[i].name, c]))};
+}
 
 /**
  * @param {Frame[]} trees the mountains, each a peak and its callers as mountains() gives them, the
@@ -121,7 +144,7 @@ export const TUNING = {foot: 0, ridge: 0.18, near: 1.5, trail: 0.25, trails: 3};
  * @param {TerrainOptions} [options]
  * @returns {Terrain}
  */
-export function terrain(trees, {shape = 'massif', size = 600, aspect = 1, tuning = {}} = {}) {
+export function terrain(trees, {shape = 'massif', size = 600, aspect = 1, tuning = {}, anchor} = {}) {
   /** @type {TerrainNode[]} */
   const nodes = [];
   /** @type {number[]} the index of each peak */
@@ -147,18 +170,22 @@ export function terrain(trees, {shape = 'massif', size = 600, aspect = 1, tuning
     return byDepth;
   });
 
-  const top = trees.reduce((max, t) => Math.max(max, t.total), 0);
-  const circles = layout(trees, top, aspect);
+  const top = anchor ? anchor.top : trees.reduce((max, t) => Math.max(max, t.total), 0);
+  const circles = anchor
+    ? trees.map(t => ({...(anchor.circles.get(t.name) ?? {x: 0, y: 0}), r: top > 0 ? Math.sqrt(t.total / top) : 1}))
+    : layout(trees, top, aspect);
+  // what the grid and the turn of the mountains are taken from: all the peaks of an anchor, there or not
+  const around = anchor ? [...anchor.circles.values()] : circles;
 
   // the grid around them, with a margin
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const c of circles) {
+  for (const c of around) {
     x0 = Math.min(x0, c.x - c.r);
     y0 = Math.min(y0, c.y - c.r);
     x1 = Math.max(x1, c.x + c.r);
     y1 = Math.max(y1, c.y + c.r);
   }
-  if (circles.length === 0)
+  if (around.length === 0)
     x0 = y0 = -1, x1 = y1 = 1;
   const margin = 0.03 * Math.max(x1 - x0, y1 - y0);
   x0 -= margin, y0 -= margin, x1 += margin, y1 += margin;
@@ -177,8 +204,8 @@ export function terrain(trees, {shape = 'massif', size = 600, aspect = 1, tuning
     trails: [],
     tuning: {...TUNING, ...tuning},
   };
-  const cx = circles.reduce((s, c) => s + c.x, 0) / (circles.length || 1);
-  const cy = circles.reduce((s, c) => s + c.y, 0) / (circles.length || 1);
+  const cx = around.reduce((s, c) => s + c.x, 0) / (around.length || 1);
+  const cy = around.reduce((s, c) => s + c.y, 0) / (around.length || 1);
   circles.forEach((c, m) => {
     // the middle of the turn is at π: out of the middle, or left as it is for a mountain there
     const out = Math.hypot(c.x - cx, c.y - cy) > 1e-6 * c.r ? Math.atan2(c.y - cy, c.x - cx) - Math.PI : 0;

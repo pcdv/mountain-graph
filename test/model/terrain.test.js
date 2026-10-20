@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {terrain} from '../../web/js/model/terrain.js';
+import {terrain, anchorOf} from '../../web/js/model/terrain.js';
 import {layout, similarity} from '../../web/js/model/layout.js';
 import {divides} from '../../web/js/model/divides.js';
 
@@ -159,4 +159,22 @@ test('trails: between mountains related through a caller, from foot to foot; non
   assert.ok(Math.abs(Math.hypot(x1 - ma.x, y1 - ma.y) - ma.r) < 1e-9, 'from the foot of A');
   assert.ok(Math.abs(Math.hypot(x2 - md.x, y2 - md.y) - md.r) < 1e-9, 'to that of D');
   assert.equal(terrain([a, e, d], {shape: 'ranges', size: 201}).trails.length, 0, 'a saddle joins them');
+});
+
+test('an anchor: the same peaks in the same places and scale, shrunk where they ran less', () => {
+  const whole = anchorOf([a, e, d]);
+  const full = terrain([a, e, d], {size: 101});
+  // a part of the samples: A and E ran a quarter and a half as much, D not at all
+  const a2 = fr('A', 10, fr('B', 10, fr('[t]', 10)));
+  const e2 = fr('E', 5, fr('F', 5));
+  const part = terrain([a2, e2], {size: 101, anchor: whole});
+  assert.equal(part.top, 40, 'the scale of the whole');
+  assert.equal([part.width, part.height].join(), [full.width, full.height].join(), 'the same grid');
+  const [pa, pe] = part.mountains, [fa, fe] = full.mountains;
+  assert.ok(Math.hypot(pa.x - fa.x, pa.y - fa.y) < 1e-9, 'A where it was');
+  assert.ok(Math.hypot(pe.x - fe.x, pe.y - fe.y) < 1e-9, 'E where it was');
+  assert.ok(Math.abs(pa.r - fa.r / 2) < 1e-9, 'a quarter of the time: half the radius');
+  assert.ok(Math.abs(pe.r - fe.r / Math.sqrt(2)) < 1e-9, 'half the time');
+  assert.equal(Math.max(...part.heights), 10, 'heights in ms, on the same scale');
+  assert.equal(terrain([], {size: 101, anchor: whole}).width, full.width, 'no peak ran: the same empty grid');
 });

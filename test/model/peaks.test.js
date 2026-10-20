@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {decode, COMPILED, NO_OPERATION} from '../../web/js/profile/profile.js';
-import {peaks, mountains, owner} from '../../web/js/model/peaks.js';
+import {peaks, held, mountains, owner} from '../../web/js/model/peaks.js';
 
 // strings: 0 "A.a", 1 "B.b", 2 "C.c", 3 "Main.run", 4 "java.util.HashMap.get", 5 "main"
 const strings = ['A.a', 'B.b', 'C.c', 'Main.run', 'java.util.HashMap.get', 'main'];
@@ -153,4 +153,15 @@ test("a class's mountain: its methods that ran, their callers under them", () =>
     `a.X;a.X.g;a.X.f;[main tid=1];${NO_OPERATION} 10`,
   ]);
   assert.equal(m.get('b.Y').total, 10);
+});
+
+test('peaks chosen elsewhere: in the order given, with the time they have here, none if they did not run', () => {
+  const r = held(p, all, ['B.b', 'Z.z', 'A.a']);
+  assert.deepEqual(names(r.peaks), ['B.b 10 20', 'Z.z 0 0', 'A.a 30 50']);
+  assert.equal(r.total, 90);
+  assert.equal(r.plain, 50, 'what the others ran, and the sample with no stack');
+  assert.equal(r.coverage, 40 / 90);
+  assert.equal(r.peaks[2].share, 30 / 90);
+  assert.deepEqual(held(p, all, ['A.a', 'B.b']).peaks.map(x => x.name), ['A.a', 'B.b']);
+  assert.equal(held(p, all, ['A.a'], 'class').peaks[0].self, 0, 'by class: A.a is no class');
 });

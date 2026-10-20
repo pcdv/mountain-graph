@@ -166,7 +166,10 @@ checked: exact figures, one path followed precisely.
   - [x] Slid as a window along the recording: dragged from inside, its width kept; the landscape follows
     the drag, at most every 150 ms
   - [ ] The interval kept with the file
-  - [ ] Peaks that stay put while the interval moves, to compare two intervals
+  - [x] Peaks that stay put while the interval moves (*Keep the peaks of the whole recording*, kept in the
+    browser): the peaks, their places and their scale are those of the whole recording, so that each
+    mountain shrinks or grows where it stands, and two intervals compare by eye. A peak that did not
+    run in the interval is left out of the map and shown with 0 in the table
 - Ranges by package or by pattern
 - The format named, and its specification taken out of jfr-web's docs
 - A view in jfr-web, if it proves itself

@@ -28,16 +28,22 @@ const clock = ms => ms >= 10_000 ? fmt.duration(ms) : `${(ms / 1000).toFixed(2)}
 
 /**
  * @param {(i: Interval | null) => void} changed given the interval selected, null for the whole
- *        recording, when the pointer is released
+ *        recording, while the pointer moves and when it is released
+ * @param {boolean} holding whether the peaks of the whole recording are kept in focus
+ * @param {(on: boolean) => void} hold given whether they are, when it is changed
  * @returns {{element: HTMLElement, update: (p: Profile, filter: Filter) => void}} the strip, and what
  *          draws it again for the samples kept (filter: no interval, the whole recording shows)
  */
-export function timeline(changed) {
+export function timeline(changed, holding, hold) {
   const canvas = h('canvas', {class: 'timeline-plot'});
   const label = h('span', {class: 'timeline-label muted'});
   const clear = h('button', {type: 'button', class: 'button', hidden: true, title: 'Back to the whole recording'},
                   'Clear');
-  const element = h('div', {class: 'timeline'}, canvas, h('div', {class: 'timeline-bar'}, label, clear));
+  const held = h('input', {type: 'checkbox', checked: holding, onchange: () => hold(held.checked)});
+  const keep = h('label', {title: 'The peaks of the whole recording, where they stand there, whatever is in focus: '
+                                   + 'each mountain grows or shrinks in place as the interval moves'},
+                 held, ' Keep the peaks of the whole recording');
+  const element = h('div', {class: 'timeline'}, canvas, h('div', {class: 'timeline-bar'}, label, clear, keep));
 
   /** @type {Profile | null} */
   let profile = null;

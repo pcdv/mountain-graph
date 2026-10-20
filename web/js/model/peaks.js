@@ -85,6 +85,50 @@ export function owner(name, grain) {
  * @returns {Peaks}
  */
 export function peaks(p, filter, {count = 10, coverage = 1, grain = 'method'} = {}) {
+  const {all, total, bare} = gather(p, filter, grain);
+  const sorted = [...all.values()].sort((a, b) => b.self - a.self || b.total - a.total
+                                                  || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  /** @type {Peak[]} */
+  const taken = [];
+  let self = 0;
+  for (const peak of sorted) {
+    if (taken.length >= count || peak.self <= 0 || (total > 0 && self / total >= coverage))
+      break;
+    taken.push({...peak, share: total > 0 ? peak.self / total : 0});
+    self += peak.self;
+  }
+  return {peaks: taken, plain: total - self, bare, coverage: total > 0 ? self / total : 0, total};
+}
+
+/**
+ * Peaks chosen elsewhere, over the samples a filter keeps: to follow the same peaks as the samples
+ * kept change (an interval of the recording slid along), each with the time it has among them,
+ * none if it did not run.
+ *
+ * @param {Profile} p
+ * @param {Filter} filter
+ * @param {string[]} names of the peaks, in the order wanted
+ * @param {Grain} [grain] that they were found with
+ * @returns {Peaks}
+ */
+export function held(p, filter, names, grain = 'method') {
+  const {all, total, bare} = gather(p, filter, grain);
+  const list = names.map(name => {
+    const peak = all.get(name) ?? {name, self: 0, total: 0, share: 0};
+    return {...peak, share: total > 0 ? peak.self / total : 0};
+  });
+  const self = list.reduce((sum, peak) => sum + peak.self, 0);
+  return {peaks: list, plain: total - self, bare, coverage: total > 0 ? self / total : 0, total};
+}
+
+/**
+ * @param {Profile} p
+ * @param {Filter} filter
+ * @param {Grain} grain
+ * @returns {{all: Map<string, Peak>, total: number, bare: number}} what each method, class or package
+ *          ran and was in, the time of the samples kept, and of those with no method at the top
+ */
+function gather(p, filter, grain) {
   const {root} = tree(p, {...filter, merged: true, reversed: false});
   const total = root.total;
   /** @type {Map<string, Peak>} */
@@ -113,19 +157,7 @@ export function peaks(p, filter, {count = 10, coverage = 1, grain = 'method'} = 
       on.delete(entered);
   };
   walk(root);
-
-  const sorted = [...all.values()].sort((a, b) => b.self - a.self || b.total - a.total
-                                                  || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  /** @type {Peak[]} */
-  const taken = [];
-  let self = 0;
-  for (const peak of sorted) {
-    if (taken.length >= count || peak.self <= 0 || (total > 0 && self / total >= coverage))
-      break;
-    taken.push({...peak, share: total > 0 ? peak.self / total : 0});
-    self += peak.self;
-  }
-  return {peaks: taken, plain: total - self, bare, coverage: total > 0 ? self / total : 0, total};
+  return {all, total, bare};
 }
 
 /**
