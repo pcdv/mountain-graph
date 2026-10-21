@@ -10,7 +10,7 @@
  */
 
 /** The sea's surface, over the plain, and its deepest bed under it: shares of the longer side. */
-export const LEVEL = 0.004, DEEP = 0.05;
+export const LEVEL = 0.002, DEEP = 0.05;
 
 /** How far from land the bed goes down most of the way, as a share of the longer side. */
 const SHELF = 0.035;
