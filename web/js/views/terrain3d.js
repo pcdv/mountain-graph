@@ -18,7 +18,7 @@ import {FADE} from '../components/crossfade.js';
 import {contour, levels} from '../model/contours.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST} from './blocks3d.js';
-import {sea, sky, shores, ramp, bump, landColour, bedColour, LEVEL, DEEP, HAZE, SUN, SEA_TUNING} from './sea3d.js';
+import {sea, sky, shores, bump, landColour, bedColour, LEVEL, DEEP, HAZE, SUN, SEA_TUNING} from './sea3d.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -164,11 +164,12 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     const ground = i => {
       if (!islands)
         return lift(smooth[i]);
-      // the land keeps its shape under the water, going down to the bed away from the land
-      if (!(shore?.inland[i]))
-        return lift(smooth[i]) - (shore?.depth[i] ?? 0) * DEEP * side;
-      // bumped, less on the beaches
-      return lift(smooth[i]) + bump(i % W, Math.floor(i / W)) * tuned.bump * side * ramp(shore?.inland[i] ?? 0);
+      // the land keeps its shape under the water, bumps included, so that the sea changes only where
+      // it stands; going down to the bed away from the land. Bumped less where the land is low
+      const height = lift(smooth[i]), amplitude = tuned.bump * side;
+      const low = Math.min(1, height / (2 * amplitude));
+      const bumped = height + bump(i % W, Math.floor(i / W)) * amplitude * low * low * (3 - 2 * low);
+      return shore?.inland[i] ? bumped : bumped - (shore?.depth[i] ?? 0) * DEEP * side;
     };
 
     /** sets the heights of the surface and of the lines to the relief */

@@ -18,9 +18,6 @@ const SHELF = 0.035;
 /** Over how far from the land's edges the bed goes down to the deepest, as a share of the longer side. */
 const EDGE = 0.06;
 
-/** Over how many cells from the sea the land rises to its full height: its beaches. */
-const RAMP = 4;
-
 /** The land's colours up the mountains, sRGB: [share of the highest peak's height, rgb]. */
 const LAND = /** @type {[number, number[]][]} */ ([
   [0, [222, 205, 150]],
@@ -92,15 +89,6 @@ export function shores(heights, width, height) {
     return Math.max((1 - Math.exp(-d / (SHELF * side))) * (0.85 + 0.15 * noise(x, y, 9)), 1 - edge);
   });
   return {depth, inland};
-}
-
-/**
- * @param {number} inland cells from the sea
- * @returns {number} the share of its height the land has there, 0 to 1: lower toward the beach
- */
-export function ramp(inland) {
-  const r = Math.min(1, inland / RAMP);
-  return r * r * (3 - 2 * r);
 }
 
 /**
