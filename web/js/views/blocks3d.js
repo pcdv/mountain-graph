@@ -17,7 +17,7 @@ import {tint, hued} from './palette.js';
 /** @typedef {import('./palette.js').Palette} Palette */
 
 /** The columns along the longer side of the terrain: at first, and their range. */
-export const COLUMNS = 200, FEWEST = 60, MOST = 360;
+export const COLUMNS = 200, FEWEST = 60, MOST = 600;
 
 /** The share of the columns of the plain, away from the mountains, where a tree grows. */
 const TREES = 0.012;
@@ -60,7 +60,7 @@ const PATH = [176, 160, 128], WOOD = [102, 81, 51], LEAVES = [58, 118, 40];
  */
 export function blocks(T, t, {lift, hues, colors, linear, sea = null, columns = COLUMNS}) {
   const W = t.width, H = t.height;
-  // cells are whole: as near the columns asked as they allow
+  // cells are whole: as near the columns asked as they allow, so at most one block per cell
   const size = Math.max(1, Math.round(Math.max(W, H) / columns));
   const cols = Math.ceil(W / size), rows = Math.ceil(H / size);
 
@@ -98,7 +98,7 @@ export function blocks(T, t, {lift, hues, colors, linear, sea = null, columns = 
       if (!land[i])
         ground[i] = -1 - Math.round(depth[i] * (deepest - 1));
   }
-  const most = Math.max(1, ...count);
+  const most = count.reduce((m, k) => Math.max(m, k), 1);
 
   // the paths, where the trails cross the plain
   const path = new Uint8Array(cols * rows);
