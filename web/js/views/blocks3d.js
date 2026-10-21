@@ -6,6 +6,9 @@
  * plain, the trails are paths of gravel, and a few trees grow away from the
  * mountains. Only the blocks that can be seen are drawn.
  *
+ * With a sea, the plain is its bed, going down away from the land, with sand
+ * on the beaches; the water itself is the caller's, at the level it gives.
+ *
  * Built by the 3D view (terrain3d.js) with three.js, which it loaded.
  */
 import {tint, hued} from './palette.js';
@@ -21,7 +24,17 @@ const TREES = 0.012;
 
 /** The colours of the blocks, rgb. */
 const GRASS = [96, 160, 56], DIRT = [134, 96, 67], STONE = [128, 128, 128], SNOW = [240, 244, 250];
+const SAND = [222, 205, 150];
 const PATH = [176, 160, 128], WOOD = [102, 81, 51], LEAVES = [58, 118, 40];
+
+/**
+ * @typedef {object} Sea
+ * @property {number} level the y of the water, ms
+ * @property {number} deep the y of the deepest bed, ms, a positive number
+ * @property {(land: Float64Array, columns: number, rows: number) => Float32Array} depths of the bed
+ *           under each column that is not land, 0 to 1, given which are land (1)
+ * @property {(depth: number) => number[]} bed the sRGB colour of the bed at a depth
+ */
 
 /**
  * @typedef {object} Blocks
@@ -40,11 +53,12 @@ const PATH = [176, 160, 128], WOOD = [102, 81, 51], LEAVES = [58, 118, 40];
  *        own colours
  * @param {Palette} options.colors
  * @param {(rgb: number[]) => number[]} options.linear an sRGB colour, 0 to 255, in linear 0 to 1
+ * @param {Sea | null} [options.sea] the plain a sea, the mountains islands in it; no trees nor paths
  * @param {number} [options.columns] along the longer side: the more, the smaller the blocks, and
  *        the trees beside the mountains
  * @returns {Blocks}
  */
-export function blocks(T, t, {lift, hues, colors, linear, columns = COLUMNS}) {
+export function blocks(T, t, {lift, hues, colors, linear, sea = null, columns = COLUMNS}) {
   const W = t.width, H = t.height;
   // cells are whole: as near the columns asked as they allow
   const size = Math.max(1, Math.round(Math.max(W, H) / columns));
@@ -65,6 +79,25 @@ export function blocks(T, t, {lift, hues, colors, linear, columns = COLUMNS}) {
       high[r * cols + c] = best;
       count[r * cols + c] = best < 0 ? 0 : Math.max(1, Math.round(lift(t.heights[best]) / size));
     }
+  // in a sea, the columns the water covers are bed: the land is what rises over it
+  const shore = sea ? Math.ceil(sea.level / size) : 0;
+  const deepest = sea ? Math.max(2, Math.round(sea.deep / size)) : 0;
+  const ground = Int32Array.from(count);
+  /** @type {Float32Array | null} */
+  let depth = null;
+  if (sea) {
+    const land = new Float64Array(cols * rows);
+    for (let i = 0; i < land.length; i++) {
+      if (count[i] * size > sea.level)
+        land[i] = 1;
+      else
+        count[i] = 0;
+    }
+    depth = sea.depths(land, cols, rows);
+    for (let i = 0; i < land.length; i++)
+      if (!land[i])
+        ground[i] = -1 - Math.round(depth[i] * (deepest - 1));
+  }
   const most = Math.max(1, ...count);
 
   // the paths, where the trails cross the plain
@@ -91,31 +124,36 @@ export function blocks(T, t, {lift, hues, colors, linear, columns = COLUMNS}) {
     node.push(n);
   };
   /** @param {number} c @param {number} r @returns {number} blocks high; outside, below the ground */
-  const blocksAt = (c, r) => c < 0 || r < 0 || c >= cols || r >= rows ? -1 : count[r * cols + c];
+  const blocksAt = (c, r) => c < 0 || r < 0 || c >= cols || r >= rows ? -1 - deepest : ground[r * cols + c];
+  /** @param {number} c @param {number} r @returns {number} blocks of land; none outside */
+  const landAt = (c, r) => c < 0 || r < 0 || c >= cols || r >= rows ? 0 : count[r * cols + c];
 
   for (let r = 0; r < rows; r++)
     for (let c = 0; c < cols; c++) {
-      const k = count[r * cols + c], i = high[r * cols + c];
-      const n = i < 0 ? -1 : t.cells[i];
+      const k = count[r * cols + c], g = ground[r * cols + c], i = high[r * cols + c];
+      const n = i < 0 || k === 0 ? -1 : t.cells[i];
       // under the lowest of its neighbours, nothing shows
-      const from = Math.max(-1, Math.min(k, blocksAt(c - 1, r), blocksAt(c + 1, r), blocksAt(c, r - 1), blocksAt(c, r + 1)) - 1);
-      for (let level = from; level < k; level++) {
-        const below = k - 1 - level;
+      const lowest = Math.min(g, blocksAt(c - 1, r), blocksAt(c + 1, r), blocksAt(c, r - 1), blocksAt(c, r + 1)) - 1;
+      for (let level = sea ? lowest : Math.max(-1, lowest); level < g; level++) {
+        const below = g - 1 - level;
         /** @type {number[]} */
         let rgb;
-        if (level < 0)
-          rgb = k > 0 ? DIRT : path[r * cols + c] ? PATH : GRASS;
+        if (sea && k === 0)
+          rgb = sea.bed(depth ? depth[r * cols + c] : 1);
+        else if (level < 0)
+          rgb = k > 0 ? (sea ? SAND : DIRT) : path[r * cols + c] ? PATH : GRASS;
         else if (hues && n >= 0 && !Number.isNaN(hues[n]))
           rgb = hued(tint(colors, t.top * ((level + 1) / most) ** 2, t.top), hues[n]);
         else {
           const f = k / most;
           const top = f > 0.8 ? SNOW : f > 0.5 ? STONE : GRASS;
-          rgb = below === 0 ? top : top === GRASS && below <= 3 ? DIRT : STONE;
+          // sand along the water, down to the bed
+          rgb = sea && k <= shore + 1 ? SAND : below === 0 ? top : top === GRASS && below <= 3 ? DIRT : STONE;
         }
-        add(c, level, r, rgb, level < 0 ? -1 : n);
+        add(c, level, r, rgb, level < 0 || k === 0 ? -1 : n);
       }
       // a tree, now and then, away from the mountains and the paths
-      if (k === 0 && !path[r * cols + c] && random(c, r) < TREES && clear(c, r))
+      if (!sea && k === 0 && !path[r * cols + c] && random(c, r) < TREES && clear(c, r))
         tree(c, r);
     }
 
@@ -123,7 +161,7 @@ export function blocks(T, t, {lift, hues, colors, linear, columns = COLUMNS}) {
   function clear(c, r) {
     for (let dr = -2; dr <= 2; dr++)
       for (let dc = -2; dc <= 2; dc++)
-        if (blocksAt(c + dc, r + dr) > 0)
+        if (landAt(c + dc, r + dr) > 0)
           return false;
     return true;
   }

@@ -253,13 +253,15 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
         cubes = null;
       }
       if (blocky) {
-        cubes = blocks(T, t, {lift, hues, colors, columns, linear: rgb => Array.from(rgb, c => linear[c])});
+        cubes = blocks(T, t, {lift, hues, colors, columns, linear: rgb => Array.from(rgb, c => linear[c]),
+                              sea: islands ? {level: LEVEL * side, deep: DEEP * side, bed: bedColour,
+                                              depths: (land, w, h) => shores(land, w, h).depth} : null});
         scene.add(cubes.mesh);
       }
       surface.visible = trailSegments.visible = !blocky;
       // islands without the lines: the land and the sea tell the heights
       contours.visible = !blocky && !islands;
-      water.mesh.visible = islands && !blocky;
+      water.mesh.visible = islands;
       dome.mesh.visible = islands;
       scene.fog = islands ? haze : null;
       sun.color.set(islands ? SUN : 0xffffff);
