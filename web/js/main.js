@@ -152,17 +152,28 @@ function display(name, samplings, which, saved = null) {
      *  the peaks of the whole recording and where they stand, while the settings are the same */
     let whole = null;
     // only a recording with a time has a timeline
-    const stripped = span(p) > 0 ? timeline(i => {
-      if (JSON.stringify(i) === JSON.stringify(focus))
-        return;
-      focus = i;
-      keepInterval(i);
-      relayout();
-    }, hold, on => {
-      hold = on;
-      writeSetting(HOLD, String(on));
-      relayout();
-    }, focus) : null;
+    /** @type {string | null} the one operation the landscape is on, none for all of them */
+    let operation = null;
+    const stripped = span(p) > 0 ? timeline({
+      changed: i => {
+        if (JSON.stringify(i) === JSON.stringify(focus))
+          return;
+        focus = i;
+        keepInterval(i);
+        relayout();
+      },
+      holding: hold,
+      hold: on => {
+        hold = on;
+        writeSetting(HOLD, String(on));
+        relayout();
+      },
+      initial: focus,
+      operation: name => {
+        operation = name;
+        relayout();
+      },
+    }) : null;
     if (stripped) {
       replace(strip, stripped.element);
       strip.hidden = false;
@@ -190,7 +201,9 @@ function display(name, samplings, which, saved = null) {
       }
       const q = kept.kept;
       stripped?.update(q, {all: true, java});
-      const filter = {all: true, hide, java, ...focus};
+      // an operation alone leaves out the samples outside operations
+      const only = operation ? {all: false, name: operation} : {all: true};
+      const filter = {...only, hide, java, ...focus};
       // the mountains spread in the window's shape
       const aspect = Math.max(1, main.clientWidth / Math.max(1, main.clientHeight));
       /** @type {import('./model/terrain.js').Anchor | undefined} */
@@ -199,8 +212,8 @@ function display(name, samplings, which, saved = null) {
       let r;
       if (hold && focus) {
         // the peaks of the whole recording, where they stand there: those the interval has shrink in place
-        const everything = {all: true, hide, java};
-        const key = JSON.stringify([waits, hide, java, grain, count, coverage, aspect]);
+        const everything = {...only, hide, java};
+        const key = JSON.stringify([waits, hide, java, grain, count, coverage, aspect, operation]);
         if (whole?.key !== key) {
           const w = peaks(q, everything, {count, coverage, grain});
           const wm = mountains(q, everything, w.peaks, grain);

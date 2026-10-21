@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {decode, COMPILED} from '../../web/js/profile/profile.js';
-import {span, histogram, interval, checked} from '../../web/js/model/timeline.js';
+import {span, histogram, interval, checked, operations} from '../../web/js/model/timeline.js';
 
 // a recording of 4 s with a sample at 0, 1, 1.5 and 3.9 s, 10 ms each
 const p = decode({
@@ -57,4 +57,59 @@ test('an interval kept is trusted only if it is a part of the recording', () => 
                      {from: 4}])
     assert.equal(checked(bad, 4000), null, JSON.stringify(bad));
   assert.equal(checked({from: 1}, 0), null, 'a recording with no time');
+});
+
+// operations op0 to op9, op k with 10 - k samples of 10 ms, in the first second; two samples outside any, in the last
+const ops = (() => {
+  const names = Array.from({length: 10}, (_, k) => `op${k}`);
+  const operation = [], time = [];
+  names.forEach((_, k) => {
+    for (let j = 0; j < 10 - k; j++)
+      operation.push(k), time.push(10);
+  });
+  operation.push(-1, -1);
+  time.push(3500 - time.reduce((a, b) => a + b, 0), 0);
+  return decode({
+    version: 4,
+    unit: 'ms',
+    weights: [10, 10],
+    start: '2026-10-20T08:00:00Z',
+    end: 4_000_000_000,
+    strings: [' app.Work.run', ' main', ...names.map(n => ' ' + n)],
+    stacks: [0, 0 << 3 | COMPILED],
+    samples: {time, stack: operation.map(() => 0), thread: operation.map(() => 0), operation, kind: operation.map(() => 0)},
+    threads: [[1, 1]],
+    operations: {name: names.map((_, k) => k + 2), start: names.map(() => 0), duration: names.map(() => 0),
+                 thread: names.map(() => 0), detail: names.map(() => -1), status: names.map(() => 0),
+                 failed: names.map(() => 0), error: names.map(() => -1), async: names.map(() => 0),
+                 bytesIn: names.map(() => 0), bytesOut: names.map(() => 0)},
+  });
+})();
+
+test('the weight per bucket by operation: the heaviest by name, the others together, then none', () => {
+  const r = operations(ops, {all: true}, 4);
+  assert.deepEqual(r.series.map(s => `${s.name} ${s.total}`),
+                   ['op0 100', 'op1 90', 'op2 80', 'op3 70', 'op4 60', 'op5 50', 'op6 40', 'op7 30']);
+  assert.deepEqual([...r.series[0].ms], [100, 0, 0, 0]);
+  assert.deepEqual([...r.other], [30, 0, 0, 0], 'op8 and op9');
+  assert.deepEqual([...r.none], [0, 0, 0, 20], 'the two samples outside any operation');
+  const all = histogram(ops, {all: true}, 4).ms;
+  for (let b = 0; b < 4; b++)
+    assert.equal(r.series.reduce((sum, s) => sum + s.ms[b], r.other[b] + r.none[b]), all[b], `bucket ${b} adds up`);
+});
+
+test('no series of the others, nor of none, when there are none; nothing without operations', () => {
+  const few = decode({
+    version: 4, unit: 'ms', weights: [10, 10], start: '2026-10-20T08:00:00Z', end: 4_000_000_000,
+    strings: [' app.Work.run', ' main', ' op0'], stacks: [0, 0 << 3 | COMPILED],
+    samples: {time: [0, 100], stack: [0, 0], thread: [0, 0], operation: [0, 0], kind: [0, 0]},
+    threads: [[1, 1]],
+    operations: {name: [2], start: [0], duration: [0], thread: [0], detail: [-1], status: [0], failed: [0], error: [-1],
+                 async: [0], bytesIn: [0], bytesOut: [0]},
+  });
+  const r = operations(few, {all: true}, 4);
+  assert.equal(r.series.length, 1);
+  assert.equal(r.other, null);
+  assert.equal(r.none, null);
+  assert.equal(operations(p, {all: true}, 4), null, 'a recording with no operations');
 });

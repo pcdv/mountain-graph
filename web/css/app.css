@@ -7,6 +7,16 @@
   --error: #b42318;
   --drop: #e8f0ea;
   --float: rgba(251, 250, 247, 0.92);
+  /* the operations of the timeline, as in jfr-web */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #6250d6;
+  --series-8: #e34948;
+  --series-other: #a3a29c;
   color-scheme: light;
 }
 
@@ -20,6 +30,15 @@
     --error: #ff8a7a;
     --drop: #1f2a23;
     --float: rgba(22, 24, 27, 0.9);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    --series-other: #6e6d68;
     color-scheme: dark;
   }
 }
@@ -78,6 +97,51 @@ header {
   height: 48px;
   cursor: crosshair;
   touch-action: none;
+}
+
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-size: 12px;
+}
+
+.timeline-legend[hidden] {
+  display: none;
+}
+
+.timeline-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font: inherit;
+  background: transparent;
+  color: inherit;
+  max-width: 32em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+button.timeline-key {
+  cursor: pointer;
+}
+
+button.timeline-key:hover, .timeline-key.on {
+  border-color: var(--accent);
+}
+
+.timeline-key i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.timeline-key.other {
+  color: var(--muted);
 }
 
 .timeline-bar {

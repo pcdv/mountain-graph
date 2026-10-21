@@ -165,6 +165,11 @@ checked: exact figures, one path followed precisely.
   flashing. None for collapsed stacks, which have no time.
   - [x] Slid as a window along the recording: dragged from inside, its width kept; the landscape follows
     the drag, at most every 150 ms
+  - [x] Stacked by operation when the samples are in operations (jfr-web's profiles; none in a recording
+    read in the page): the eight heaviest by name in jfr-web's colours, the others together, what ran
+    outside any; each a button in a legend under the strip, which sets the landscape on that operation
+    alone (`Filter.name`). The weight of the samples by operation, what the landscape sums, not the
+    operations in flight that jfr-web counts
   - [x] The interval kept with the file (`last-file.js`): back when the page is reloaded, and across a switch of
     sampling; forgotten when another file is opened
   - [x] Peaks that stay put while the interval moves (*Keep the peaks of the whole recording*, kept in the
