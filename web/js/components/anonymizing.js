@@ -14,10 +14,12 @@ const KEY = 'mountaingraph.anonymize';
 /** @returns {Rules} as last set; nothing replaced at first */
 export function anonymizing() {
   /** @type {Rules} */
-  const rules = {packages: false, keep: KEPT, replace: []};
+  const rules = {packages: false, depth: 2, keep: KEPT, replace: []};
   try {
     const kept = JSON.parse(readSetting(KEY) ?? '{}');
     rules.packages = kept.packages === true;
+    if (Number.isInteger(kept.depth) && kept.depth >= 1 && kept.depth <= 10)
+      rules.depth = kept.depth;
     if (Array.isArray(kept.keep))
       rules.keep = kept.keep.filter((/** @type {any} */ k) => typeof k === 'string');
     if (Array.isArray(kept.replace))
@@ -49,6 +51,11 @@ export function anonymizeControls(apply) {
     rules.packages = packages.checked;
     save();
   }});
+  const depth = h('input', {type: 'number', min: 1, max: 10, value: rules.depth, onchange: () => {
+    rules.depth = Math.min(10, Math.max(1, Math.round(Number(depth.value)) || 2));
+    depth.value = String(rules.depth);
+    save();
+  }});
   const keep = h('textarea', {rows: 2, spellcheck: false, title: 'Packages that keep their name, with those under them: java, org.apache',
                               onchange: () => {
     rules.keep = words(keep.value);
@@ -67,6 +74,8 @@ export function anonymizeControls(apply) {
   return h('div', {class: 'anonymizing'},
     h('label', {title: 'com.acme.billing.Invoice becomes com.bart.lisa.Invoice, each package everywhere the same'},
       packages, ' Replace the packages by aliases'),
+    h('label', {class: 'inline', title: 'Segments after the domain that get aliases: 2 is com.x.y, what is under keeps its name'},
+      'Depth ', depth),
     h('label', null, 'Packages kept', keep),
     h('label', null, 'Replace', replace),
     h('button', {type: 'button', class: 'button', onclick: apply, title: 'Reads the file again with these settings'}, 'Apply'));

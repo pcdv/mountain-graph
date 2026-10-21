@@ -687,7 +687,7 @@ canvas.map {
   gap: 2px;
 }
 
-.anonymizing label:first-child {
+.anonymizing label:first-child, .anonymizing label.inline {
   display: block;
 }
 

@@ -24,6 +24,8 @@ const DOMAINS = new Set(['com', 'org', 'net', 'io', 'edu', 'gov', 'dev', 'app', 
 /**
  * @typedef {object} Rules
  * @property {boolean} packages whether the packages get aliases
+ * @property {number} depth how many package segments get aliases, after the domain: 2 for com.x.y, the
+ *           sub-packages under keep their names
  * @property {string[]} keep packages that keep their name, with those under them (org.apache)
  * @property {{from: string, to: string}[]} replace strings to replace by others, wherever they are
  */
@@ -97,14 +99,17 @@ export function anonymizer(rules) {
         list.push({start: m.index, end: m.index + m[0].length, text: /** @type {string} */ (to.get(m[0]))});
     if (rules.packages && QUALIFIED.test(s)) {
       const parts = s.split('.');
-      let at = 0, kept = false;
+      let at = 0, kept = false, position = 0;
       for (let i = 0; i < parts.length - 1 && /^[a-z_]/.test(parts[i]); i++) {
         const start = at, end = at + parts[i].length;
         at = end + 1;
         kept ||= keep.has(parts.slice(0, i + 1).join('.'));
-        // the domain, a package kept, a string the user replaces: as written
-        if (!kept && !(i === 0 && DOMAINS.has(parts[0])) && !list.some(e => e.start < end && start < e.end))
+        // the domain, a package kept, one too deep, a string the user replaces: as written
+        if (i === 0 && DOMAINS.has(parts[0]))
+          continue;
+        if (!kept && position < rules.depth && !list.some(e => e.start < end && start < e.end))
           list.push({start, end, text: aliasOf(parts[i])});
+        position++;
       }
     }
     return list.sort((a, b) => a.start - b.start);

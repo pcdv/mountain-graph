@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {alias, anonymizer, KEPT} from '../../web/js/model/anonymize.js';
 
 const profile = strings => ({strings, threads: [{name: 'main', id: 1}, {name: 'com.foo.Pool', id: 2}]});
-const rules = (more = {}) => ({packages: true, keep: KEPT, replace: [], ...more});
+const rules = (more = {}) => ({packages: true, depth: 2, keep: KEPT, replace: [], ...more});
 
 test('aliases: the dictionary first, then a, b, c… and aa, ab…', () => {
   assert.deepEqual([0, 1, 2].map(alias), ['bart', 'lisa', 'homer']);
@@ -16,14 +16,22 @@ test('aliases: the dictionary first, then a, b, c… and aa, ab…', () => {
 
 test('each package gets one alias wherever it stands; domains, the JDK, classes and methods stay', () => {
   const p = anonymizer(rules())(profile([
-    'com.foo.Order.total', 'com.bar.Order.total', 'com.foo.util.Dates.parse', 'java.util.HashMap.get',
+    'com.foo.Order.total', 'com.bar.Order.total', 'com.foo.bar.util.Dates.parse', 'java.util.HashMap.get',
     'com.foo.Order.<init>', 'byte[]', 'com.foo.Order[]', 'GET /api/v1.2/foo', 'Work.spin',
   ]));
   assert.deepEqual(p.strings, [
-    'com.bart.Order.total', 'com.lisa.Order.total', 'com.bart.homer.Dates.parse', 'java.util.HashMap.get',
+    'com.bart.Order.total', 'com.lisa.Order.total', 'com.bart.lisa.util.Dates.parse', 'java.util.HashMap.get',
     'com.bart.Order.<init>', 'byte[]', 'com.bart.Order[]', 'GET /api/v1.2/foo', 'Work.spin',
   ]);
   assert.deepEqual(p.threads.map(t => t.name), ['main', 'com.bart.Pool']);
+});
+
+test('the depth: the packages below keep their names; the domain does not count', () => {
+  const names = ['com.foo.bar.baz.Run.go', 'fr.foo.bar.baz.Run.go', 'foo.bar.baz.Run.go'];
+  assert.deepEqual(anonymizer(rules({depth: 1}))(profile(names)).strings,
+                   ['com.bart.bar.baz.Run.go', 'fr.bart.bar.baz.Run.go', 'bart.bar.baz.Run.go']);
+  assert.deepEqual(anonymizer(rules({depth: 3}))(profile(['com.foo.bar.baz.q.Run.go'])).strings,
+                   ['com.bart.lisa.homer.q.Run.go']);
 });
 
 test('an alias is never a name the profile has', () => {
