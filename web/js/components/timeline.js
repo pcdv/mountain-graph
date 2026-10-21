@@ -10,7 +10,7 @@
 import {h} from '../lib/dom.js';
 import * as fmt from '../lib/format.js';
 import {amount} from '../model/units.js';
-import {histogram, interval, span, operations} from '../model/timeline.js';
+import {histogram, interval, span, operations, within} from '../model/timeline.js';
 
 /** @typedef {import('../profile/profile.js').Profile} Profile */
 /** @typedef {import('../profile/profile.js').Filter} Filter */
@@ -85,7 +85,6 @@ export function timeline({changed, holding, hold, initial = null, operation = ()
     const count = Math.max(1, Math.floor(width / BUCKET));
     if (data.ms.length !== count) {
       data = {...histogram(profile, kept, count), ops: operations(profile, kept, count)};
-      key(data.ops);
     }
     const top = Math.max(...data.ms, 1e-9);
     const w = width / data.ms.length;
@@ -126,32 +125,52 @@ export function timeline({changed, holding, hold, initial = null, operation = ()
       ? `${clock((i.from ?? 0) * 1000)} to ${clock(i.to !== undefined ? i.to * 1000 : data.span)}, `
         + `${fmt.duration((i.to !== undefined ? i.to * 1000 : data.span) - (i.from ?? 0) * 1000)} of ${clock(data.span)}`
       : `Drag to focus on an interval of the recording's ${clock(data.span)}`;
+    key(data.ops);
   };
 
+  /** What the legend shows, to leave it as it is when nothing changed. */
+  let shown = '';
+
   /**
-   * Names the operations of the bars, each a button: the landscape shows that one alone.
+   * Names the operations of the bars, each a button: the landscape shows that one alone. With an
+   * interval selected, those that ran in it only, in the colours they have in the whole recording.
    *
    * @param {Operations | null} ops
    */
   const key = ops => {
     legend.hidden = !ops;
-    legend.replaceChildren();
-    if (!ops)
+    if (!ops) {
+      legend.replaceChildren();
+      shown = '';
       return;
-    ops.series.forEach((s, k) => legend.append(
-      h('button', {type: 'button', class: `timeline-key${s.name === alone ? ' on' : ''}`, onclick: () => {
-        alone = s.name === alone ? null : s.name;
-        operation(alone);
-        key(ops);
-        draw();
-      }, title: `${s.name}: ${amount(s.total, profile?.unit ?? 'ms')}. Click to see the landscape of this operation alone`},
-        h('i', {style: `background: var(--series-${k + 1})`}), s.name)));
-    if (ops.other)
-      legend.append(h('span', {class: 'timeline-key other'}, h('i', {style: 'background: var(--series-other)'}),
-                      'other operations'));
-    if (ops.none)
-      legend.append(h('span', {class: 'timeline-key other'}, h('i', {style: 'background: var(--line)'}),
-                      'outside any operation'));
+    }
+    const unit = profile?.unit ?? 'ms';
+    /** @param {Float64Array} ms @param {number} total @returns {number} its weight in the interval */
+    const inside = (ms, total) => chosen ? within(ms, Math.min(...chosen), Math.max(...chosen)) : total;
+    const sum = (/** @type {Float64Array} */ ms) => ms.reduce((a, b) => a + b, 0);
+    const rows = ops.series.map((s, k) => ({s, k, w: inside(s.ms, s.total)}))
+                           .filter(r => r.w > 0 || r.s.name === alone);
+    const other = ops.other ? inside(ops.other, sum(ops.other)) : 0;
+    const none = ops.none ? inside(ops.none, sum(ops.none)) : 0;
+    const signature = JSON.stringify([alone, chosen !== null, rows.map(r => [r.s.name, Math.round(r.w)]),
+                                      Math.round(other), Math.round(none)]);
+    if (signature === shown)
+      return;
+    shown = signature;
+    const where = chosen ? ' in the interval' : '';
+    legend.replaceChildren(
+      ...rows.map(({s, k, w}) => h('button',
+        {type: 'button', class: `timeline-key${s.name === alone ? ' on' : ''}`, onclick: () => {
+          alone = s.name === alone ? null : s.name;
+          operation(alone);
+          draw();
+        }, title: `${s.name}: ${amount(w, unit)}${where}${chosen ? `, ${amount(s.total, unit)} in all` : ''}. `
+                  + 'Click to see the landscape of this operation alone'},
+        h('i', {style: `background: var(--series-${k + 1})`}), s.name)),
+      ...other > 0 ? [h('span', {class: 'timeline-key other', title: `${amount(other, unit)}${where}`},
+                        h('i', {style: 'background: var(--series-other)'}), 'other operations')] : [],
+      ...none > 0 ? [h('span', {class: 'timeline-key other', title: `${amount(none, unit)}${where}`},
+                      h('i', {style: 'background: var(--line)'}), 'outside any operation')] : []);
   };
 
   /** @param {PointerEvent} e @returns {number} where it is, as a share of the width */

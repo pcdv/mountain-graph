@@ -99,6 +99,20 @@ export function operations(p, filter, count) {
  */
 
 /**
+ * @param {Float64Array} ms the weight in each bucket
+ * @param {number} lo where an interval starts, as a share of the recording: 0 to 1
+ * @param {number} hi where it ends
+ * @returns {number} the weight in it: that of the buckets it covers, the edge ones in proportion to the part covered
+ */
+export function within(ms, lo, hi) {
+  const count = ms.length, from = lo * count, to = hi * count;
+  let sum = 0;
+  for (let b = Math.floor(from); b < Math.min(count, Math.ceil(to)); b++)
+    sum += ms[b] * Math.max(0, Math.min(to, b + 1) - Math.max(from, b));
+  return sum;
+}
+
+/**
  * @param {any} i what was kept of an interval: not to be trusted
  * @param {number} ms the duration of the recording it is applied to
  * @returns {Interval | null} it if it is a part of the recording, none otherwise

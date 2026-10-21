@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {decode, COMPILED} from '../../web/js/profile/profile.js';
-import {span, histogram, interval, checked, operations} from '../../web/js/model/timeline.js';
+import {span, histogram, interval, checked, operations, within} from '../../web/js/model/timeline.js';
 
 // a recording of 4 s with a sample at 0, 1, 1.5 and 3.9 s, 10 ms each
 const p = decode({
@@ -112,4 +112,15 @@ test('no series of the others, nor of none, when there are none; nothing without
   assert.equal(r.other, null);
   assert.equal(r.none, null);
   assert.equal(operations(p, {all: true}, 4), null, 'a recording with no operations');
+});
+
+test('the weight within an interval: the buckets it covers, the edge ones in proportion', () => {
+  const ms = Float64Array.of(10, 20, 30, 40);
+  const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} is not ${b}`);
+  near(within(ms, 0, 1), 100);
+  near(within(ms, 0.25, 0.75), 50);
+  near(within(ms, 0.125, 0.375), 10 / 2 + 20 / 2);
+  near(within(ms, 0.9, 1), 40 * 0.4);
+  near(within(ms, 0.5, 0.5), 0);
+  near(within(new Float64Array(0), 0, 1), 0);
 });
