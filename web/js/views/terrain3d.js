@@ -29,6 +29,9 @@ const THREE = /** @type {string} */ ('three'), CONTROLS = /** @type {string} */ 
 /** The height of the highest peak, as a share of the terrain's longer side: at first, and its range. */
 const RELIEF = 0.16, FLATTEST = 0.04, HIGHEST = 0.5;
 
+/** The highest the sea can be, as a share of the terrain's longer side. */
+const HIGHEST_SEA = 0.12;
+
 /** How much the distance changes per pixel of wheel: e^(100 ZOOM), about 15%, per notch of a mouse. */
 const ZOOM = 0.0014;
 
@@ -44,6 +47,7 @@ const ZOOM = 0.0014;
  * @property {boolean} [blocks] whether the land is built of blocks
  * @property {number} [columns] of blocks, along the longer side
  * @property {boolean} [islands] whether the plain is a sea, the mountains islands
+ * @property {number} [level] of the sea, as a share of the longer side
  */
 
 /**
@@ -127,6 +131,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     const colors = palette();
     const W = t.width, H = t.height, side = Math.max(W, H);
     let relief = viewpoint.relief ?? RELIEF;
+    let level = viewpoint.level ?? LEVEL;
     /** @param {number} height ms @returns {number} its y */
     const lift = height => t.top > 0 && height > 0 ? (height / t.top) ** tuned.curve * relief * side : 0;
 
@@ -171,7 +176,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       // the land is what rises over the sea: lower, it is the bed, not a shelf under the water;
       // found again as the relief changes
       if (islands)
-        shore = shores(Float64Array.from(smooth, h => lift(h) - LEVEL * side), W, H);
+        shore = shores(Float64Array.from(smooth, h => lift(h) - level * side), W, H);
       for (let i = 0; i < W * H; i++)
         position.setY(i, ground(i));
       position.needsUpdate = true;
@@ -254,7 +259,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       }
       if (blocky) {
         cubes = blocks(T, t, {lift, hues, colors, columns, linear: rgb => Array.from(rgb, c => linear[c]),
-                              sea: islands ? {level: LEVEL * side, deep: DEEP * side, bed: bedColour,
+                              sea: islands ? {level: level * side, deep: DEEP * side, bed: bedColour,
                                               depths: (land, w, h) => shores(land, w, h).depth} : null});
         scene.add(cubes.mesh);
       }
@@ -266,14 +271,14 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       scene.fog = islands ? haze : null;
       sun.color.set(islands ? SUN : 0xffffff);
     };
-    const water = sea(T, side);
+    const water = sea(T, side, level);
     scene.add(water.mesh);
     // a sky at sunset, hazy toward the horizon, the sun low and warm
     const dome = sky(T, side * 9);
     scene.add(dome.mesh);
     const haze = new T.Fog(HAZE, side * 1.6, side * 7);
     // the trails on the water, as sea lanes
-    const flood = () => trailSegments.position.y = islands ? LEVEL * side : 0;
+    const flood = () => trailSegments.position.y = islands ? level * side : 0;
     flood();
     scene.add(new T.HemisphereLight(0xffffff, 0x8a8170, 1.8));
     const sun = new T.DirectionalLight(0xffffff, 1.6);
@@ -351,15 +356,30 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     }});
     const isles = h('input', {type: 'checkbox', checked: islands, onchange: () => {
       viewpoint.islands = islands = isles.checked;
+      tide.hidden = !islands;
       raise();
       paint();
       flood();
       blockify();
       redraw();
     }});
+    // the sea higher or lower: more land under the water, or less
+    const rising = h('input', {type: 'range', min: 0, max: HIGHEST_SEA, step: 0.002, value: level,
+                               oninput: () => {
+                                 viewpoint.level = level = Number(rising.value);
+                                 water.level(level);
+                                 raise();
+                                 paint();
+                                 color.array.set(base);
+                                 flood();
+                                 if (blocky)
+                                   blockify();
+                                 redraw();
+                               }});
+    const tide = h('label', {hidden: !islands}, 'Sea level ', rising);
     loading.replaceWith(renderer.domElement, labels,
                         h('div', {class: 'relief'}, h('label', null, 'Relief ', slider), h('label', null, isles, ' Islands'),
-                          h('label', null, cubed, ' Blocks'), size));
+                          h('label', null, cubed, ' Blocks'), size, tide));
 
     /**
      * @param {any} to a point, a Vector3

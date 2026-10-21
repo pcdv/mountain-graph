@@ -170,15 +170,17 @@ export function bedColour(depth) {
  *
  * @param {any} T three.js
  * @param {number} side of the land, its longer one
- * @returns {{mesh: any, dispose: () => void}}
+ * @param {number} [level] of the water, as a share of the longer side
+ * @returns {{mesh: any, level: (level: number) => void, dispose: () => void}} level() sets the water's
+ *          again, as a share of the longer side
  */
-export function sea(T, side) {
+export function sea(T, side, level = LEVEL) {
   const wide = side * 8;
   const water = new T.Mesh(new T.PlaneGeometry(wide, wide),
                            new T.MeshPhongMaterial({color: 0x2f7fb0, transparent: true, opacity: 0.62,
                                                     shininess: 90, specular: 0x9fc8e8, depthWrite: false}));
   water.rotation.x = -Math.PI / 2;
-  water.position.y = LEVEL * side;
+  water.position.y = level * side;
   water.renderOrder = 1;
   const bed = new T.Mesh(new T.PlaneGeometry(wide, wide), new T.MeshLambertMaterial({color: 0x1a3654}));
   bed.rotation.x = -Math.PI / 2;
@@ -187,6 +189,7 @@ export function sea(T, side) {
   mesh.add(bed, water);
   return {
     mesh,
+    level: share => water.position.y = share * side,
     dispose: () => [water, bed].forEach(m => {
       m.geometry.dispose();
       m.material.dispose();
