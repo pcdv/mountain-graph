@@ -6,6 +6,7 @@
 import {decode, VERSION} from './profile/profile.js';
 import {isCollapsed, readCollapsed} from './profile/collapsed.js';
 import {isJfr, readJfr} from './profile/jfr.js';
+import {anonymizer} from './model/anonymize.js';
 
 /** @typedef {import('./profile/profile.js').Profile} Profile */
 
@@ -25,14 +26,19 @@ import {isJfr, readJfr} from './profile/jfr.js';
  * clock first, so that the page can switch without reading it again.
  *
  * @param {File} file
+ * @param {import('./model/anonymize.js').Rules} [anonymous] what to replace in the names, if anything
  * @returns {Promise<Sampling[]>} one at least
  * @throws {Error} when the file is none of these, in words for the user
  */
-export async function loadProfiles(file) {
+export async function loadProfiles(file, anonymous) {
   const bytes = await readBytes(file);
-  if (isJfr(bytes))
-    return fromRecording(file.name, bytes);
-  return [{key: 'samples', label: 'Samples', profile: fromText(file.name, new TextDecoder().decode(bytes))}];
+  const samplings = isJfr(bytes)
+    ? fromRecording(file.name, bytes)
+    : [{key: 'samples', label: 'Samples', profile: fromText(file.name, new TextDecoder().decode(bytes))}];
+  if (!anonymous)
+    return samplings;
+  const anonymize = anonymizer(anonymous);
+  return samplings.map(s => ({...s, profile: anonymize(s.profile)}));
 }
 
 /**

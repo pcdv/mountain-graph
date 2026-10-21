@@ -673,3 +673,35 @@ canvas.map {
   justify-self: start;
   margin-top: 4px;
 }
+
+.anonymizing {
+  display: grid;
+  gap: 6px;
+  padding: 6px 0 4px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.anonymizing label {
+  display: grid;
+  gap: 2px;
+}
+
+.anonymizing label:first-child {
+  display: block;
+}
+
+.anonymizing textarea {
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+  font-family: monospace;
+  background: none;
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.anonymizing .button {
+  justify-self: start;
+}

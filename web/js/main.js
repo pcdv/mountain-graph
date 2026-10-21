@@ -22,6 +22,7 @@ import {packageHues} from './model/hues.js';
 import {hueLegend} from './components/hue-legend.js';
 import {peakControls, peakSettings} from './components/peak-controls.js';
 import {advanced, tuning} from './components/advanced.js';
+import {anonymizeControls, anonymizing} from './components/anonymizing.js';
 import {timeline} from './components/timeline.js';
 import {span, checked} from './model/timeline.js';
 
@@ -93,11 +94,15 @@ const HOLD = 'mountaingraph.timeline.hold';
 /** Which sampling of a file with several is shown, kept. */
 const SAMPLING = 'mountaingraph.sampling';
 
+/** @type {File | null} the file open, to read again when the anonymizing settings change */
+let current = null;
+
 /**
  * @param {File} file
  * @param {boolean} [again] the file kept last, opened again: its interval in focus comes back with it
  */
 async function open(file, again = false) {
+  current = file;
   relayout = () => {};
   main.classList.remove('stage');
   replace(bar);
@@ -105,7 +110,7 @@ async function open(file, again = false) {
   strip.hidden = true;
   replace(main, h('p', {class: 'muted'}, `Reading ${file.name}…`));
   try {
-    const samplings = await loadProfiles(file);
+    const samplings = await loadProfiles(file, anonymizing());
     const focus = again ? await lastInterval() : null;
     if (!again)
       keepFile(file);
@@ -187,10 +192,10 @@ function display(name, samplings, which, saved = null) {
     main.classList.add('stage');
     let tuned = tuning();
     replace(main, map, h('div', {class: 'floats'}, floating('Peaks', 'table', table),
-                         floating('Advanced', 'advanced', advanced(t => {
+                         floating('Advanced', 'advanced', h('div', null, advanced(t => {
                            tuned = t;
                            relayout();
-                         }))));
+                         }), anonymizeControls(() => current && open(current, true))))));
     /** @param {import('./components/peak-controls.js').PeakSettings} settings */
     const show = settings => {
       last = settings;
