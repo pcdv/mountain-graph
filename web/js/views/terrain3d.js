@@ -17,7 +17,7 @@ import {terrainFrame, short} from '../components/terrain-frame.js';
 import {FADE} from '../components/crossfade.js';
 import {contour, levels} from '../model/contours.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
-import {blocks, COLUMNS, FEWEST, MOST} from './blocks3d.js';
+import {blocks, COLUMNS, FEWEST} from './blocks3d.js';
 import {sea, sky, shores, ramp, bump, landColour, bedColour, LEVEL, DEEP, HAZE, SUN, SEA_TUNING} from './sea3d.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
@@ -333,10 +333,12 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                                  redraw();
                                }});
     // built again once let go: many blocks take a while
-    const fine = h('input', {type: 'range', min: FEWEST, max: MOST, step: 20, value: MOST + FEWEST - columns,
+    // by the size of the blocks, in cells, which are whole: by the columns, several steps would be the same size
+    const fine = h('input', {type: 'range', min: 1, max: Math.max(1, Math.round(side / FEWEST)), step: 1,
+                             value: Math.max(1, Math.round(side / columns)),
                              title: 'Smaller blocks: larger mountains beside the trees',
                              onchange: () => {
-                               viewpoint.columns = columns = MOST + FEWEST - Number(fine.value);
+                               viewpoint.columns = columns = side / Number(fine.value);
                                blockify();
                                redraw();
                              }});

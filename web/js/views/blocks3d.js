@@ -16,8 +16,8 @@ import {tint, hued} from './palette.js';
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('./palette.js').Palette} Palette */
 
-/** The columns along the longer side of the terrain: at first, and their range. */
-export const COLUMNS = 200, FEWEST = 60, MOST = 600;
+/** The columns along the longer side of the terrain: at first, and the fewest. As many as its cells at most. */
+export const COLUMNS = 200, FEWEST = 60;
 
 /** The share of the columns of the plain, away from the mountains, where a tree grows. */
 const TREES = 0.012;
