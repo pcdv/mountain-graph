@@ -8,8 +8,12 @@
  * A recording holds two kinds of samples, which weigh different things: execution samples
  * (Java and native methods, weighing the time a sample stands for) and allocation samples
  * (weighing the bytes). Both are read in a single pass, each into a Profile, so that the page
- * can switch between them. What a recording lacks is left empty, as in collapsed.js: no
- * operations.
+ * can switch between them. What a recording lacks is left empty, as in collapsed.js.
+ *
+ * Operations are those jfr-web reads (Analysis.java): the requests of flak (`flak.Request`) and the
+ * operations of its API (`jfrweb.Operation`, with `jfrweb.OperationSegment` for the threads of an
+ * asynchronous one), not the events an application maps to operations by configuration. A sample
+ * belongs to the innermost operation its thread was in at its time.
  *
  * No DOM: tested with Node.
  */
@@ -19,7 +23,8 @@ import {COMPILED, INLINED, INTERPRETED, NATIVE, SYNTHETIC, ALLOCATED} from './pr
 
 /** The events kept. */
 const EXECUTION = 'jdk.ExecutionSample', NATIVE_SAMPLE = 'jdk.NativeMethodSample',
-      ALLOCATION = 'jdk.ObjectAllocationSample', SETTING = 'jdk.ActiveSetting';
+      ALLOCATION = 'jdk.ObjectAllocationSample', SETTING = 'jdk.ActiveSetting',
+      FLAK_REQUEST = 'flak.Request', OPERATION = 'jfrweb.Operation', SEGMENT = 'jfrweb.OperationSegment';
 
 const HEADER = 68;
 
@@ -182,6 +187,26 @@ function observedMean(times) {
  * @property {{name: string, time: number, thread: number, stack: number, cls: number, weight: number}[]} samples
  *           the samples of the chunk, the keys being those of its pools; time in ms since the
  *           first chunk started
+ * @property {RawOperation[]} operations
+ * @property {{id: number, thread: number, start: number, end: number}[]} segments the threads working for an
+ *           asynchronous operation, by the id of its event; thread a key in the pools, times in ms as
+ *           the samples'
+ */
+
+/**
+ * @typedef {object} RawOperation
+ * @property {number} id that its segments tell, -1 for a request
+ * @property {number} thread a key in the pools of its chunk
+ * @property {number} start ms since the first chunk started
+ * @property {number} duration ms
+ * @property {string} name
+ * @property {string | null} detail
+ * @property {number} status the HTTP status of a request, 0 for other operations
+ * @property {boolean} failed
+ * @property {string | null} error
+ * @property {boolean} async
+ * @property {number} bytesIn
+ * @property {number} bytesOut
  */
 
 /** A reader of the bytes of a chunk. */
@@ -214,12 +239,14 @@ class Reader {
     return r + this.u8[this.pos++] * mul;
   }
 
-  /** @returns {string | null} */
+  /** @returns {string | Pooled | null} */
   string() {
     const e = this.byte();
     switch (e) {
       case 0: return null;
       case 1: return '';
+      // in the pool of strings, which a checkpoint may write after the event
+      case 2: return new Pooled(this.int());
       case 3: case 5: {
         const n = this.int();
         const s = e === 3 ? utf8.decode(this.u8.subarray(this.pos, this.pos + n))
@@ -241,6 +268,24 @@ class Reader {
 }
 
 const utf8 = new TextDecoder('utf-8'), latin1 = new TextDecoder('latin1');
+
+/** A string kept in the pool of strings of its chunk: the key of its entry. */
+class Pooled {
+  /** @param {number} key */
+  constructor(key) {
+    this.key = key;
+  }
+}
+
+/**
+ * @param {Map<string, Map<number, any>>} pools those of a chunk, all read
+ * @returns {(v: any) => string | null} what gives the string of a value read: itself, or its entry in the pool
+ *          of strings when it is a key to it; null when it is none
+ */
+function texter(pools) {
+  const strings = pools.get('java.lang.String');
+  return v => v instanceof Pooled ? String(strings?.get(v.key) ?? '') : typeof v === 'string' ? v : null;
+}
 
 /**
  * @param {Uint8Array} bytes
@@ -275,7 +320,7 @@ function readChunk(bytes, at, first) {
   const byName = new Map(types.map(t => [t.name, t]));
   /** @type {Map<number, string>} the events kept, by the id of their type */
   const wanted = new Map();
-  for (const n of [EXECUTION, NATIVE_SAMPLE, ALLOCATION, SETTING]) {
+  for (const n of [EXECUTION, NATIVE_SAMPLE, ALLOCATION, SETTING, FLAK_REQUEST, OPERATION, SEGMENT]) {
     const t = byName.get(n);
     if (t)
       wanted.set(t.id, n);
@@ -284,13 +329,17 @@ function readChunk(bytes, at, first) {
   /** @type {Chunk} */
   const result = {
     size, startNanos, endNanos: startNanos + duration, startTicks, ticksPerSecond,
-    pools: new Map(), settings: new Map(), samples: [],
+    pools: new Map(), settings: new Map(), samples: [], operations: [], segments: [],
   };
   const origin = first ? (startNanos - first.startNanos) / 1e6 : 0;
   const r = new Reader(chunk, HEADER);
   const values = new Values(r, byId);
   /** @type {Map<number, Map<string, string>>} the settings of each event, by the id of its type */
   const settings = new Map();
+  /** @type {{id: number, name: any, value: any}[]} the settings as written: their strings are read once the pools are */
+  const written = [];
+  /** @type {{kind: string, e: Record<string, any>, start: number, duration: number}[]} likewise the operations */
+  const found = [];
   while (r.pos < size) {
     const from = r.pos;
     const length = r.int();
@@ -302,11 +351,11 @@ function readChunk(bytes, at, first) {
       const name = /** @type {string} */ (wanted.get(type));
       const e = values.struct(/** @type {Type} */ (byId.get(type)));
       if (name === SETTING) {
-        if (typeof e.name === 'string' && typeof e.value === 'string') {
-          const s = settings.get(e.id) ?? new Map();
-          s.set(e.name, e.value);
-          settings.set(e.id, s);
-        }
+        written.push({id: e.id, name: e.name, value: e.value});
+      }
+      else if (name === FLAK_REQUEST || name === OPERATION || name === SEGMENT) {
+        found.push({kind: name, e, start: origin + (e.startTime - startTicks) * 1000 / ticksPerSecond,
+                    duration: (e.duration ?? 0) * 1000 / ticksPerSecond});
       }
       else {
         result.samples.push({
@@ -320,6 +369,36 @@ function readChunk(bytes, at, first) {
       }
     }
     r.pos = from + length;
+  }
+  const text = texter(result.pools);
+  for (const w of written) {
+    const k = text(w.name), v = text(w.value);
+    if (k !== null && v !== null) {
+      const s = settings.get(w.id) ?? new Map();
+      s.set(k, v);
+      settings.set(w.id, s);
+    }
+  }
+  for (const {kind, e, start, duration} of found) {
+    if (kind === SEGMENT)
+      result.segments.push({id: e.id, thread: e.eventThread ?? 0, start, end: start + duration});
+    else if (kind === OPERATION)
+      result.operations.push({
+        id: e.id, thread: e.eventThread ?? 0, start, duration, name: String(text(e.name)), detail: text(e.detail),
+        status: 0, failed: !!e.failed, error: text(e.error), async: !!e.async,
+        bytesIn: e.bytesIn ?? 0, bytesOut: e.bytesOut ?? 0,
+      });
+    else {
+      // a request of flak, named as jfr-web names it
+      const method = text(e.method), route = text(e.route);
+      result.operations.push({
+        id: -1, thread: e.eventThread ?? 0, start, duration,
+        name: `${method} ${route === null ? '(no route)' : text(e.app) + route}`,
+        detail: `${method} ${text(e.path)}`, status: e.status ?? 0, failed: e.status >= 500,
+        error: e.status >= 500 ? `HTTP ${e.status}` : null, async: false,
+        bytesIn: e.bytesIn ?? 0, bytesOut: e.bytesOut ?? 0,
+      });
+    }
   }
   settings.forEach((s, id) => {
     const t = byId.get(id);
@@ -340,7 +419,7 @@ function readMetadata(r) {
   /** @type {string[]} */
   const strings = [];
   for (let n = r.int(); n > 0; n--)
-    strings.push(r.string() ?? '');
+    strings.push(String(r.string() ?? ''));
 
   /**
    * @typedef {{name: string, attributes: Map<string, string>, children: Element[]}} Element
@@ -505,6 +584,10 @@ class Builder {
     this.threads = [];
     /** the times of the Java and of the native samples, in ms @type {number[][]} */
     this.times = [[], []];
+    /** @type {RawOperation[]} the operations, their thread as indexed here */
+    this.operations = [];
+    /** @type {{id: number, thread: number, start: number, end: number}[]} */
+    this.segments = [];
   }
 
   /** @param {string} s */
@@ -537,7 +620,8 @@ class Builder {
           methods = pool('jdk.types.Method'), stacks = pool('jdk.types.StackTrace'),
           threads = pool('java.lang.Thread'), frameTypes = pool('jdk.types.FrameType');
     /** @param {number} key */
-    const symbol = key => String(symbols.get(key)?.string ?? '');
+    const text = texter(c.pools);
+    const symbol = key => text(symbols.get(key)?.string) ?? '';
     /** @param {number} key */
     const className = key => javaName(symbol(classes.get(key)?.name));
 
@@ -566,7 +650,7 @@ class Builder {
             name = this.name(m ? `${className(m.type)}.${symbol(m.name)}` : '(unknown method)');
             methodNames.set(f.method, name);
           }
-          node = this.node(node, name << 3 | typeOf(String(frameTypes.get(f.type)?.description ?? '')));
+          node = this.node(node, name << 3 | typeOf(text(frameTypes.get(f.type)?.description) ?? ''));
         }
       }
       stackNodes.set(key, node);
@@ -581,7 +665,7 @@ class Builder {
       if (i === undefined) {
         const t = threads.get(key);
         const id = t ? Number(t.javaThreadId || t.osThreadId) : 0;
-        const name = t ? String(t.javaName ?? t.osName ?? '') : '';
+        const name = t ? text(t.javaName) ?? text(t.osName) ?? '' : '';
         // a thread is known by its id, which the chunks agree on, not by its key
         const known = `${id}:${name}`;
         i = this.threadIndex.get(known);
@@ -593,6 +677,11 @@ class Builder {
       }
       return i;
     };
+
+    for (const o of c.operations)
+      this.operations.push({...o, thread: thread(o.thread)});
+    for (const s of c.segments)
+      this.segments.push({...s, thread: thread(s.thread)});
 
     for (const s of c.samples) {
       const allocation = s.name === ALLOCATION;
@@ -620,6 +709,14 @@ class Builder {
     if (this.samples.length === 0)
       return null;
     const s = this.samples.sort((a, b) => a.time - b.time);
+    const ops = this.operations;
+    const find = this.finder();
+    const operation = Int32Array.from(s, x => find(x.thread, x.time));
+    // the names are strings of this profile
+    const name = Int32Array.from(ops, o => this.name(o.name));
+    const detail = Int32Array.from(ops, o => o.detail === null ? -1 : this.name(o.detail));
+    const error = Int32Array.from(ops, o => o.error === null ? -1 : this.name(o.error));
+    const thread = Int32Array.from(ops, o => this.name(this.threads[o.thread]?.name ?? ''));
     return {
       strings: this.strings,
       parent: Int32Array.from(this.parent),
@@ -627,7 +724,7 @@ class Builder {
       time: Float64Array.from(s, x => x.time),
       stack: Int32Array.from(s, x => x.stack),
       thread: Int32Array.from(s, x => x.thread),
-      operation: new Int32Array(s.length).fill(-1),
+      operation,
       kind: Uint8Array.from(s, x => x.kind),
       weights,
       unit: this.unit,
@@ -636,12 +733,79 @@ class Builder {
       end,
       threads: this.threads,
       operations: {
-        count: 0,
-        name: new Int32Array(0), start: new Float64Array(0), duration: new Float64Array(0),
-        thread: new Int32Array(0), detail: new Int32Array(0), status: new Int32Array(0),
-        failed: new Uint8Array(0), error: new Int32Array(0), async: new Uint8Array(0),
-        bytesIn: new Float64Array(0), bytesOut: new Float64Array(0),
+        count: ops.length,
+        name, thread, detail, error,
+        // in ns since the start of the recording, as the server counts them
+        start: Float64Array.from(ops, o => o.start * 1e6),
+        duration: Float64Array.from(ops, o => o.duration * 1e6),
+        status: Int32Array.from(ops, o => o.status),
+        failed: Uint8Array.from(ops, o => o.failed ? 1 : 0),
+        async: Uint8Array.from(ops, o => o.async ? 1 : 0),
+        bytesIn: Float64Array.from(ops, o => o.bytesIn),
+        bytesOut: Float64Array.from(ops, o => o.bytesOut),
       },
+    };
+  }
+
+  /**
+   * Finds the operation a thread worked for at a time, as jfr-web's OperationIndex does: a thread works
+   * for one at a time, the whole of a synchronous one or a segment of an asynchronous one; when they
+   * nest, for the innermost.
+   *
+   * @returns {(thread: number, time: number) => number} the index of the operation, -1 for none
+   */
+  finder() {
+    /** @type {Map<number, number>} the operation of each asynchronous one, by its id */
+    const byId = new Map();
+    this.operations.forEach((o, i) => o.async && o.id >= 0 && byId.set(o.id, i));
+    /** @type {{thread: number, start: number, end: number, op: number, outer: number}[]} */
+    const all = [];
+    this.operations.forEach((o, i) => {
+      if (!o.async)
+        all.push({thread: o.thread, start: o.start, end: o.start + o.duration, op: i, outer: -1});
+    });
+    for (const g of this.segments) {
+      const op = byId.get(g.id);
+      if (op !== undefined)
+        all.push({thread: g.thread, start: g.start, end: g.end, op, outer: -1});
+    }
+    /** @type {Map<number, typeof all>} the segments of each thread, by start */
+    const byThread = new Map();
+    for (const g of all.sort((a, b) => a.start - b.start)) {
+      const list = byThread.get(g.thread);
+      if (list)
+        list.push(g);
+      else
+        byThread.set(g.thread, [g]);
+    }
+    for (const list of byThread.values()) {
+      /** @type {number[]} */
+      const open = [];
+      list.forEach((g, i) => {
+        while (open.length > 0 && list[open[open.length - 1]].end < g.start)
+          open.pop();
+        g.outer = open.length > 0 ? open[open.length - 1] : -1;
+        open.push(i);
+      });
+    }
+    return (thread, time) => {
+      const list = byThread.get(thread);
+      if (!list)
+        return -1;
+      // the latest started
+      let lo = 0, hi = list.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (list[mid].start <= time)
+          lo = mid + 1;
+        else
+          hi = mid;
+      }
+      let g = lo - 1;
+      // or, once it is over, the one it started in
+      while (g >= 0 && time > list[g].end)
+        g = list[g].outer;
+      return g < 0 ? -1 : list[g].op;
     };
   }
 }

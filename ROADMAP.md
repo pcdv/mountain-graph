@@ -154,7 +154,11 @@ checked: exact figures, one path followed precisely.
   - [ ] Tried on recordings of JDK 11 and 17, and of async-profiler (its events differ:
     `jdk.ObjectAllocationInNewTLAB`, `profiler.WallClockSample`)
   - [ ] In a Web Worker: a recording of hundreds of MB blocks the page while it is read
-  - [ ] Operations, which jfr-web builds from flak's events: none here
+  - [x] Operations, as jfr-web builds them (`profile/jfr.js`): flak's requests (`flak.Request`) and those of its
+    API (`jfrweb.Operation`, with `jfrweb.OperationSegment` for the threads of an asynchronous one); a sample
+    is in the innermost operation its thread was in. Checked against jfr-web's export of
+    `test/fixtures/ops.jfr.gz` (made by `OpsWork.java`): the same operations, the same samples in each. Not
+    the events an application maps to operations by configuration (jfr-web's `EventMapping`)
   - [ ] Shared with jfr-web, which reads recordings on the server
 
 - [x] A timeline under the top bar (`components/timeline.js`, `model/timeline.js`): the weight of the

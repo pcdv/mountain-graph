@@ -76,6 +76,29 @@ test('a recording: the work of the program, by method', async () => {
   assert.ok(find(bytes, 'Work.allocate').total >= arrays.total * 0.5);
 });
 
+// recorded by fixtures/OpsWork.java (JDK 21): 51 operations, alpha 30, beta 20 and an asynchronous gamma, in 90
+// execution samples. jfr-web's export of the same file has the same operations and the same samples in each
+test('a recording with operations: each sample in the operation its thread was running', async () => {
+  const [{profile: p}] = await loadProfiles(new File([readFileSync(new URL('./fixtures/ops.jfr.gz', import.meta.url))],
+                                                     'ops.jfr.gz'));
+  assert.equal(p.operations.count, 51);
+  const per = new Map();
+  for (const op of p.operation) {
+    const name = op < 0 ? '(none)' : p.strings[p.operations.name[op]];
+    per.set(name, (per.get(name) ?? 0) + 1);
+  }
+  assert.deepEqual(Object.fromEntries([...per].sort()), {'(none)': 9, alpha: 19, beta: 13, gamma: 49});
+  const names = [...Array(p.operations.count).keys()].map(i => p.strings[p.operations.name[i]]);
+  assert.equal(names.filter(n => n === 'alpha').length, 30);
+  const gamma = names.indexOf('gamma');
+  assert.equal(p.operations.async[gamma], 1);
+  assert.equal(p.strings[p.operations.detail[gamma]], 'async');
+  assert.equal(p.strings[p.operations.thread[names.indexOf('alpha')]], 'alpha-thread');
+  // rooted by operation, as jfr-web's flame graphs are
+  const {root} = tree(p, {});
+  assert.deepEqual(root.children.map(c => c.name).sort(), ['alpha', 'beta', 'gamma']);
+});
+
 test('a recording that is cut is refused, naming the file', async () => {
   await assert.rejects(loadProfiles(new File([Uint8Array.from([0x46, 0x4c, 0x52, 0, 0, 2])], 'cut.jfr')),
                        /cut\.jfr: /);
