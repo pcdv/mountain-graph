@@ -164,11 +164,11 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     const ground = i => {
       if (!islands)
         return lift(smooth[i]);
+      // the land keeps its shape under the water, going down to the bed away from the land
       if (!(shore?.inland[i]))
-        return -(shore?.depth[i] ?? 0) * DEEP * side;
+        return lift(smooth[i]) - (shore?.depth[i] ?? 0) * DEEP * side;
       // bumped, less on the beaches
-      const r = ramp(shore?.inland[i] ?? 0);
-      return lift(smooth[i]) * r + bump(i % W, Math.floor(i / W)) * tuned.bump * side * r;
+      return lift(smooth[i]) + bump(i % W, Math.floor(i / W)) * tuned.bump * side * ramp(shore?.inland[i] ?? 0);
     };
 
     /** sets the heights of the surface and of the lines to the relief */
@@ -210,7 +210,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
         const slope = () => Math.hypot(position.getY(Math.min(i + 1, W * H - 1)) - position.getY(Math.max(i - 1, 0)),
                                        position.getY(Math.min(i + W, W * H - 1)) - position.getY(Math.max(i - W, 0))) / 2;
         const height = !islands || !shore ? tint(colors, smooth[i], t.top)
-          : shore.inland[i] > 0 ? landColour((smooth[i] / t.top) ** tuned.curve * ramp(shore.inland[i]), shore.inland[i],
+          : shore.inland[i] > 0 ? landColour((smooth[i] / t.top) ** tuned.curve, shore.inland[i],
                                        Math.max(0, Math.min(1, (slope() - tuned.rock) / tuned.rock)), x, y)
           : bedColour(shore.depth[i]);
         const c = hues && t.cells[i] >= 0 ? hued(height, hues[t.cells[i]]) : height;

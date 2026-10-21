@@ -96,7 +96,7 @@ export function blocks(T, t, {lift, hues, colors, linear, sea = null, columns = 
     depth = sea.depths(land, cols, rows);
     for (let i = 0; i < land.length; i++)
       if (!land[i])
-        ground[i] = -1 - Math.round(depth[i] * (deepest - 1));
+        ground[i] -= 1 + Math.round(depth[i] * (deepest - 1));
   }
   const most = count.reduce((m, k) => Math.max(m, k), 1);
 
