@@ -288,7 +288,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       new T.LineBasicMaterial({color: colors.text}));
     scene.add(ring);
 
-    const renderer = new T.WebGLRenderer({antialias: true});
+    const renderer = new T.WebGLRenderer({antialias: true, preserveDrawingBuffer: true}); // kept, for a screenshot
     renderer.setPixelRatio(devicePixelRatio || 1);
     renderer.setClearColor(colors.halo);
     const camera = new T.PerspectiveCamera(40, 1, side / 100, side * 14);

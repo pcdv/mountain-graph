@@ -23,6 +23,7 @@ import {hueLegend} from './components/hue-legend.js';
 import {peakControls, peakSettings} from './components/peak-controls.js';
 import {advanced, tuning} from './components/advanced.js';
 import {anonymizeControls, anonymizing} from './components/anonymizing.js';
+import {screenshotKeys} from './components/screenshot.js';
 import {timeline} from './components/timeline.js';
 import {span, checked} from './model/timeline.js';
 
@@ -308,6 +309,9 @@ function floating(title, key, body) {
   pane.addEventListener('toggle', () => writeSetting(setting, pane.open ? 'open' : 'closed'));
   return pane;
 }
+
+// S saves a picture of the view, C copies it
+screenshotKeys(() => (current?.name ?? 'mountain-graph').replace(/(\.\w+)?(\.gz)?$/, ''));
 
 // the profile opened last, shown again
 lastFile().then(file => file && open(file, true));
