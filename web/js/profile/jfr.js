@@ -619,8 +619,8 @@ class Builder {
     const symbols = pool('jdk.types.Symbol'), classes = pool('java.lang.Class'),
           methods = pool('jdk.types.Method'), stacks = pool('jdk.types.StackTrace'),
           threads = pool('java.lang.Thread'), frameTypes = pool('jdk.types.FrameType');
-    /** @param {number} key */
     const text = texter(c.pools);
+    /** @param {number} key */
     const symbol = key => text(symbols.get(key)?.string) ?? '';
     /** @param {number} key */
     const className = key => javaName(symbol(classes.get(key)?.name));
