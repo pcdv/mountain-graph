@@ -142,12 +142,12 @@ function display(name, samplings, which, saved = null) {
     // as left when the page was last closed: the rows unfolded, the peak chosen, the 3D camera
     const kept0 = remembered();
     /** @type {Set<string>} */
-    const open = new Set(kept0.open);
+    const unfolded = new Set(kept0.open);
     /** @type {import('./components/terrain-frame.js').Selection} */
     const selection = {chosen: kept0.chosen, tab: kept0.tab, unit: p.unit};
     /** @type {import('./views/terrain3d.js').Viewpoint} the 3D view's camera, kept as settings change */
     const viewpoint = kept0.viewpoint;
-    remember = () => writeSetting(VIEW, JSON.stringify({open: [...open], chosen: selection.chosen,
+    remember = () => writeSetting(VIEW, JSON.stringify({open: [...unfolded], chosen: selection.chosen,
                                                         tab: selection.tab, viewpoint}));
     /** @type {{waits: string, kept: Profile, left: number} | null} the samples kept, while waits is the same */
     let kept = null;
@@ -244,7 +244,7 @@ function display(name, samplings, which, saved = null) {
         closeTerrainView();
         replace(map, mapView(t, trees, selection, hues), legend);
       }
-      replace(table, peaksView(r, m, open, kept.left, p.unit));
+      replace(table, peaksView(r, m, unfolded, kept.left, p.unit));
     };
     /** @type {import('./components/peak-controls.js').PeakSettings | null} */
     let last = null;
