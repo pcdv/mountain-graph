@@ -36,8 +36,8 @@ works; both are expected to be green. There is no build step, no linter and no f
 - `web/js/views/` — what draws: the 2D map, the 3D terrain, the peaks table. `palette.js` is the
   neutral module for constants that several views share.
 - `web/js/components/` — the panels and controls floating over the view.
-- `web/js/lib/` — `dom.js`, `dialog.js`, `settings.js` are copies of jfr-web's; `format.js` is this
-  project's own.
+- `web/js/lib/` — `dom.js`, `dialog.js`, `settings.js` (with their `.d.ts` and `web-lib.json`) are copies
+  from `../web-lib`; `format.js` is this project's own.
 - `test/` mirrors `web/js/`; `test/fixtures/` holds a small real recording and the program that
   made it. Tests use `node:test` and `node:assert/strict`.
 - `samples/` — profiles tried locally, gitignored, never committed.
@@ -66,10 +66,14 @@ Settings are kept in `localStorage` under `mountaingraph.*` (`view`, `sampling`,
 - `model/` and `profile/` stay DOM-free and are tested with Node. A feature that can be tested
   without a browser gets a test under `test/`.
 
-### Copies shared with jfr-web
+### Copies shared with other projects
 
-`web/js/lib/{dom,dialog,settings}.js` and `web/js/profile/profile.js` are byte-identical copies of
-jfr-web's (`src/main/resources/jfrweb/ui/js/`), and their tests differ only in import paths. Diff
-against jfr-web before touching one, keep the copies identical, and port a change to jfr-web
-rather than letting them drift. A change to `profile.js` or to the profile format is a jfr-web
-change first.
+`web/js/lib/{dom,dialog,settings}.js` come from `../web-lib` (`web-lib.json` in that directory
+lists the modules and the commit copied). Never edit them here: fix web-lib, then run
+`npm run sync -- ../mountain-graph/web/js/lib` from `../web-lib` (`--check` tells whether they are
+behind). The lib has its own tests; this project has none of them.
+
+`web/js/profile/profile.js` is a byte-identical copy of jfr-web's
+(`src/main/resources/jfrweb/ui/js/`), and its test differs only in import paths. Diff against
+jfr-web before touching it, and keep the copies identical. A change to `profile.js` or to the
+profile format is a jfr-web change first.

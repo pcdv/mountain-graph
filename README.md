@@ -38,5 +38,7 @@ recording, with the program it was made from.
 
 ## Code
 
-`web/js/profile/profile.js` and `web/js/lib/` are copies of jfr-web's, kept identical, with their
-tests under `test/`: a change to them is made in both projects.
+`web/js/profile/profile.js` is a copy of jfr-web's, kept identical: a change to it is made in
+jfr-web. `dom.js`, `dialog.js` and `settings.js` in `web/js/lib/` are copied from
+[web-lib](https://github.com/pcdv/web-lib) (`web-lib.json` there tells which), with a `.d.ts` beside
+each: they are fixed in web-lib, then synced.
