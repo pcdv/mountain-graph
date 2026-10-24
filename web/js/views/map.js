@@ -28,7 +28,7 @@ export function mapView(t, trees, selection, hues = null) {
   const canvas = h('canvas', {class: 'map'});
   let scale = 1;
   const frame = terrainFrame(t, trees, selection,
-                             'Hover the map: a frame, its path from the peak. Click a mountain: its callers and callees.',
+                             'Hover the map: a frame, its path from the peak.',
                              () => {
                                light();
                                scale = draw();

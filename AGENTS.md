@@ -3,9 +3,12 @@
 A profile drawn as a landscape: the methods where the time goes are mountain peaks, and the call
 paths that lead to them are the slopes around each one. A static page with no build step and no
 server behind it. It answers "why do we keep ending up here?", where a flame graph answers "where
-is the time spent?".
+is the time spent?". A heap dump is drawn the same way: the objects that hold the memory are the
+peaks, the references to them the slopes.
 
-Created 2026-10-18 out of jfr-web, and follows jfr-web's rules (which follow flak's). The plan and
+Created 2026-10-18 out of jfr-web, and follows jfr-web's rules (which follow flak's). The heap
+dumps came from heap-landscape on 2026-10-24 (its commit `bbda976`, a private repository now
+retired), whose parser had become [jheap](../jheap)'s. The plan and
 the findings so far live in `ROADMAP.md` — keep them there rather than in commit messages.
 
 The user's cross-project rules are in `~/.pi/agent/AGENTS.md`; they apply here too. This file adds
@@ -19,6 +22,7 @@ the project specifics. Repository hygiene — what a public repo may not contain
 | Serve the page | `npm run serve` → http://localhost:8091/ (`node serve.js <port>` for another port) |
 | Tests | `npm test` (`node --test "test/**/*.test.js"`) |
 | Type check | `npx -p typescript tsc -p jsconfig.json` |
+| Update the heap parser | `node crates/jheap-wasm/install.mjs` in a jheap checkout beside this one, then `npm test` |
 
 Node 21 or later, nothing to install. Run the tests and the type check before claiming a change
 works; both are expected to be green. There is no build step, no linter and no formatter.
@@ -27,23 +31,34 @@ works; both are expected to be green. There is no build step, no linter and no f
 
 - `web/index.html`, `web/css/app.css` — the page. three.js 0.160.0 is pinned in its import map:
   the only dependency, loaded when the 3D view is first shown.
-- `web/js/main.js` — wiring only: opening a file, the top bar, the floating panels, the settings.
-- `web/js/load.js` — a picked or dropped file to a `Profile`: jfr-web's format (version 4, or 3),
-  collapsed stacks, or a JFR recording, gzipped or not.
-- `web/js/profile/` — the format readers (`profile.js`, `collapsed.js`, `jfr.js`). No DOM.
+- `web/js/main.js` — wiring only: opening a file, its progress, the view of its kind, the file
+  kept for a reload.
+- `web/js/load.js` — a picked or dropped file, told by its content, to what it holds: samples
+  (jfr-web's format, version 4 or 3; collapsed stacks; a JFR recording) or a heap (a dump, or the
+  profile jheap keeps of one), gzipped or not.
+- `web/js/kinds/` — the view of each kind of file: `samples.js`, `heap.js`, and `page.js` for what
+  they share. A new kind of file is a reader, a case in `load.js` and a module here.
+- `web/js/hprof/` — a heap dump to a profile: `jheap.wasm` (jheap's parser, built in jheap),
+  `jheap.js` (its wrapper), `worker.js` (the Web Worker that reads the file for it), `dump.js`.
+- `web/js/profile/` — the format readers (`profile.js`, `collapsed.js`, `jfr.js`; `heap.js` for a
+  heap's profile, with its objects). No DOM.
 - `web/js/model/` — the analysis: peaks, callers, terrain, contours, divides, hues, timeline,
-  anonymizing. No DOM, tested with Node.
+  anonymizing; for a heap, ownership (the chains of holders) and context. No DOM, tested with Node.
 - `web/js/views/` — what draws: the 2D map, the 3D terrain, the peaks table. `palette.js` is the
   neutral module for constants that several views share.
 - `web/js/components/` — the panels and controls floating over the view.
 - `web/js/lib/` — `dom.js`, `dialog.js`, `settings.js` (with their `.d.ts` and `web-lib.json`) are copies
   from `../web-lib`; `format.js` is this project's own.
 - `test/` mirrors `web/js/`; `test/fixtures/` holds a small real recording and the program that
-  made it. Tests use `node:test` and `node:assert/strict`.
-- `samples/` — profiles tried locally, gitignored, never committed.
+  made it. Tests use `node:test` and `node:assert/strict`. The heap's tests build their dumps byte
+  by byte (`test/hprof/hprof-builder.js`) and parse them with `jheap.wasm` in Node
+  (`test/hprof/jheap-parse.js`).
+- `samples/` — profiles and dumps tried locally, gitignored, never committed: a heap dump holds
+  whatever the process had in memory.
 
 Settings are kept in `localStorage` under `mountaingraph.*` (`view`, `sampling`, `tuning`,
-`anonymize`, `peaks.*`, `timeline.hold`, `panel.width`); give a new one the same prefix.
+`anonymize`, `peaks.*` for samples, `heap.*` for a heap, `float.*`, `timeline.hold`,
+`panel.width`); give a new one the same prefix.
 
 ## Rules
 
@@ -77,3 +92,7 @@ behind). The lib has its own tests; this project has none of them.
 (`src/main/resources/jfrweb/ui/js/`), and its test differs only in import paths. Diff against
 jfr-web before touching it, and keep the copies identical. A change to `profile.js` or to the
 profile format is a jfr-web change first.
+
+`web/js/hprof/jheap.wasm` is jheap's parser, built and copied here by jheap's
+`crates/jheap-wasm/install.mjs`; `jheap.js` follows its exports. A change to the parse (what a
+path is, a class object's name) is a jheap change first.

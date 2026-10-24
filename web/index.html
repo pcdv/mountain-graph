@@ -19,13 +19,19 @@
 <body>
   <header>
     <h1>MountainGraph</h1>
-    <label class="button">Open a profile… <input id="picker" type="file" accept=".json,.gz,application/json"></label>
+    <label class="button">Open a file… <input id="picker" type="file"></label>
     <div id="bar"></div>
   </header>
   <div id="timeline" hidden></div>
   <main id="main">
-    <p class="muted">Drop a profile here: the JSON of jfr-web (<code>/api/sessions/:id/profile</code>, or
-      <code>profile.json</code> in a static export), gzipped or not.</p>
+    <p class="muted">Drop a file here, gzipped or not: a JFR recording (<code>.jfr</code>), a profile of jfr-web
+      (<code>/api/sessions/:id/profile</code>, or <code>profile.json</code> in a static export), collapsed stacks,
+      or a heap dump (<code>.hprof</code>). For a heap dump too large for the page, or gzipped, the parse
+      <a href="https://github.com/pcdv/jheap">jheap</a> keeps beside it (<code>.jheap.json</code>).</p>
   </main>
+  <div id="progress" hidden>
+    <div class="progress-text"></div>
+    <div class="progress-bar"><div class="progress-fill"></div></div>
+  </div>
 </body>
 </html>

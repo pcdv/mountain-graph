@@ -723,3 +723,87 @@ canvas.map {
 .anonymizing .button {
   justify-self: start;
 }
+
+/* Progress indicator for heap dump loading */
+#progress {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--float);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 300px;
+}
+.progress-text {
+  margin-bottom: 8px;
+  text-align: center;
+  font-size: 13px;
+}
+.progress-bar {
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+  width: 0;
+}
+
+/* The parse report: what a heap dump parse read and cost */
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.report-section .report-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.report-table {
+  border-collapse: collapse;
+}
+
+.report-table td {
+  padding: 1px 12px 1px 0;
+  white-space: nowrap;
+}
+
+.report-table td:last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+.report-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.report-status {
+  font-size: 12px;
+}
+
+.report-copy {
+  width: 100%;
+  box-sizing: border-box;
+  font: 12px/1.4 ui-monospace, monospace;
+}
+
+/* a frame in a panel that can be clicked to show that object instead */
+.callers .pick {
+  cursor: pointer;
+}
+
+.callers .pick:hover {
+  text-decoration: underline;
+}

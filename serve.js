@@ -13,10 +13,19 @@ const types = {
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json',
   '.svg': 'image/svg+xml',
+  '.wasm': 'application/wasm',
 };
 
 createServer(async (req, res) => {
-  const path = decodeURIComponent(new URL(req.url || '/', 'http://localhost').pathname);
+  let path;
+  try {
+    path = decodeURIComponent(new URL(req.url || '/', 'http://localhost').pathname);
+  }
+  catch (e) {
+    // a stray % in the address, which would otherwise throw out of the handler and stop the server
+    res.writeHead(400).end('Bad request');
+    return;
+  }
   const file = normalize(join(root, path.endsWith('/') ? path + 'index.html' : path));
   if (!file.startsWith(root.endsWith(sep) ? root : root + sep)) {
     res.writeHead(403).end();

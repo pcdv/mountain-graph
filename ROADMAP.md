@@ -184,3 +184,33 @@ checked: exact figures, one path followed precisely.
 - Ranges by package or by pattern
 - The format named, and its specification taken out of jfr-web's docs
 - A view in jfr-web, if it proves itself
+
+## Heap dumps
+
+Taken in from heap-landscape (2026-10-24), which drew heaps with a copy of this page's terrain,
+the copies drifting apart. Its parser and its command line became jheap's; the page reads files of
+either kind, told by their content, and shows the view of that kind (`kinds/`).
+
+- [x] A `.hprof` parsed in the page by jheap's parser, compiled to WebAssembly, in a Web Worker that
+  reads the `File` through `FileReaderSync`, a slice at a time. A 216 MiB dump opens in 2 s, one of
+  4.6 GB and 46M objects in 18 s against jheap's 4 s: the reads and their copy into the module's
+  memory are most of the difference. A file opened while a dump parses stops the parse
+- [x] A heap's profile opened as a dump is, without parsing: the parse jheap keeps beside a dump
+  (`.jheap.json`), with its report, for a heap past the page's 4 GiB or gzipped; an export of the page
+- [x] Peaks ranked by what they hold, the deepest chain of holders still retaining most of the
+  weight (`model/ownership.js`, the same chains as jheap's), or by shallow size, gathered with
+  their holders (*context*)
+- [x] The panel's two directions, *Holds* and *Held by*, every name clicked showing that object
+- [x] The parse's report in a pane, copied as `key: value` text
+- [x] Kept for a reload as its parse, not the dump; anonymized as samples are
+- [ ] A gzipped dump in the page: unzipped through `DecompressionStream` into a file of the origin
+  private file system, whose synchronous handles exist in workers, and parsed from there. Refused
+  today, with a message naming jheap and the `.jheap.json` it keeps. Done when a test drops a
+  gzipped `File` through `loadFile`
+- [ ] A class object named `class com.Foo`: its static fields hang under the plain class name,
+  which reads as an instance of it. A change to the parse, in jheap first
+- [ ] Said on the page, not only in the README, what is approximate: the holder of a shared object
+  (a breadth-first spanning tree, not a dominator tree), the thin wrappers skipped
+- [ ] The shape, view and colour are remembered apart for samples and heaps: whether they should
+  follow each other is open
+- Later: a dominator tree, and field names in the paths, both in jheap's parse first

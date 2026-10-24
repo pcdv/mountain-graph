@@ -6,10 +6,14 @@
  * mountain clicked, or what it called and what ran at the top, and which
  * frames are lit. The panel is as wide as dragged, remembered. A view draws and picks; it
  * tells the frame which node is under the mouse, and redraws when told.
+ *
+ * A heap's panel says what the peak holds and who holds it instead, and walks
+ * the object graph: a name clicked shows that object (holders.js).
  */
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {callersTree} from './callers.js';
+import {heldBy, holdersOf} from './holders.js';
 import {amount} from '../model/units.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
@@ -26,13 +30,25 @@ export function panelWidth() {
 }
 
 /**
+ * What the panel shows: a peak's callers or callees, or for a heap what it holds or who holds it.
+ *
+ * @typedef {'callers' | 'callees' | 'holds' | 'holders'} Tab
+ */
+
+/**
  * What the page keeps of the panel, and gives it.
  *
  * @typedef {object} Selection
  * @property {string} chosen the name of the peak whose panel shows, '' for none
- * @property {'callers' | 'callees'} [tab] what the panel shows
+ * @property {Tab} [tab] what the panel shows
  * @property {(name: string) => Called} [callees] what a peak called
  * @property {import('../model/units.js').Unit} [unit] what the weights count, as the profile tells; ms when not told
+ * @property {boolean} [holds] the mountain is what the peak holds, not its callers: a heap dump
+ * @property {number[]} [nodes] the node of each mountain in the profile, in the terrain's order
+ * @property {(node: number) => Frame | undefined} [holdsAt] what an object holds, when the panel
+ *           can be walked: clicking a frame then shows that object instead of the peak
+ * @property {(node: number) => Frame | undefined} [heldByAt] who holds an object
+ * @property {number} [subject] the object the panel shows, kept up to date
  */
 
 /**
@@ -52,12 +68,14 @@ export function panelWidth() {
  * @param {Frame[]} trees the mountains it was raised from, in its order
  * @param {Selection} selection kept up to date, so that the same panel shows when the view is
  *        built again
- * @param {string} hint what to do, until something is hovered
+ * @param {string} how to move around the view and hover it, until something is hovered: what a
+ *        click shows is said after
  * @param {() => void} redraw called when what is lit or chosen changed
  * @returns {TerrainFrame}
  */
-export function terrainFrame(t, trees, selection, hint, redraw) {
+export function terrainFrame(t, trees, selection, how, redraw) {
   const unit = selection.unit ?? 'ms';
+  const hint = `${how} Click a mountain: ${selection.holds ? 'what it holds, and who holds it' : 'its callers and callees'}.`;
   const info = h('div', {class: 'map-info muted'}, hint);
   const holder = h('div', {class: 'map-holder'});
   const panel = h('aside', {class: 'map-panel'});
@@ -98,31 +116,72 @@ export function terrainFrame(t, trees, selection, hint, redraw) {
   let chosen = t.mountains.findIndex(m => m.name === selection.chosen);
   /** @param {number} m */
   const choose = m => {
+    const name = m < 0 ? '' : t.mountains[m].name;
+    // the object walked to is kept while the same peak shows, so that changing a
+    // setting redraws the view without sending the panel back to the peak
+    const same = m >= 0 && selection.chosen === name && selection.subject !== undefined;
     chosen = m;
-    selection.chosen = m < 0 ? '' : t.mountains[m].name;
+    selection.chosen = name;
+    if (!same)
+      selection.subject = m < 0 ? undefined : selection.nodes?.[m];
     dock.hidden = m < 0;
-    if (m < 0)
-      return;
+    if (m >= 0)
+      render(m);
+  };
+  /** @param {number} m */
+  const render = m => {
     const tree = trees[m];
     const called = selection.callees;
-    const tab = called ? selection.tab ?? 'callers' : 'callers';
-    /** @param {'callers' | 'callees'} to */
-    const button = to => h('button', {type: 'button', class: to === tab ? 'button on' : 'button', onclick: () => {
-      selection.tab = to;
-      choose(m);
-    }}, to === 'callers' ? 'Callers' : 'Callees');
+    const holds = selection.holdsAt;
+    const subject = selection.subject ?? selection.nodes?.[m] ?? -1;
+    /** @param {Frame} f */
+    const pick = f => {
+      const node = /** @type {{node?: number}} */ (f).node;
+      if (node === undefined || node === subject)
+        return;
+      selection.subject = node;
+      render(m);
+    };
+    /** @type {{id: Tab, label: string}[]} */
+    const tabs = holds ? [{id: 'holds', label: 'Holds'}, {id: 'holders', label: 'Held by'}]
+      : called ? [{id: 'callers', label: 'Callers'}, {id: 'callees', label: 'Callees'}]
+      : [];
+    const first = tabs[0]?.id ?? 'callers';
+    const tab = tabs.some(x => x.id === selection.tab) ? selection.tab : first;
+    /** @param {Tab} to @param {string} label */
+    const button = (to, label) => h('button', {type: 'button', class: to === tab ? 'button on' : 'button',
+      onclick: () => {
+        selection.tab = to;
+        render(m);
+      }}, label);
+    // walked away from the peak: the panel shows another object, and says how to get back
+    const shown = subject >= 0 && subject !== selection.nodes?.[m] ? selection.holdsAt?.(subject) : undefined;
     panel.replaceChildren(
       h('div', {class: 'panel-head'},
-        h('b', null, tree.name),
+        h('b', null, shown?.name ?? tree.name),
+        ...shown ? [h('button', {type: 'button', class: 'button', title: 'Back to the peak', onclick: () => {
+          selection.subject = selection.nodes?.[m];
+          render(m);
+        }}, '← peak')] : [],
         h('button', {type: 'button', class: 'button', title: 'Close', onclick: () => {
           choose(-1);
           redraw();
         }}, '×')),
-      ...called ? [h('div', {class: 'panel-tabs'}, button('callers'), button('callees'))] : [],
-      ...tab === 'callees' && called ? calleesOf(called(tree.name), unit) : [
-        h('div', {class: 'muted'}, `${amount(tree.total, unit)} at the top; its callers, the heaviest first:`),
-        callersTree(tree, 'callers', unit),
-      ]);
+      ...tabs.length > 1 ? [h('div', {class: 'panel-tabs'}, tabs.map(x => button(x.id, x.label)))] : [],
+      ...tab === 'callees' && called ? calleesOf(called(tree.name), unit)
+        : tab === 'holders' && holds ? heldBy(selection.heldByAt?.(subject), shown ?? tree, unit, pick)
+        : shown ? [
+          h('div', {class: 'muted'}, `${amount(shown.total, unit)} it holds, the heaviest first:`),
+          callersTree(shown, 'holds', unit, {flat: false, onPick: pick}),
+        ]
+        : [
+          h('div', {class: 'muted'}, selection.holds
+            ? `${amount(tree.total, unit)} at the top; what it holds, the heaviest first:`
+            : `${amount(tree.total, unit)} at the top; its callers, the heaviest first:`),
+          ...holdersOf(tree),
+          callersTree(tree, selection.holds ? 'holds' : 'callers', unit,
+            {flat: !selection.holds, onPick: holds ? pick : undefined}),
+        ]);
   };
   choose(chosen);
 
@@ -136,7 +195,7 @@ export function terrainFrame(t, trees, selection, hint, redraw) {
       if (n === lit)
         return;
       lit = n;
-      info.replaceChildren(...(n < 0 ? [hint] : describe(t, children, n, unit)));
+      info.replaceChildren(...(n < 0 ? [hint] : describe(t, children, n, unit, selection.holds === true)));
       redraw();
     },
     click: n => {
@@ -180,9 +239,10 @@ function calleesOf({tree, tops, groups}, unit) {
  * @param {number[][]} children of each node
  * @param {number} n the node hovered
  * @param {import('../model/units.js').Unit} unit
+ * @param {boolean} holds the mountains are what their peaks hold, a step being a reference, not a call
  * @returns {Node[]}
  */
-function describe(t, children, n, unit) {
+function describe(t, children, n, unit, holds) {
   /** @type {number[]} */
   const up = [];
   for (let i = n; i >= 0; i = t.nodes[i].parent)
@@ -208,7 +268,7 @@ function describe(t, children, n, unit) {
   return [
     h('div', null, h('b', null, node.name), ` ${amount(node.total, unit)}, `
       + `${(100 * node.total / peak.total).toFixed(1)}% of ${short(peak.name)}, `
-      + `${node.depth} ${node.depth === 1 ? 'call' : 'calls'} down`),
+      + `${node.depth} ${holds ? 'reference' : 'call'}${node.depth === 1 ? '' : 's'} down`),
     ...saddle ? [h('div', null, 'A saddle: ', saddle.nodes.map(i => {
       const m = t.mountains[t.nodes[i].mountain];
       return `${amount(t.nodes[i].total, unit)} toward ${short(m.name)}`;

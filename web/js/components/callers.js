@@ -15,9 +15,11 @@ import {amount} from '../model/units.js';
 /** @typedef {import('../profile/profile.js').Frame} Frame */
 
 /**
- * How a tree is listed: its total, what the children of a frame are, and what the weights count.
+ * How a tree is listed: its total, what the children of a frame are, what the weights count, and
+ * whether a frame with a single child is listed under it at the same level.
  *
- * @typedef {{total: number, noun: string, unit: import('../model/units.js').Unit}} Tree
+ * @typedef {{total: number, noun: string, unit: import('../model/units.js').Unit,
+ *            flat?: boolean, shareTotal?: number, onPick?: (f: Frame) => void}} Tree
  */
 
 
@@ -25,10 +27,17 @@ import {amount} from '../model/units.js';
  * @param {Frame} mountain the tree of the peak, as mountains() or callees() gives it
  * @param {string} [noun] what the children of a frame are: callers, or callees
  * @param {import('../model/units.js').Unit} [unit] what the weights count, as the profile tells
+ * @param {{flat?: boolean, shareTotal?: number, onPick?: (f: Frame) => void}} [options] flat: a
+ *        frame with a single child is listed under it at the same level, so a long chain reads
+ *        straight down; false nests every step, for a tree where each step is a different thing, as
+ *        a heap dump's holders are. shareTotal: what the shares are taken of, the mountain's own
+ *        total by default; a chain of holders grows outward, so its shares are of the top of the
+ *        chain. onPick: given a frame when its name is clicked, for a tree that can be walked
  * @returns {HTMLElement}
  */
-export function callersTree(mountain, noun = 'callers', unit = 'ms') {
-  return h('ul', {class: 'callers'}, callers(mountain, {total: mountain.total, noun, unit}));
+export function callersTree(mountain, noun = 'callers', unit = 'ms', {flat = true, shareTotal, onPick} = {}) {
+  return h('ul', {class: 'callers'},
+    callers(mountain, {total: mountain.total, noun, unit, flat, shareTotal, onPick}));
 }
 
 /**
@@ -38,9 +47,10 @@ export function callersTree(mountain, noun = 'callers', unit = 'ms') {
  *          each of its callers, the heaviest first
  */
 function callers(f, tree) {
-  return f.children.length === 1
-    ? path(f.children[0], tree)
-    : [...f.children].sort((a, b) => b.total - a.total).flatMap(c => path(c, tree));
+  if (tree.flat && f.children.length === 1)
+    return path(f.children[0], tree);
+  return [...f.children].sort((a, b) => b.total - a.total)
+    .flatMap(c => tree.flat ? path(c, tree) : [fork(c, tree)]);
 }
 
 /**
@@ -82,8 +92,18 @@ function fork(f, tree) {
  * @param {Tree} tree
  */
 function label(f, tree) {
+  const of = tree.shareTotal ?? tree.total;
+  const name = h('span', {class: mainType(f) === SYNTHETIC ? 'entry' : 'frame'}, f.name);
+  if (tree.onPick) {
+    name.classList.add('pick');
+    name.title = 'Show what this object holds, and who holds it';
+    name.addEventListener('click', e => {
+      e.stopPropagation();
+      tree.onPick?.(f);
+    });
+  }
   return [
-    h('span', {class: mainType(f) === SYNTHETIC ? 'entry' : 'frame'}, f.name),
-    h('span', {class: 'muted'}, ` ${amount(f.total, tree.unit)}, ${(100 * f.total / tree.total).toFixed(1)}%`),
+    name,
+    h('span', {class: 'muted'}, ` ${amount(f.total, tree.unit)}, ${(100 * f.total / (of || 1)).toFixed(1)}%`),
   ];
 }

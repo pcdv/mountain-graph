@@ -5,8 +5,12 @@ time goes are mountain peaks, and the call paths that lead to them are the slope
 one, down to the entry points (a request, a thread) at its foot. A flame graph answers "where
 is the time spent?"; this tries to answer "why do we keep ending up here?".
 
-A plain web page, with no build step and no server behind it: it reads a profile picked or
-dropped on it. A 2D topographic map comes first, then the same terrain in 3D.
+A heap dump is drawn the same way: the objects that hold the most memory are the peaks, and the
+references that lead to them the slopes, out to the roots that hold them.
+
+A plain web page, with no build step and no server behind it: it reads a file picked or dropped
+on it, and tells by its content what it is. A 2D topographic map comes first, then the same
+terrain in 3D.
 
 ## Trying it
 
@@ -19,7 +23,8 @@ npm test        # the tests of the modules without DOM
 
 ## Input
 
-A file picked or dropped, gzipped or not, in one of three formats, told by its first bytes:
+A file picked or dropped, gzipped or not, told by its first bytes. Samples, of time or of
+allocations:
 
 - **JFR recordings** (`.jfr`, JDK 11 and later), read in the page. They hold two kinds of samples,
   which weigh different things, so both are read and a *Samples* choice in the top bar switches
@@ -33,12 +38,38 @@ A file picked or dropped, gzipped or not, in one of three formats, told by its f
   `stackcollapse` scripts (`a;b;c 12` per line), which any profiler can produce. Their counts
   are samples, with no time, thread or operation.
 
+And the memory of a JVM:
+
+- **Heap dumps** (`.hprof`, as jmap and jcmd write them), parsed in the page by
+  [jheap](https://github.com/pcdv/jheap)'s parser compiled to WebAssembly, in a Web Worker that
+  reads the file a slice at a time: a dump of 4.6 GB and 46 million objects opens in under 20
+  seconds, the page responsive throughout. WebAssembly addresses 4 GiB, so the page reads heaps up
+  to roughly 100 million objects. Beyond, or for a gzipped dump, the `jheap` command parses it
+  and keeps its parse beside it, `<name>.jheap.json`, which the page opens as it opens the dump.
+  So does a heap the page exported.
+
+A heap's peaks are ranked by what they hold, as the deepest chain of holders that still retains
+most of the weight. Clicking one opens a panel with what it **holds** and who it is **held by**:
+every name there is clickable and shows that object instead, so that a map can be followed out to
+the cache holding it and in to its entries. The page draws a heap approximately in two ways, as
+jheap's command does:
+
+- **The holder tree is a breadth-first spanning tree, not a dominator tree.** Totals are exact,
+  but an object held by several others shows one of them, whichever the walk reached it from first.
+- **Thin wrappers are skipped by heuristic.** An object that owns under 1% of what it holds and
+  spreads it over several children is taken for where the walk entered the graph, not an owner.
+  The setting *thin wrappers* shows them again.
+
+The last file opened is kept in the browser, and shown again when the page is reloaded: a heap
+dump as its parse, a few MB, so that a reload does not parse it again.
+
 Profiles tried locally go in `samples/`, which git ignores. `test/fixtures/` holds a small real
 recording, with the program it was made from.
 
 ## Code
 
 `web/js/profile/profile.js` is a copy of jfr-web's, kept identical: a change to it is made in
-jfr-web. `dom.js`, `dialog.js` and `settings.js` in `web/js/lib/` are copied from
+jfr-web. `web/js/hprof/jheap.wasm` is built in [jheap](https://github.com/pcdv/jheap), whose
+`node crates/jheap-wasm/install.mjs` copies it here; the parse tests run it. `dom.js`, `dialog.js` and `settings.js` in `web/js/lib/` are copied from
 [web-lib](https://github.com/pcdv/web-lib) (`web-lib.json` there tells which), with a `.d.ts` beside
 each: they are fixed in web-lib, then synced.

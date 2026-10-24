@@ -1,8 +1,19 @@
-import {test} from 'node:test';
+import {test, describe} from 'node:test';
 import assert from 'node:assert/strict';
-import {loadProfiles} from '../web/js/load.js';
+import {loadFile, loadParse} from '../web/js/load.js';
 import {readFileSync} from 'node:fs';
+import {gzipSync} from 'node:zlib';
 import {weightOf, tree, ALLOCATED} from '../web/js/profile/profile.js';
+import {encode} from '../web/js/profile/heap.js';
+import {parseWithJheap} from '../web/js/hprof/jheap.js';
+import {HprofBuilder} from './hprof/hprof-builder.js';
+
+/** The samplings of a file of samples. */
+async function loadProfiles(file) {
+  const loaded = await loadFile(file);
+  assert.equal(loaded.kind, 'samples');
+  return loaded.samplings;
+}
 
 /** The profile of a file with a single sampling. */
 async function loadProfile(file) {
@@ -108,6 +119,122 @@ test('collapsed stacks load, gzipped or not', async () => {
   const p = await loadProfile(new File(['main;run 3\nmain;work 2\n'], 'a.folded'));
   assert.equal(p.unit, 'samples');
   assert.equal(p.stack.length, 2);
-  await assert.rejects(loadProfile(new File(['hello\n'], 'x.txt')), /x\.txt is neither/);
+  assert.equal((await loadProfile(new File([gzipSync('main;run 3\n')], 'a.folded.gz'))).stack.length, 1);
+  await assert.rejects(loadProfile(new File(['hello\n'], 'x.txt')), /x\.txt is none of what this page reads/);
   await assert.rejects(loadProfile(new File(['a 1\nb\n'], 'y.txt')), /y\.txt: Line 2/);
+});
+
+const module = new WebAssembly.Module(readFileSync(new URL('../web/js/hprof/jheap.wasm', import.meta.url)));
+
+/**
+ * A dump as the page is given it, which fails the test if the page ever reads
+ * it whole: a dump of gigabytes does not fit in the page.
+ *
+ * @param {Uint8Array} bytes
+ * @param {string} name
+ * @returns {File}
+ */
+function picked(bytes, name) {
+  const file = new File([bytes], name);
+  const whole = () => {
+    throw new Error('the whole file was read');
+  };
+  return Object.assign(file, {arrayBuffer: whole, stream: whole, text: whole, bytes: whole});
+}
+
+/**
+ * jheap's parse in this thread, as the page's worker does it, reading the
+ * bytes the test made: Node reads no `File` synchronously.
+ *
+ * @param {Uint8Array} bytes
+ * @returns {import('../web/js/hprof/dump.js').Parser}
+ */
+const inThread = bytes => (file, onProgress) => parseWithJheap(module, {
+  size: file.size,
+  name: file.name,
+  onProgress,
+  readAt: (offset, into) => {
+    const part = bytes.subarray(offset, offset + into.length);
+    into.set(part);
+    return part.length;
+  },
+});
+
+const dump = new HprofBuilder()
+  .string(0x100, 'java/lang/String')
+  .loadClass(0x200, 0x100)
+  .classDump({classId: 0x200})
+  .instance(0x300, 0x200)
+  .rootUnknown(0x300)
+  .build();
+
+/** A heap loaded from a file: the kind is checked. */
+async function loadHeap(file, options) {
+  const loaded = await loadFile(file, options);
+  assert.equal(loaded.kind, 'heap');
+  return loaded;
+}
+
+describe('a heap dump', () => {
+  test('is parsed with jheap, and the page says what it read', async () => {
+    const {heap: {profile, stats}, parse} = await loadHeap(picked(dump, 'heap.hprof'), {parse: inThread(dump)});
+
+    assert.equal(stats.report?.instanceCount, 1);
+    assert.equal(stats.totalSize, 8);
+    assert.equal(stats.objectCount, 1, 'the instance, not its class');
+    assert.deepEqual([...profile.strings].filter(s => s).sort(), ['Unknown', 'all', 'java.lang.String']);
+    assert.equal(parse.name, 'heap.hprof');
+  });
+
+  test('is shown again from the parse kept of it, without parsing', async () => {
+    const {parse} = await loadHeap(picked(dump, 'heap.hprof'), {parse: inThread(dump)});
+    const kept = structuredClone(parse);
+
+    const {profile, stats} = loadParse(kept);
+
+    assert.equal(stats.report?.instanceCount, 1);
+    assert.equal(profile.stack.length, 1);
+  });
+
+  test('has its names anonymized as samples have', async () => {
+    const anonymous = {packages: false, depth: 2, keep: [], replace: [{from: 'String', to: 'Text'}]};
+    const {heap: {profile}} = await loadHeap(picked(dump, 'heap.hprof'), {parse: inThread(dump), anonymous});
+
+    assert.ok(profile.strings.includes('java.lang.Text'));
+    assert.ok(profile.objects, 'the objects of each path stay');
+  });
+
+  test('opens from the parse jheap keeps beside it, with its report, without parsing', async () => {
+    const {heap: parsed} = await loadHeap(picked(dump, 'heap.hprof'), {parse: inThread(dump)});
+    const kept = JSON.stringify({...encode(parsed.profile), heap: {report: parsed.stats.report}});
+    const parse = () => assert.fail('a profile is not parsed');
+
+    const {heap: {profile, stats}, parse: none} = await loadHeap(new File([kept], 'heap.jheap.json'), {parse});
+
+    assert.equal(stats.report?.instanceCount, 1);
+    assert.equal(stats.totalSize, 8);
+    assert.equal(profile.stack.length, parsed.profile.stack.length);
+    assert.equal(none, null, 'the file is kept, not a parse');
+  });
+
+  test('opens from a profile the page exported, without a report: what it can count, it does', async () => {
+    const {heap: parsed} = await loadHeap(picked(dump, 'heap.hprof'), {parse: inThread(dump)});
+    const saved = JSON.stringify(encode(parsed.profile));
+
+    const {heap: {stats}} = await loadHeap(new File([saved], 'heap.profile.json'));
+
+    assert.equal(stats.report, null);
+    assert.equal(stats.totalSize, 8);
+    assert.equal(stats.objectCount, 1);
+  });
+
+  test('gzipped, is not read here: the page says what reads it', async () => {
+    await assert.rejects(loadFile(new File([gzipSync(dump)], 'heap.hprof.gz')),
+      /heap\.hprof\.gz is a gzipped heap dump, which the page cannot read: .*jheap.* heap\.jheap\.json/);
+  });
+
+  test('cut short, says what jheap says of it', async () => {
+    const cut = dump.subarray(0, dump.length - 5);
+    await assert.rejects(loadFile(picked(cut, 'cut.hprof'), {parse: inThread(cut)}), /Truncated file/);
+  });
 });
