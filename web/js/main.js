@@ -39,7 +39,7 @@ const page = {
 };
 
 closeButton.addEventListener('click', close);
-settingsPane($('settings', HTMLElement), $('settings-toggle', HTMLButtonElement), () => page.relayout());
+settingsPane($('settings', HTMLElement), $('settings-toggle', HTMLButtonElement));
 // the file kept is looked for before the landing shows: it would be seen for a moment, then replaced
 show(h('p', {class: 'muted'}, 'Loading…'));
 

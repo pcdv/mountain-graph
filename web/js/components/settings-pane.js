@@ -11,9 +11,10 @@ const KEY = 'mountaingraph.float.settings';
 /**
  * @param {HTMLElement} pane
  * @param {HTMLButtonElement} toggle the header's button
- * @param {() => void} resized called as the view's room changes
+ * @param {() => void} [resized] called as the view's room changes, if the view does not follow it itself
+ *        (the 2D and 3D views do, by observing their size: they are not built again)
  */
-export function settingsPane(pane, toggle, resized) {
+export function settingsPane(pane, toggle, resized = () => {}) {
   /** @param {boolean} open */
   const set = open => {
     pane.hidden = !open;
