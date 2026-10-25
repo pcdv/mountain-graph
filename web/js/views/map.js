@@ -5,7 +5,8 @@
  * mountains, and the saddles joining them, marked )( and named; dashed
  * trails between mountains related through a caller, however far apart. Hovering a frame lights
  * it in every mountain it stands in; what it is, and the callers of a
- * mountain clicked, show around the map (terrain-frame.js).
+ * mountain clicked, show around the map (terrain-frame.js). The map fills the
+ * view, zoomed with the wheel and moved by dragging, as the 3D one is.
  */
 import {h} from '../lib/dom.js';
 import {contour, levels} from '../model/contours.js';
@@ -20,18 +21,23 @@ import {palette, tint, hued, DEPTH, LINES} from './palette.js';
  * @param {Terrain} t
  * @param {Frame[]} trees the mountains it was raised from, in its order
  * @param {import('../components/terrain-frame.js').Selection} selection the peak whose panel shows
+ * @param {import('./terrain3d.js').Viewpoint} viewpoint where the map was moved to, kept up to date, so
+ *        that it stays there when the view is built again; empty at first, for the whole terrain
  * @param {Float64Array | null} [hues] per node, the hue of its package (hues.js); none to colour by height only
  * @returns {HTMLElement}
  */
-export function mapView(t, trees, selection, hues = null) {
+export function mapView(t, trees, selection, viewpoint, hues = null) {
   const colors = palette();
   const canvas = h('canvas', {class: 'map'});
-  let scale = 1;
+  // the cell at the centre of the view and the zoom over the whole terrain fitting it
+  const camera = viewpoint.map ??= {x: t.width / 2, y: t.height / 2, k: 1};
+  // where the terrain is on the canvas: a cell is `scale` px wide, the first at (left, top)
+  let scale = 1, left = 0, top = 0;
   const frame = terrainFrame(t, trees, selection,
-                             'Hover the map: a frame, its path from the peak.',
+                             'Hover the map: a frame, its path from the peak. Wheel to zoom, drag to move.',
                              () => {
                                light();
-                               scale = draw();
+                               draw();
                              });
   frame.holder.append(canvas);
 
@@ -72,16 +78,19 @@ export function mapView(t, trees, selection, hues = null) {
 
   const draw = () => {
     const width = frame.holder.clientWidth || 800, high = frame.holder.clientHeight || 600;
-    const scale = Math.min(width / t.width, high / t.height);
+    scale = Math.min(width / t.width, high / t.height) * camera.k;
+    left = width / 2 - camera.x * scale;
+    top = high / 2 - camera.y * scale;
     const ratio = devicePixelRatio || 1;
-    canvas.style.width = `${t.width * scale}px`;
-    canvas.style.height = `${t.height * scale}px`;
-    canvas.width = Math.round(t.width * scale * ratio);
-    canvas.height = Math.round(t.height * scale * ratio);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${high}px`;
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(high * ratio);
     const g = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
-    g.setTransform(ratio * scale, 0, 0, ratio * scale, 0, 0);
+    // the plain fills the canvas, the terrain is drawn on it
     g.fillStyle = `rgb(${colors.land[0].join(',')})`;
-    g.fillRect(0, 0, t.width, t.height);
+    g.fillRect(0, 0, canvas.width, canvas.height);
+    g.setTransform(ratio * scale, 0, 0, ratio * scale, ratio * left, ratio * top);
 
     // the trails on the plain, under the land, as wide as the relation is strong
     g.strokeStyle = colors.text;
@@ -146,7 +155,9 @@ export function mapView(t, trees, selection, hues = null) {
     /** @param {string} label @param {number} x @param {number} y @param {number} size of the font, px */
     const name = (label, x, y, size) => {
       const w = g.measureText(label).width + 4;
-      x = Math.max(w / 2, Math.min(t.width * scale - w / 2, x));
+      if (x < -w || x > width + w || y < -size || y > high + size)
+        return;
+      x = Math.max(w / 2, Math.min(width - w / 2, x));
       const box = [x - w / 2, y - size * 0.7, x + w / 2, y + size * 0.7];
       if (taken.some(b => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3]))
         return;
@@ -157,14 +168,14 @@ export function mapView(t, trees, selection, hues = null) {
       g.fillStyle = colors.text;
       g.fillText(label, x, y);
     };
-    t.mountains.forEach(m => name(short(m.name), m.x * scale, m.y * scale, 11));
+    t.mountains.forEach(m => name(short(m.name), left + m.x * scale, top + m.y * scale, 11));
 
     // the saddles, the highest first: )( across the way from one peak to the other
     g.font = 'italic 10px system-ui, sans-serif';
     const height = (/** @type {{x: number, y: number}} */ s) => t.heights[Math.floor(s.y) * t.width + Math.floor(s.x)];
     for (const s of t.saddles.filter(s => s.join).sort((a, b) => height(b) - height(a))) {
       const [a, b] = s.nodes.map(n => t.mountains[t.nodes[n].mountain]);
-      const angle = Math.atan2(b.y - a.y, b.x - a.x), x = s.x * scale, y = s.y * scale;
+      const angle = Math.atan2(b.y - a.y, b.x - a.x), x = left + s.x * scale, y = top + s.y * scale;
       g.lineWidth = 1.5;
       g.strokeStyle = colors.text;
       for (const side of [0, Math.PI]) {
@@ -178,21 +189,89 @@ export function mapView(t, trees, selection, hues = null) {
     // the trails, named after the caller they share, halfway
     for (const trail of t.trails) {
       const [x1, y1, x2, y2] = trail.line;
-      name(short(trail.caller), (x1 + x2) / 2 * scale, (y1 + y2) / 2 * scale, 10);
+      name(short(trail.caller), left + (x1 + x2) / 2 * scale, top + (y1 + y2) / 2 * scale, 10);
     }
-    return scale;
   };
 
-  // drawn once in the page, to know its width, and again as it changes
-  new ResizeObserver(() => scale = draw()).observe(frame.holder);
+  // drawn once in the page, to know its size, and again as it changes
+  new ResizeObserver(draw).observe(frame.holder);
 
   /** @param {MouseEvent} e @returns {number} the node under the mouse, -1 on the plain */
   const nodeAt = e => {
-    const x = Math.floor(e.offsetX / scale), y = Math.floor(e.offsetY / scale);
+    const x = Math.floor((e.offsetX - left) / scale), y = Math.floor((e.offsetY - top) / scale);
     return x >= 0 && y >= 0 && x < t.width && y < t.height ? t.cells[y * t.width + x] : -1;
   };
-  canvas.addEventListener('click', e => frame.click(nodeAt(e)));
-  canvas.addEventListener('mousemove', e => frame.hover(nodeAt(e)));
+
+  /** the least and the most the terrain may be zoomed: the whole of it, and a cell some 40 px wide */
+  const ZOOM = [1, 40];
+  let frameAsked = 0;
+  /** redraws once per frame however many events came */
+  const redraw = () => {
+    frameAsked ||= requestAnimationFrame(() => {
+      frameAsked = 0;
+      draw();
+    });
+  };
+  /** keeps the centre on the terrain */
+  const clamp = () => {
+    camera.x = Math.max(0, Math.min(t.width, camera.x));
+    camera.y = Math.max(0, Math.min(t.height, camera.y));
+  };
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    // the cell under the mouse stays under it
+    const x = (e.offsetX - left) / scale, y = (e.offsetY - top) / scale;
+    const k = Math.max(ZOOM[0], Math.min(ZOOM[1], camera.k * Math.exp(-e.deltaY * 0.002)));
+    const next = scale * k / camera.k;
+    camera.x = x - (e.offsetX - canvas.clientWidth / 2) / next;
+    camera.y = y - (e.offsetY - canvas.clientHeight / 2) / next;
+    camera.k = k;
+    clamp();
+    redraw();
+  }, {passive: false});
+
+  // a press moved more than a few px is a drag, not a click
+  let drag = /** @type {{x: number, y: number, moved: boolean} | null} */ (null);
+  canvas.addEventListener('pointerdown', e => {
+    drag = {x: e.clientX, y: e.clientY, moved: false};
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!drag) {
+      frame.hover(nodeAt(e));
+      return;
+    }
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 4)
+      return;
+    if (!drag.moved) {
+      drag.moved = true;
+      canvas.classList.add('dragging');
+      frame.hover(-1);
+    }
+    camera.x -= dx / scale;
+    camera.y -= dy / scale;
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    clamp();
+    redraw();
+  });
+  canvas.addEventListener('pointerup', e => {
+    const moved = drag?.moved;
+    drag = null;
+    canvas.classList.remove('dragging');
+    if (!moved)
+      frame.click(nodeAt(e));
+  });
+  canvas.addEventListener('pointercancel', () => {
+    drag = null;
+    canvas.classList.remove('dragging');
+  });
+  canvas.addEventListener('dblclick', () => {
+    Object.assign(camera, {x: t.width / 2, y: t.height / 2, k: 1});
+    redraw();
+  });
   canvas.addEventListener('mouseleave', () => frame.hover(-1));
   return frame.section;
 }

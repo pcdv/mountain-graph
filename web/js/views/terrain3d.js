@@ -49,6 +49,8 @@ const ZOOM = 0.0014;
  * @property {number} [columns] of blocks, along the longer side
  * @property {boolean} [islands] whether the plain is a sea, the mountains islands
  * @property {number} [level] of the sea, as a share of the longer side
+ * @property {{x: number, y: number, k: number}} [map] where the 2D view is: the cell at its centre, and
+ *           the zoom, 1 showing the whole terrain
  */
 
 /**

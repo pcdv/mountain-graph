@@ -828,7 +828,12 @@ th {
 
 canvas.map {
   display: block;
-  cursor: crosshair;
+  cursor: grab;
+  touch-action: none;
+}
+
+canvas.map.dragging {
+  cursor: grabbing;
 }
 
 .map-info {
@@ -986,10 +991,6 @@ canvas.map {
 
 .map-panel .callers {
   margin-top: 6px;
-}
-
-canvas.map {
-  cursor: pointer;
 }
 
 .map-holder.three {

@@ -120,7 +120,7 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
         crossfade(map, shown => terrainView(t, trees, selection, viewpoint, hues, tuned, shown, relief), ...legend ? [legend] : []);
       else {
         closeTerrainView();
-        replace(map, mapView(t, trees, selection, hues), legend);
+        replace(map, mapView(t, trees, selection, viewpoint, hues), legend);
       }
       replace(table, peaksView(r, m, unfolded, 0, 'bytes'));
     };
