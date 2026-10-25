@@ -69,15 +69,13 @@ export function panelWidth() {
  * @param {Frame[]} trees the mountains it was raised from, in its order
  * @param {Selection} selection kept up to date, so that the same panel shows when the view is
  *        built again
- * @param {string} how to move around the view and hover it, until something is hovered: what a
- *        click shows is said after
  * @param {() => void} redraw called when what is lit or chosen changed
  * @returns {TerrainFrame}
  */
-export function terrainFrame(t, trees, selection, how, redraw) {
+export function terrainFrame(t, trees, selection, redraw) {
   const unit = selection.unit ?? 'ms';
-  const hint = `${how} Click a mountain: ${selection.holds ? 'what it holds, and who holds it' : 'its callers and callees'}.`;
-  const info = h('div', {class: 'map-info muted'}, hint);
+  // the line floating over the view says what is hovered, and is there only then: how to move around is in the help
+  const info = h('div', {class: 'map-info muted', hidden: true});
   const holder = h('div', {class: 'map-holder'});
   const panel = h('aside', {class: 'map-panel'});
   panel.style.width = `${panelWidth()}px`;
@@ -200,7 +198,8 @@ export function terrainFrame(t, trees, selection, how, redraw) {
       if (n === lit)
         return;
       lit = n;
-      info.replaceChildren(...(n < 0 ? [hint] : describe(t, children, n, unit, selection.holds === true)));
+      info.hidden = n < 0;
+      info.replaceChildren(...(n < 0 ? [] : describe(t, children, n, unit, selection.holds === true)));
       redraw();
     },
     click: n => {

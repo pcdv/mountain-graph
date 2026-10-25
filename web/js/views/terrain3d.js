@@ -117,10 +117,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     before();
   };
   let redraw = () => {};
-  const frame = terrainFrame(t, trees, selection,
-                             'Drag to turn, right-drag to move, scroll to zoom, double-click to see it all again. '
-                             + 'Hover: a frame, its path from the peak.',
-                             () => redraw());
+  const frame = terrainFrame(t, trees, selection, () => redraw());
   const loading = h('p', {class: 'muted'}, 'Loading three.js…');
   frame.holder.append(loading);
   frame.holder.classList.add('three');

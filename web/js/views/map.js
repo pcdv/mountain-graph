@@ -35,7 +35,6 @@ export function mapView(t, trees, selection, viewpoint, hues = null) {
   // where the terrain is on the canvas: a cell is `scale` px wide, the first at (left, top)
   let scale = 1, left = 0, top = 0;
   const frame = terrainFrame(t, trees, selection,
-                             'Hover the map: a frame, its path from the peak. Wheel to zoom, drag to move.',
                              () => {
                                light();
                                draw();

@@ -47,7 +47,7 @@ describe('the panel of a heap dump', () => {
     const {terrainFrame} = await import('../../web/js/components/terrain-frame.js');
     const p = profile();
     const {t, trees, selection} = panel(p);
-    const frame = terrainFrame(t, trees, selection, 'hint', () => {});
+    const frame = terrainFrame(t, trees, selection, () => {});
 
     frame.click(0);
 
@@ -60,7 +60,7 @@ describe('the panel of a heap dump', () => {
     const {terrainFrame} = await import('../../web/js/components/terrain-frame.js');
     const p = profile();
     const {t, trees, selection} = panel(p);
-    const frame = terrainFrame(t, trees, selection, 'hint', () => {});
+    const frame = terrainFrame(t, trees, selection, () => {});
     frame.click(0);
 
     byText(frame.section, 'Held by').click();
@@ -74,7 +74,7 @@ describe('the panel of a heap dump', () => {
     const {terrainFrame} = await import('../../web/js/components/terrain-frame.js');
     const p = profile();
     const {t, trees, selection, r} = panel(p);
-    const frame = terrainFrame(t, trees, selection, 'hint', () => {});
+    const frame = terrainFrame(t, trees, selection, () => {});
     frame.click(0);
     byText(frame.section, 'Held by').click();
 
@@ -95,7 +95,7 @@ describe('the panel of a heap dump', () => {
     const {terrainFrame} = await import('../../web/js/components/terrain-frame.js');
     const p = profile();
     const {t, trees, selection} = panel(p);
-    const frame = terrainFrame(t, trees, selection, 'hint', () => {});
+    const frame = terrainFrame(t, trees, selection, () => {});
     frame.click(0);
     // walk up to Map, which holds Node: its Holds tab has something to click
     byText(frame.section, 'Held by').click();
