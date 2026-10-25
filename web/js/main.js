@@ -9,6 +9,7 @@ import {$, h, replace} from './lib/dom.js';
 import {loadFile, loadParse} from './load.js';
 import {stopParsing} from './hprof/dump.js';
 import {keepFile, lastFile, lastInterval, forgetFile} from './last-file.js';
+import {landing} from './landing.js';
 import {anonymizing} from './components/anonymizing.js';
 import {screenshotKeys} from './components/screenshot.js';
 import {showSamples} from './kinds/samples.js';
@@ -17,6 +18,7 @@ import {showHeap} from './kinds/heap.js';
 /** @typedef {import('./load.js').Parse} Parse */
 
 const picker = $('picker', HTMLInputElement);
+const closeButton = $('close', HTMLButtonElement);
 const progress = $('progress', HTMLElement);
 const progressText = /** @type {HTMLElement} */ (progress.querySelector('.progress-text'));
 const progressFill = /** @type {HTMLElement} */ (progress.querySelector('.progress-fill'));
@@ -30,6 +32,9 @@ const page = {
   remember: () => {},
   reopen: () => current && (current instanceof File ? open(current, true) : openParse(current)),
 };
+
+closeButton.addEventListener('click', close);
+show(landing());
 
 picker.addEventListener('change', () => {
   if (picker.files && picker.files[0])
@@ -84,6 +89,9 @@ async function open(file, again = false) {
   try {
     const loaded = await loadFile(file, {anonymous: anonymizing(), onProgress: showProgress});
     progress.hidden = true;
+    // closed, or another file opened, while this one was read
+    if (current !== file)
+      return;
     if (loaded.kind === 'heap') {
       // a dump's parse is kept, not the dump: parsing it again takes as long as the first time
       if (loaded.parse)
@@ -130,12 +138,30 @@ function openParse(parse, restored = false) {
 
 /** @param {string} message what the page does, until it shows the file */
 function clear(message) {
+  show(h('p', {class: 'muted'}, message));
+  closeButton.hidden = false;
+}
+
+/** @param {Node} content what the page shows in place of a view */
+function show(content) {
   page.relayout = () => {};
+  page.remember = () => {};
   page.main.classList.remove('stage');
   replace(page.bar);
   replace(page.strip);
   page.strip.hidden = true;
-  replace(page.main, h('p', {class: 'muted'}, message));
+  replace(page.main, content);
+}
+
+/** Closes the graph: the page shows what it reads again, and does not reopen the file on reload. */
+function close() {
+  stopParsing();
+  current = null;
+  picker.value = '';
+  progress.hidden = true;
+  closeButton.hidden = true;
+  show(landing());
+  forgetFile();
 }
 
 /**

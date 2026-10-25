@@ -20,15 +20,53 @@
   <header>
     <h1>MountainGraph</h1>
     <label class="button">Open a file… <input id="picker" type="file"></label>
+    <button id="close" class="button" type="button" hidden title="Close the graph">Close</button>
     <div id="bar"></div>
   </header>
   <div id="timeline" hidden></div>
-  <main id="main">
-    <p class="muted">Drop a file here, gzipped or not: a JFR recording (<code>.jfr</code>), a profile of jfr-web
-      (<code>/api/sessions/:id/profile</code>, or <code>profile.json</code> in a static export), collapsed stacks,
-      or a heap dump (<code>.hprof</code>). For a heap dump too large for the page, or gzipped, the parse
-      <a href="https://github.com/pcdv/jheap">jheap</a> keeps beside it (<code>.jheap.json</code>).</p>
-  </main>
+  <main id="main"></main>
+  <!-- shown while no file is open (landing.js) -->
+  <template id="landing">
+    <div class="landing">
+      <h2>Open a profile or a heap dump</h2>
+      <p class="muted">Pick a file with the button above, or drop it anywhere on the page. It is read here, in the
+        browser: nothing is sent anywhere. Files are recognized from their content, not their name.</p>
+
+      <h2 class="profiles">Profiles</h2>
+      <section class="kind profiles">
+        <h3>JFR recordings (.jfr)</h3>
+        <p>Recordings of JDK 11 and later, gzipped or not. Wall-clock samples and allocations are both read; a
+          Samples choice in the top bar switches between them.</p>
+      </section>
+      <section class="kind profiles">
+        <h3>Profiles dumped by jfr-web</h3>
+        <p>A profile as <a href="https://github.com/pcdv/jfr-web" target="_blank" rel="noopener">jfr-web</a> serves
+          it (<code>/api/sessions/:id/profile</code>), or the <code>profile.json</code> of one of its static exports,
+          gzipped or not.</p>
+      </section>
+      <section class="kind profiles">
+        <h3>Collapsed stacks</h3>
+        <p>The text format of
+          <a href="https://github.com/brendangregg/FlameGraph" target="_blank" rel="noopener">FlameGraph</a>'s
+          stackcollapse scripts (<code>a;b;c 12</code> per line), which any profiler can produce.</p>
+      </section>
+
+      <h2 class="heap">Heap dumps</h2>
+      <section class="kind heap">
+        <h3>Heap dumps (.hprof)</h3>
+        <p>As jmap and jcmd write them, parsed in the page by
+          <a href="https://github.com/pcdv/jheap" target="_blank" rel="noopener">jheap</a>'s parser. Dumps of up to
+          roughly 100 million objects open directly.</p>
+      </section>
+      <section class="kind heap">
+        <h3>Profiles dumped by jheap, for compressed or very large dumps</h3>
+        <p>A gzipped dump, or one too large for the page, is parsed by the <code>jheap</code> command of
+          <a href="https://github.com/pcdv/jheap" target="_blank" rel="noopener">jheap</a>, which keeps its parse
+          beside it as <code>&lt;name&gt;.jheap.json</code>. Open that file as you would the dump. A heap exported by
+          this page opens the same way.</p>
+      </section>
+    </div>
+  </template>
   <div id="progress" hidden>
     <div class="progress-text"></div>
     <div class="progress-bar"><div class="progress-fill"></div></div>

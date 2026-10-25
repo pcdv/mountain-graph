@@ -25,7 +25,9 @@ the project specifics. Repository hygiene — what a public repo may not contain
 | Update the heap parser | `node crates/jheap-wasm/install.mjs` in a jheap checkout beside this one, then `npm test` |
 
 Node 21 or later, nothing to install. Run the tests and the type check before claiming a change
-works; both are expected to be green. There is no build step, no linter and no formatter.
+works; both are expected to be green. There is no build step and no linter. `.prettierrc.json` sets Prettier as close
+to the house style as it goes, for an editor's reformat; nothing runs it, and it cannot keep `else`
+on its own line, so reformat only the file being edited.
 
 ## Layout
 

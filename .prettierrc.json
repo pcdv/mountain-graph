@@ -1,0 +1,13 @@
+{
+  "printWidth": 120,
+  "singleQuote": true,
+  "bracketSpacing": false,
+  "arrowParens": "avoid",
+  "trailingComma": "none",
+  "overrides": [
+    {
+      "files": "*.html",
+      "options": {"singleQuote": false}
+    }
+  ]
+}
