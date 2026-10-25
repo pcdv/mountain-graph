@@ -77,6 +77,14 @@ export function terrainFrame(t, trees, selection, redraw) {
   // the line floating over the view says what is hovered, and is there only then: how to move around is in the help
   const info = h('div', {class: 'map-info muted', hidden: true});
   const holder = h('div', {class: 'map-holder'});
+  // the line sits at the bottom, and goes to the top when the pointer comes near it: it never hides what is looked at
+  holder.addEventListener('pointermove', e => {
+    if (info.hidden)
+      return;
+    const r = info.getBoundingClientRect(), near = 24;
+    if (e.clientX > r.left - near && e.clientX < r.right + near && e.clientY > r.top - near && e.clientY < r.bottom + near)
+      info.classList.toggle('top');
+  });
   const panel = h('aside', {class: 'map-panel'});
   panel.style.width = `${panelWidth()}px`;
   const split = h('div', {class: 'map-split', title: 'Drag to widen the panel'});

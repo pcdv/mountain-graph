@@ -868,6 +868,11 @@ canvas.map.dragging {
   font-size: 13px;
 }
 
+.map-info.top {
+  top: 12px;
+  bottom: auto;
+}
+
 .map-info b {
   color: var(--fg);
   font-family: ui-monospace, monospace;
