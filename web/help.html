@@ -19,6 +19,7 @@
   <a href="#peaks">Peaks</a>
   <a href="#heap">Heap settings</a>
   <a href="#samples">Samples settings</a>
+  <a href="#allocations">Allocations</a>
   <a href="#landscape">Landscape</a>
   <a href="#panel">The panel</a>
   <a href="#view3d">3D view</a>
@@ -36,7 +37,8 @@
 
 <section id="reading">
   <h2>Reading the landscape</h2>
-  <p>The weight of what is measured is drawn as relief. For a <b>profile</b> it is the time spent in methods, for a
+  <p>The weight of what is measured is drawn as relief. For a <b>profile</b> it is the time spent in methods (or the
+    bytes <a href="#allocations">allocated</a>, for the allocations of a recording), for a
     <b>heap dump</b> the memory held by objects. The same picture reads the same in both:</p>
   <ul>
     <li>A <b>peak</b> is one thing that weighs a lot: a method, a class, a package, or a chain of objects
@@ -133,8 +135,28 @@
   <p>For a recording of samples (JFR, jfr-web profiles, collapsed stacks). A file may hold several kinds of
     samples (CPU time, wall clock, allocation): the choice in the header says which counts.</p>
   <h3 id="sampling">What the samples count</h3>
-  <p>The weight of a sample: time on the CPU, time elapsed (waiting included), or bytes allocated. A profile that
-    knows only one has no choice.</p>
+  <p>The weight of a sample: time (the wall clock: Java and native samples, waiting included) or bytes allocated. A
+    JFR recording holds both, and the choice in the header switches between <b>Wall clock</b> and
+    <b>Allocations</b>; a profile that knows only one has no choice. The two are not mixed, as they weigh
+    different things. The <a href="#allocations">allocations</a> read differently.</p>
+
+  <h3 id="allocations">Allocations</h3>
+  <p>The samples are the allocations the recording sampled (<code>jdk.ObjectAllocationSample</code>), each
+    weighing the <b>bytes</b> it stands for: the picture is the memory <i>allocated</i> over the recording, not what is alive
+    at some moment (for that, a <a href="#heap">heap dump</a>). Sizes are in bytes, not time, and there is no time spent.</p>
+  <ul>
+    <li>The top of each stack is the <b>class allocated</b> (<code>byte[]</code>, <code>HashMap$Node</code>…), with the
+      method that allocated it under it. So a <b>peak</b> is a class, or the method when the class is hidden;
+      the <b>slopes</b> are the call paths that allocated it, out to the thread that started them.</li>
+    <li>The class is a frame like the methods: <a href="#hide">Hide frames</a> applies to it by its name. With the
+      JDK hidden (the default), a <code>java.lang.String</code> or <code>java.util.ArrayList</code> allocated is not a peak,
+      its bytes go to the application method that allocated it; empty the field to see the classes.
+      <code>byte[]</code> and the other arrays are not under <code>java.*</code>, so they remain.</li>
+    <li><a href="#waits">Leave out waits</a> looks at the top frame, which is a class here, so it leaves nothing out.
+      <a href="#java">Java samples only</a> does not apply either: an allocation has no native or Java kind.</li>
+    <li>The <a href="#timeline">timeline</a> shows bytes per interval, so a burst of allocation can be dragged out and
+      read alone.</li>
+  </ul>
   <h3 id="waits">Leave out waits</h3>
   <p>A regular expression for top frames: the samples whose top frame matches are not counted. A thread waiting in a socket
     read or a poll weighs time waited, not work, and would be the highest peak of a wall-clock profile.
