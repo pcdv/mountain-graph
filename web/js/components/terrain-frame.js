@@ -77,13 +77,29 @@ export function terrainFrame(t, trees, selection, redraw) {
   // the line floating over the view says what is hovered, and is there only then: how to move around is in the help
   const info = h('div', {class: 'map-info muted', hidden: true});
   const holder = h('div', {class: 'map-holder'});
-  // the line sits at the bottom, and goes to the top when the pointer comes near it: it never hides what is looked at
+  // the line sits at the bottom left, and goes to the corner farthest from the pointer when it comes near it:
+  // it hides neither what is hovered nor the slopes around
   holder.addEventListener('pointermove', e => {
     if (info.hidden)
       return;
-    const r = info.getBoundingClientRect(), near = 24;
-    if (e.clientX > r.left - near && e.clientX < r.right + near && e.clientY > r.top - near && e.clientY < r.bottom + near)
-      info.classList.toggle('top');
+    const r = info.getBoundingClientRect(), near = 24, gap = 12;
+    if (!(e.clientX > r.left - near && e.clientX < r.right + near && e.clientY > r.top - near && e.clientY < r.bottom + near))
+      return;
+    const s = section.getBoundingClientRect();
+    // the panel, when it shows, takes the right of the view
+    const edge = dock.hidden ? s.right : dock.getBoundingClientRect().left;
+    let best = {right: false, top: false, far: -1};
+    for (const right of [false, true])
+      for (const top of [false, true]) {
+        const left = right ? edge - gap - r.width : s.left + gap, above = top ? s.top + gap : s.bottom - gap - r.height;
+        const far = Math.hypot(Math.max(left - e.clientX, 0, e.clientX - (left + r.width)),
+                               Math.max(above - e.clientY, 0, e.clientY - (above + r.height)));
+        if (far > best.far)
+          best = {right, top, far};
+      }
+    info.classList.toggle('right', best.right);
+    info.classList.toggle('top', best.top);
+    info.style.right = best.right ? `${s.right - edge + gap}px` : '';
   });
   const panel = h('aside', {class: 'map-panel'});
   panel.style.width = `${panelWidth()}px`;

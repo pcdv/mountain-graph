@@ -873,6 +873,10 @@ canvas.map.dragging {
   bottom: auto;
 }
 
+.map-info.right {
+  left: auto;
+}
+
 .map-info b {
   color: var(--fg);
   font-family: ui-monospace, monospace;
