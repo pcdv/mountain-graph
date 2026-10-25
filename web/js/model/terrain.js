@@ -291,7 +291,7 @@ function massif(t, m, byDepth) {
  */
 function ridges(t, m, byDepth) {
   foot(t, m, byDepth);
-  dome(t, m);
+  dome(t, m, byDepth);
   for (let depth = 1; depth < byDepth.length; depth++)
     for (const n of byDepth[depth])
       ridge(t, stance(t, m, byDepth.length, t.nodes[n].parent), stance(t, m, byDepth.length, n), n);
@@ -372,7 +372,7 @@ function ranges(t, rings) {
   /** @param {number} n @returns {Stance} */
   const at = n => ({...own[n], x: own[n].x + move[2 * n], y: own[n].y + move[2 * n + 1]});
 
-  t.mountains.forEach(m => dome(t, m));
+  t.mountains.forEach((m, k) => dome(t, m, rings[k]));
   t.nodes.forEach((node, n) => {
     if (node.parent >= 0)
       ridge(t, at(node.parent), at(n), n);
@@ -430,19 +430,35 @@ function foot(t, m, byDepth) {
 }
 
 /**
- * The peak of a mountain: a dome as wide as its widest ridge.
+ * The peak of a mountain: a dome as wide as its widest ridge. The first callers' ridges are
+ * shorter than the dome is wide: under it they could not be hovered, though they hold most of the
+ * peak. So its cells are the nodes of the rings they stand in, a massif's, each ring half as wide as
+ * the one before it: the first callers' sectors take the room, the deeper ones the rest.
  *
  * @param {Terrain} t
  * @param {Placed} m
+ * @param {number[][]} byDepth
  */
-function dome(t, m) {
+function dome(t, m, byDepth) {
   const peak = t.nodes[m.node], widest = t.tuning.ridge * m.r;
+  const rings = Math.min(byDepth.length - 1, DOME_RINGS);
   eachCell(t, m.x, m.y, widest, widest, (i, dx, dy) => {
     const d = Math.hypot(dx, dy) / widest;
-    if (d < 1)
-      raise(t, i, peak.total * (1 - d * d), m.node);
+    if (d >= 1)
+      return;
+    // the peak itself at the centre, then rings from 1: the first the half of what is left, and so on
+    const out = (d - DOME_PEAK) / (1 - DOME_PEAK);
+    let depth = out < 0 ? 0 : Math.min(rings, 1 + Math.floor(-Math.log2(1 - out)));
+    // where no caller goes that far out, the one that goes furthest
+    let n = -1;
+    for (const a = angle(dx, dy, -m.turn); depth > 0 && n < 0; depth--)
+      n = sectorAt(t.nodes, byDepth[depth], a);
+    raise(t, i, peak.total * (1 - d * d), n >= 0 ? n : m.node);
   });
 }
+
+/** The share of the dome's radius that is the peak itself, and how many rings of callers it shows. */
+const DOME_PEAK = 0.1, DOME_RINGS = 6;
 
 /**
  * A ridge from a callee out to its caller, its height and its width going
