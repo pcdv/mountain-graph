@@ -24,7 +24,7 @@ import {parseReport} from '../components/parse-report.js';
 import {contextStacks} from '../model/context.js';
 import {ownershipPeaks, mountainsOf, holdersOf, holdsOf, THIN} from '../model/ownership.js';
 import {fileMenu} from '../components/file-menu.js';
-import {folded} from '../components/form.js';
+import {folded, section} from '../components/form.js';
 import {floating, keepView, remembered} from './page.js';
 
 /** @typedef {import('../profile/heap.js').HeapProfile} HeapProfile */
@@ -60,6 +60,9 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
     replace(bar, ...summary(name, p, stats, restored));
     main.classList.add('stage');
     let tuned = tuning();
+    // the 3D view's own controls, which it puts there as it is built
+    const relief = h('div', {class: 'settings-rows'});
+    const terrain3d = section('3D view', relief);
     const knobs = advanced(t => {
       tuned = t;
       page.relayout();
@@ -76,6 +79,7 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
       last = settings;
       const {basis, wrappers, grain, count, coverage, shape, view, colour, context} = settings;
       knobs.fit({shape, view});
+      terrain3d.hidden = view !== '3d';
 
       // no filter for a heap: no operations, no threads, no time
       const filter = {all: true};
@@ -113,7 +117,7 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
       const legend = coloured ? hueLegend(coloured.legend) : null;
 
       if (view === '3d')
-        crossfade(map, shown => terrainView(t, trees, selection, viewpoint, hues, tuned, shown), ...legend ? [legend] : []);
+        crossfade(map, shown => terrainView(t, trees, selection, viewpoint, hues, tuned, shown, relief), ...legend ? [legend] : []);
       else {
         closeTerrainView();
         replace(map, mapView(t, trees, selection, hues), legend);
@@ -125,7 +129,7 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
     let last = null;
     const controls = heapControls(heapSettings(), show);
     replace(page.tools, controls.view);
-    replace(page.settings, controls.settings, folded('Fine tuning', knobs.element),
+    replace(page.settings, controls.settings, terrain3d, folded('Fine tuning', knobs.element),
             folded('Anonymizing', anonymizeControls(() => page.reopen())));
     page.relayout = () => last && show(last);
     page.relayout();

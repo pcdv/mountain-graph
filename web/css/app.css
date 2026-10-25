@@ -1266,3 +1266,13 @@ canvas.map {
 .file-menu .report-table td:first-child {
   width: 45%;
 }
+
+.settings-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.field input[type=range] {
+  width: 100%;
+  margin: 0;
+}

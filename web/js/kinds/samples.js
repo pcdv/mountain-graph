@@ -26,7 +26,7 @@ import {anonymizeControls} from '../components/anonymizing.js';
 import {timeline} from '../components/timeline.js';
 import {span, checked} from '../model/timeline.js';
 import {fileMenu} from '../components/file-menu.js';
-import {folded} from '../components/form.js';
+import {folded, section} from '../components/form.js';
 import {floating, keepView, remembered} from './page.js';
 
 /** @typedef {import('../profile/profile.js').Profile} Profile */
@@ -121,6 +121,9 @@ function display(page, name, samplings, which, saved) {
     }));
     main.classList.add('stage');
     let tuned = tuning();
+    // the 3D view's own controls, which it puts there as it is built
+    const relief = h('div', {class: 'settings-rows'});
+    const terrain3d = section('3D view', relief);
     const knobs = advanced(t => {
       tuned = t;
       page.relayout();
@@ -131,6 +134,7 @@ function display(page, name, samplings, which, saved) {
       last = settings;
       const {grain, count, coverage, waits, hide, java, shape, view, colour} = settings;
       knobs.fit({shape, view});
+      terrain3d.hidden = view !== '3d';
       if (kept?.waits !== waits) {
         const {profile, left} = leaveOut(p, waits);
         kept = {waits, kept: profile, left};
@@ -169,7 +173,7 @@ function display(page, name, samplings, which, saved) {
       const legend = coloured ? hueLegend(coloured.legend) : null;
       if (view === '3d')
         // over the view shown, which stays until the new one has drawn: no blank frame
-        crossfade(map, shown => terrainView(t, trees, selection, viewpoint, hues, tuned, shown), ...legend ? [legend] : []);
+        crossfade(map, shown => terrainView(t, trees, selection, viewpoint, hues, tuned, shown, relief), ...legend ? [legend] : []);
       else {
         closeTerrainView();
         replace(map, mapView(t, trees, selection, hues), legend);
@@ -180,7 +184,7 @@ function display(page, name, samplings, which, saved) {
     let last = null;
     const controls = peakControls(peakSettings(), show);
     replace(page.tools, controls.view);
-    replace(page.settings, controls.settings, folded('Fine tuning', knobs.element),
+    replace(page.settings, controls.settings, terrain3d, folded('Fine tuning', knobs.element),
             folded('Anonymizing', anonymizeControls(() => page.reopen())));
     // laid out again in the window's shape, the bar in place, and as it is resized
     page.relayout = () => last && show(last);

@@ -15,6 +15,7 @@
 import {h} from '../lib/dom.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
 import {FADE} from '../components/crossfade.js';
+import {field} from '../components/form.js';
 import {contour, levels} from '../model/contours.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST} from './blocks3d.js';
@@ -86,9 +87,12 @@ export function closeTerrainView() {
  * @param {() => void} [shown] called once the view has drawn, or could not: it may then replace
  *        the one shown before, which is kept until it has faded out (crossfade.js) and not freed
  *        by this call
+ * @param {HTMLElement | null} [knobsIn] where the controls of the relief, the islands and the blocks go
+ *        (the settings pane), in place of those of the view before; none, over the view
  * @returns {HTMLElement}
  */
-export function terrainView(t, trees, selection, viewpoint, hues = null, tuning = {}, shown = () => {}) {
+export function terrainView(t, trees, selection, viewpoint, hues = null, tuning = {}, shown = () => {},
+                            knobsIn = null) {
   const tuned = {...VIEW_TUNING, ...tuning};
   // the view before this one stays on show, so freed only once this one has taken over
   const before = release;
@@ -347,7 +351,8 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                                blockify();
                                redraw();
                              }});
-    const size = h('label', {hidden: !blocky}, 'Block size ', fine);
+    const size = field('Block size', fine);
+    size.hidden = !blocky;
     const cubed = h('input', {type: 'checkbox', checked: blocky, onchange: () => {
       viewpoint.blocks = blocky = cubed.checked;
       size.hidden = !blocky;
@@ -376,10 +381,13 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                                    blockify();
                                  redraw();
                                }});
-    const tide = h('label', {hidden: !islands}, 'Sea level ', rising);
-    loading.replaceWith(renderer.domElement, labels,
-                        h('div', {class: 'relief'}, h('label', null, 'Relief ', slider), h('label', null, isles, ' Islands'),
-                          h('label', null, cubed, ' Blocks'), size, tide));
+    const tide = field('Sea level', rising);
+    tide.hidden = !islands;
+    const knobs = [field('Relief', slider), h('label', {class: 'check'}, isles, ' Islands'), tide,
+                   h('label', {class: 'check'}, cubed, ' Blocks'), size];
+    if (knobsIn)
+      knobsIn.replaceChildren(...knobs);
+    loading.replaceWith(renderer.domElement, labels, ...knobsIn ? [] : [h('div', {class: 'relief'}, knobs)]);
 
     /**
      * @param {any} to a point, a Vector3
