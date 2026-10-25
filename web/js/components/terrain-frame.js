@@ -99,8 +99,15 @@ export function terrainFrame(t, trees, selection, redraw) {
       }
     info.classList.toggle('right', best.right);
     info.classList.toggle('top', best.top);
-    info.style.right = best.right ? `${s.right - edge + gap}px` : '';
+    clearOfPanel();
   });
+  /** Keeps the line at the right beside the panel, as it shows, hides or is widened, not under it. */
+  const clearOfPanel = () => {
+    if (!info.classList.contains('right'))
+      return;
+    const edge = dock.hidden ? section.getBoundingClientRect().right : dock.getBoundingClientRect().left;
+    info.style.right = `${section.getBoundingClientRect().right - edge + 12}px`;
+  };
   const panel = h('aside', {class: 'map-panel'});
   panel.style.width = `${panelWidth()}px`;
   const split = h('div', {class: 'map-split', title: 'Drag to widen the panel'});
@@ -114,6 +121,7 @@ export function terrainFrame(t, trees, selection, redraw) {
     const move = m => {
       const w = Math.max(240, Math.min(section.clientWidth - 120, right - m.clientX));
       panel.style.width = `${w}px`;
+      clearOfPanel();
     };
     split.addEventListener('pointermove', move);
     split.addEventListener('pointerup', () => {
@@ -150,6 +158,7 @@ export function terrainFrame(t, trees, selection, redraw) {
     dock.hidden = m < 0;
     if (m >= 0)
       render(m);
+    clearOfPanel();
   };
   /** @param {number} m */
   const render = m => {
