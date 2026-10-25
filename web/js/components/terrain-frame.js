@@ -248,10 +248,11 @@ function describe(t, children, n, unit, holds) {
   for (let i = n; i >= 0; i = t.nodes[i].parent)
     up.unshift(i);
   const peak = t.nodes[up[0]];
-  // the heaviest way on, to where execution entered
+  // the heaviest way on, to where execution entered; a heap's way on is what the
+  // object holds, which the panel lists: the line says who holds it instead
   /** @type {number[]} */
   const on = [];
-  for (let i = n; children[i].length > 0;) {
+  for (let i = n; !holds && children[i].length > 0;) {
     i = children[i].reduce((a, b) => t.nodes[b].total > t.nodes[a].total ? b : a);
     on.push(i);
   }
@@ -273,8 +274,9 @@ function describe(t, children, n, unit, holds) {
       const m = t.mountains[t.nodes[i].mountain];
       return `${amount(t.nodes[i].total, unit)} toward ${short(m.name)}`;
     }).join(', '))] : [],
+    // a heap's object first, then who holds it out to the peak, as the panel's "Held by" lists them
     h('ol', {class: 'path'},
-      up.map(i => row(i, i === n ? 'here' : '')),
+      (holds ? [...up].reverse() : up).map(i => row(i, i === n ? 'here' : '')),
       on.map(i => row(i, 'on'))),
   ];
 }
