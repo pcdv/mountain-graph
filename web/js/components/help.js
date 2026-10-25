@@ -32,22 +32,41 @@ export function openHelp(anchor) {
     });
     document.body.append(dialog);
   }
-  // loaded once: the page again at another anchor only scrolls, by its hash
-  if (!frame.getAttribute('src'))
-    frame.setAttribute('src', anchor ? `${PAGE}#${anchor}` : PAGE);
-  else {
-    const page = frame.contentWindow;
-    if (page) {
-      // the same hash again does not scroll back to it: leave it first
-      page.location.hash = '';
-      page.location.hash = anchor ? `#${anchor}` : '';
-      if (!anchor)
-        page.scrollTo(0, 0);
-    }
-  }
+  wanted = anchor;
+  // shown before loaded or scrolled: a page in a closed dialog has no layout to scroll
   if (!dialog.open)
     dialog.showModal();
+  // loaded once: the page again at another anchor only scrolls
+  if (!frame.getAttribute('src')) {
+    frame.addEventListener('load', () => scrollTo(wanted));
+    frame.setAttribute('src', PAGE);
+  }
+  else
+    scrollTo(anchor);
   frame.focus();
+}
+
+/** @type {string | undefined} the anchor asked for last, for the page to scroll to once loaded */
+let wanted;
+
+/**
+ * Scrolls the page of the help to a section, and marks it as the target of the page's address.
+ *
+ * @param {string} [anchor] the id of a section, none for the top
+ */
+function scrollTo(anchor) {
+  const page = frame?.contentWindow;
+  if (!page)
+    return;
+  // the same hash again would not mark the section: leave it first
+  page.location.hash = '';
+  const section = anchor ? page.document.getElementById(anchor) : null;
+  if (section) {
+    page.location.hash = `#${anchor}`;
+    section.scrollIntoView();
+  }
+  else
+    page.scrollTo(0, 0);
 }
 
 /**
