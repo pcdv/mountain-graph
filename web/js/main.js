@@ -40,7 +40,8 @@ const page = {
 
 closeButton.addEventListener('click', close);
 settingsPane($('settings', HTMLElement), $('settings-toggle', HTMLButtonElement), () => page.relayout());
-show(landing());
+// the file kept is looked for before the landing shows: it would be seen for a moment, then replaced
+show(h('p', {class: 'muted'}, 'Loading…'));
 
 picker.addEventListener('change', () => {
   if (picker.files && picker.files[0])
@@ -187,10 +188,12 @@ installHelp($('help', HTMLElement));
 screenshotKeys(() => (current?.name ?? 'mountain-graph').replace(/(\.\w+)?(\.gz)?$/, ''));
 
 // the file opened last, shown again: a dump as its parse, a reload then being about the view, not the file
-lastFile().then(kept => {
-  if (!kept || opening)
+lastFile().catch(() => null).then(kept => {
+  if (opening)
     return;
-  if (kept instanceof File)
+  if (!kept)
+    show(landing());
+  else if (kept instanceof File)
     open(kept, true);
   else
     openParse(kept, true);
