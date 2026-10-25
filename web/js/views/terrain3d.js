@@ -17,6 +17,7 @@ import {terrainFrame, short} from '../components/terrain-frame.js';
 import {FADE} from '../components/crossfade.js';
 import {field} from '../components/form.js';
 import {contour, levels} from '../model/contours.js';
+import {zoneCells} from '../model/zones.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST} from './blocks3d.js';
 import {sea, sky, shores, bump, landColour, bedColour, LEVEL, DEEP, HAZE, SUN, SEA_TUNING} from './sea3d.js';
@@ -63,6 +64,9 @@ const ZOOM = 0.0014;
 
 /** @type {ViewTuning} */
 export const VIEW_TUNING = {curve: 0.65, ...SEA_TUNING};
+
+/** How much of its colour the land keeps along the lines of the zones. */
+const ZONE_LINE = 0.6;
 
 /** Frees the view shown last, and those still being built before it: a page has few WebGL contexts. */
 let release = () => {};
@@ -220,9 +224,12 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                                        Math.max(0, Math.min(1, (slope() - tuned.rock) / tuned.rock)), x, y)
           : bedColour(shore.depth[i]);
         const c = hues && t.cells[i] >= 0 ? hued(height, hues[t.cells[i]]) : height;
-        base[3 * i] = linear[c[0]], base[3 * i + 1] = linear[c[1]], base[3 * i + 2] = linear[c[2]];
+        // darker along the lines of the zones, so that what a hover will pick is seen before it is
+        const dark = edges[i] ? ZONE_LINE : 1;
+        base[3 * i] = dark * linear[c[0]], base[3 * i + 1] = dark * linear[c[1]], base[3 * i + 2] = dark * linear[c[2]];
       }
     };
+    const edges = zoneCells(t);
     paint();
     const lit = colors.lit.map(c => linear[c]);
     const color = new T.BufferAttribute(base.slice(), 3);

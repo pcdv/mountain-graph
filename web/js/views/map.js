@@ -11,6 +11,7 @@
 import {h} from '../lib/dom.js';
 import {contour, levels} from '../model/contours.js';
 import {divides} from '../model/divides.js';
+import {zones} from '../model/zones.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 
@@ -56,6 +57,7 @@ export function mapView(t, trees, selection, viewpoint, hues = null) {
   ctx.putImageData(image, 0, 0);
   const lines = levels(t.top, LINES, t.top * DEPTH).map(level => contour(t.heights, t.width, t.height, level));
   const divide = divides(t);
+  const zone = zones(t);
 
   const glow = document.createElement('canvas');
   glow.width = t.width;
@@ -119,6 +121,17 @@ export function mapView(t, trees, selection, viewpoint, hues = null) {
         g.moveTo(s[i], s[i + 1]);
         g.lineTo(s[i + 2], s[i + 3]);
       }
+    g.stroke();
+
+    // the zones, thin: what a hover will pick
+    g.lineWidth = 0.75 / scale;
+    g.strokeStyle = colors.text;
+    g.globalAlpha = 0.35;
+    g.beginPath();
+    for (let i = 0; i < zone.length; i += 4) {
+      g.moveTo(zone[i], zone[i + 1]);
+      g.lineTo(zone[i + 2], zone[i + 3]);
+    }
     g.stroke();
 
     g.lineWidth = 1.5 / scale;
