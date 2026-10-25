@@ -10,7 +10,9 @@ import {readSetting, writeSetting} from '../lib/settings.js';
 /**
  * @typedef {object} Page
  * @property {HTMLElement} main where the view goes, filling the window under the bar
- * @property {HTMLElement} bar the top bar: what the file is, and the controls
+ * @property {HTMLElement} bar in the header: what the file is, and its menu
+ * @property {HTMLElement} tools in the header: how the file is shown (a map or 3D)
+ * @property {HTMLElement} settings the settings pane's content, in sections
  * @property {HTMLElement} strip under the bar, for a timeline: hidden unless the view shows it
  * @property {() => void} relayout set by the view shown: lays it out again in the window's shape
  * @property {() => void} remember set by the view shown: keeps what it shows

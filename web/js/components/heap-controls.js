@@ -8,6 +8,8 @@
  */
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
+import {segmented, field, section} from './form.js';
+import {SHAPES, VIEWS, COLOURS, SHAPE_TITLE, COLOUR_TITLE} from './peak-controls.js';
 
 /** @typedef {import('../model/peaks.js').Grain} Grain */
 /** @typedef {import('../model/terrain.js').Shape} Shape */
@@ -57,28 +59,36 @@ export function heapSettings() {
 /**
  * @param {HeapSettings} settings the current ones
  * @param {(settings: HeapSettings) => void} changed given the new ones, each time one changes
- * @returns {HTMLElement}
+ * @returns {import('./peak-controls.js').Controls} those that do not apply to the ranking chosen hidden
  */
 export function heapControls(settings, changed) {
-  const basis = h('select', null, [['owned', 'what they hold'], ['shallow', 'their own size']].map(([b, label]) =>
-    h('option', {value: b, selected: b === settings.basis}, label)));
-  const wrappers = h('select', null, [['skip', 'skipped'], ['show', 'as peaks']].map(([w, label]) =>
-    h('option', {value: w, selected: w === settings.wrappers}, label)));
-  const grain = h('select', null, [['method', 'class'], ['package', 'package']].map(([g, label]) =>
-    h('option', {value: g, selected: g === settings.grain}, label)));
+  const basis = segmented([['owned', 'What they hold', 'A chain of holders is one peak, as deep as the object '
+                                                        + 'that actually retains the memory'],
+                           ['shallow', 'Own size', 'The objects at the top of a stack']], settings.basis);
+  const wrappers = segmented([['skip', 'Skipped'], ['show', 'As peaks']], settings.wrappers);
+  const grain = segmented([['method', 'Class'], ['package', 'Package']], settings.grain);
   const context = h('select', null, [1, 2, 3, 4, 5].map(n =>
-    h('option', {value: n, selected: n === settings.context}, n === 1 ? 'class' : `${n} frames`)));
+    h('option', {value: n, selected: n === settings.context}, n === 1 ? 'The class alone' : `${n} frames`)));
   const count = h('input', {type: 'number', min: 1, max: 100, value: settings.count});
   const coverage = h('input', {type: 'number', min: 1, max: 100, value: Math.round(settings.coverage * 100)});
-  const shape = h('select', null, ['massif', 'ridges', 'ranges'].map(s =>
-    h('option', {value: s, selected: s === settings.shape}, s)));
-  const view = h('select', null, [['map', 'a map'], ['3d', '3D']].map(([v, label]) =>
-    h('option', {value: v, selected: v === settings.view}, label)));
-  const colour = h('select', null, ['height', 'package'].map(c =>
-    h('option', {value: c, selected: c === settings.colour}, c)));
+  const shape = segmented(SHAPES, settings.shape);
+  const view = segmented(VIEWS, settings.view);
+  const colour = segmented(COLOURS, settings.colour);
+
+  const wrapped = field('Thin wrappers', wrappers, 'A thin wrapper owns almost none of what it holds: a handler or a '
+                        + 'manager the walk entered the graph by. Skipped, what it holds belongs to the objects inside it');
+  const gathered = field('One per', grain);
+  const framed = field('Context', context, 'How many frames make a peak: the class alone, or the class and the '
+                       + 'objects holding it, so that a cache and the map it holds are one peak');
+  const coloured = field('Colour', colour, COLOUR_TITLE);
 
   const update = () => {
     const n = count.valueAsNumber, c = coverage.valueAsNumber, k = Number(context.value);
+    // what the ranking chosen does not use is not shown: it would change nothing
+    const owned = basis.value === 'owned';
+    wrapped.hidden = !owned;
+    gathered.hidden = framed.hidden = owned;
+    coloured.hidden = owned || k !== 1;
     if (!Number.isInteger(n) || n < 1 || !(c > 0 && c <= 100) || !(k >= 1 && k <= 5))
       return;
     /** @type {HeapSettings} */
@@ -95,25 +105,18 @@ export function heapControls(settings, changed) {
     input.addEventListener('input', update);
   update();
 
-  return h('div', {class: 'controls'},
-    h('label', {title: 'What they hold: a chain of holders is one peak, as deep as the object that '
-                       + 'actually retains the memory. Their own size: the objects at the top of a stack'},
-      'Peaks ranked by ', basis),
-    h('label', {title: 'A thin wrapper owns almost none of what it holds: a handler or a manager '
-                       + 'the walk entered the graph by. Skipped, what it holds belongs to the objects '
-                       + 'inside it'},
-      'thin wrappers ', wrappers),
-    h('label', null, 'gathered by ', grain),
-    h('label', {title: 'How many frames make a peak: the class alone, or the class and the objects '
-                       + 'holding it, so that a cache and the map it holds are one peak'},
-      'context ', context),
-    h('label', null, 'at most ', count),
-    h('label', null, 'up to ', coverage, '% covered'),
-    h('label', {title: 'A massif: each reference a sector as high as its size. Ridges: each a ridge out to it. '
-                       + 'Ranges: ridges, a reference several classes share drawn once, a saddle between them'},
-      'Mountains as ', shape, ' in ', view),
-    h('label', {title: 'By package: a hue per package, sub-packages near their parent; the height still sets how light'},
-      'coloured by ', colour),
+  return {view, settings: h('div', null,
+    section('Peaks',
+      field('Ranked by', basis),
+      wrapped,
+      gathered,
+      framed,
+      field('At most', h('span', {class: 'unit'}, count, ' peaks')),
+      field('Until', h('span', {class: 'unit'}, coverage, ' % covered'),
+            'No more peaks once those taken hold this share of the memory')),
+    section('Landscape',
+      field('Mountains', shape, SHAPE_TITLE.heap),
+      coloured),
     h('button', {type: 'button', class: 'button', onclick: () => {
       basis.value = DEFAULTS.basis;
       wrappers.value = DEFAULTS.wrappers;
@@ -122,10 +125,9 @@ export function heapControls(settings, changed) {
       count.value = String(DEFAULTS.count);
       coverage.value = String(DEFAULTS.coverage * 100);
       shape.value = DEFAULTS.shape;
-      view.value = DEFAULTS.view;
       colour.value = DEFAULTS.colour;
       update();
-    }}, 'Defaults'));
+    }}, 'Reset to defaults'))};
 }
 
 /**

@@ -3,7 +3,7 @@
  * The view of a heap: the objects that hold the most memory as peaks, the
  * references that lead to them as their slopes; the panel of a peak says what
  * it holds and who holds it, and walks the object graph either way. The
- * parse's report floats beside the peaks.
+ * parse's report is in the file's menu.
  */
 import {h, replace} from '../lib/dom.js';
 import {bytes} from '../lib/format.js';
@@ -23,6 +23,8 @@ import {anonymizeControls} from '../components/anonymizing.js';
 import {parseReport} from '../components/parse-report.js';
 import {contextStacks} from '../model/context.js';
 import {ownershipPeaks, mountainsOf, holdersOf, holdsOf, THIN} from '../model/ownership.js';
+import {fileMenu} from '../components/file-menu.js';
+import {folded} from '../components/form.js';
 import {floating, keepView, remembered} from './page.js';
 
 /** @typedef {import('../profile/heap.js').HeapProfile} HeapProfile */
@@ -55,25 +57,14 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
     const viewpoint = kept0.viewpoint;
     page.remember = () => keepView({open: [...unfolded], chosen: selection.chosen, tab: selection.tab, viewpoint});
 
-    replace(bar, summary(name, stats, restored));
-    bar.append(h('button', {type: 'button', class: 'button',
-      title: 'Download every path as a profile JSON, the format jfr-web reads',
-      onclick: () => download(name, p)}, 'Export JSON'));
-    if (restored)
-      bar.append(h('button', {type: 'button', class: 'button',
-        title: 'Drops the parse kept in the browser: the page starts empty next time',
-        onclick: () => forgetFile().then(() => location.reload())}, 'Forget'));
+    replace(bar, ...summary(name, p, stats, restored));
     main.classList.add('stage');
     let tuned = tuning();
-    // a profile saved without its parse's report has none to show
-    const report = stats.report;
-    replace(main, map, h('div', {class: 'floats'},
-      floating('Peaks', 'table', table),
-      ...report ? [floating('Parse report', 'report', parseReport(report))] : [],
-      floating('Advanced', 'advanced', h('div', null, advanced(t => {
-        tuned = t;
-        page.relayout();
-      }), anonymizeControls(() => page.reopen())))));
+    const knobs = advanced(t => {
+      tuned = t;
+      page.relayout();
+    });
+    replace(main, map, h('div', {class: 'floats'}, floating('Peaks', 'table', table)));
 
     // the profiles of the context setting, made once each, not on each setting
     // or resize: the walk of the paths is the slow part of a redraw
@@ -84,6 +75,7 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
     const show = settings => {
       last = settings;
       const {basis, wrappers, grain, count, coverage, shape, view, colour, context} = settings;
+      knobs.fit({shape, view});
 
       // no filter for a heap: no operations, no threads, no time
       const filter = {all: true};
@@ -131,7 +123,10 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
 
     /** @type {import('../components/heap-controls.js').HeapSettings | null} */
     let last = null;
-    bar.append(heapControls(heapSettings(), show));
+    const controls = heapControls(heapSettings(), show);
+    replace(page.tools, controls.view);
+    replace(page.settings, controls.settings, folded('Fine tuning', knobs.element),
+            folded('Anonymizing', anonymizeControls(() => page.reopen())));
     page.relayout = () => last && show(last);
     page.relayout();
   }
@@ -160,18 +155,30 @@ function download(name, p) {
 
 /**
  * @param {string} name of the file
+ * @param {HeapProfile} p
  * @param {HeapStats} stats
  * @param {boolean} restored
+ * @returns {HTMLElement[]} its name and what it holds, for the header; its menu, with its export and the
+ *          parse's report
  */
-function summary(name, stats, restored) {
+function summary(name, p, stats, restored) {
   const unreachable = stats.totalSize > 0 ? Math.round(100 * stats.unreachableSize / stats.totalSize) : 0;
-  return h('div', {class: 'summary'},
-    h('b', null, name),
-    ...restored ? [h('span', {class: 'muted', title: 'Kept in the browser: open the file to parse it again'},
-                     '(kept)')] : [],
-    h('span', {class: 'muted'},
+  // a profile saved without its parse's report has none to show
+  const report = stats.report;
+  return fileMenu(name, `${stats.objectCount.toLocaleString()} objects, ${bytes(stats.totalSize)}`,
+    h('p', null,
       `${stats.objectCount.toLocaleString()} objects, ${stats.classCount.toLocaleString()} classes, `
       + `${bytes(stats.totalSize)} total`
       + (stats.unreachableSize > 0 ? ` (${bytes(stats.unreachableSize)} unreachable, ${unreachable}%)` : '')
-      + '.'));
+      + '.'),
+    restored ? h('p', {class: 'muted'}, 'Its parse is kept in the browser: open the dump again to parse it again.') : null,
+    h('div', {class: 'actions'},
+      h('button', {type: 'button', class: 'button',
+        title: 'Download every path as a profile JSON, the format jfr-web reads',
+        onclick: () => download(name, p)}, 'Export JSON'),
+      restored ? h('button', {type: 'button', class: 'button',
+        title: 'Drops the parse kept in the browser: the page starts empty next time',
+        onclick: () => forgetFile().then(() => location.reload())}, 'Forget the parse') : null),
+    report ? h('h3', null, 'Parse report') : null,
+    report ? parseReport(report) : null);
 }

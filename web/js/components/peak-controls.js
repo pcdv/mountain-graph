@@ -8,6 +8,7 @@
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {WAITS} from '../model/samples.js';
+import {segmented, field, section} from './form.js';
 
 /** @typedef {import('../model/peaks.js').Grain} Grain */
 /** @typedef {import('../model/terrain.js').Shape} Shape */
@@ -40,6 +41,24 @@ const DEFAULTS = {grain: 'method', count: 10, coverage: 1, waits: WAITS, hide: '
 
 const KEY = 'mountaingraph.peaks.';
 
+/** @type {[string, string, string?][]} the shapes of the mountains, for a heap's settings too */
+export const SHAPES = [['massif', 'Massif'], ['ridges', 'Ridges'], ['ranges', 'Ranges']];
+
+/** @type {[string, string, string?][]} */
+export const VIEWS = [['map', 'Map', 'A topographic map'], ['3d', '3D', 'A terrain in 3D, turned with the mouse']];
+
+/** @type {[string, string, string?][]} */
+export const COLOURS = [['height', 'Height'], ['package', 'Package']];
+
+export const SHAPE_TITLE = {
+  samples: 'Massif: each caller a sector as high as its time. Ridges: each a ridge out to it. '
+           + 'Ranges: ridges, a caller several mountains share drawn once, a saddle between them',
+  heap: 'Massif: each reference a sector as high as its size. Ridges: each a ridge out to it. '
+        + 'Ranges: ridges, a reference several classes share drawn once, a saddle between them',
+};
+
+export const COLOUR_TITLE = 'Package: a hue per package, sub-packages near their parent; the height still sets how light';
+
 /** @returns {PeakSettings} those remembered, or the defaults */
 export function peakSettings() {
   const count = Number(readSetting(KEY + 'count'));
@@ -59,13 +78,18 @@ export function peakSettings() {
 }
 
 /**
+ * @typedef {object} Controls
+ * @property {HTMLElement} view the choice of a map or 3D, for the header
+ * @property {HTMLElement} settings the rest, in sections, for the settings pane
+ */
+
+/**
  * @param {PeakSettings} settings the current ones
  * @param {(settings: PeakSettings) => void} changed given the new ones, each time one changes
- * @returns {HTMLElement}
+ * @returns {Controls}
  */
 export function peakControls(settings, changed) {
-  const grain = h('select', null, ['method', 'class', 'package'].map(g =>
-    h('option', {value: g, selected: g === settings.grain}, g)));
+  const grain = segmented([['method', 'Method'], ['class', 'Class'], ['package', 'Package']], settings.grain);
   const count = h('input', {type: 'number', min: 1, max: 100, value: settings.count});
   const coverage = h('input', {type: 'number', min: 1, max: 100, value: Math.round(settings.coverage * 100)});
   const waits = h('input', {type: 'text', class: 'pattern', spellcheck: false, value: settings.waits,
@@ -73,12 +97,9 @@ export function peakControls(settings, changed) {
   const hide = h('input', {type: 'text', class: 'pattern', spellcheck: false, value: settings.hide,
                            placeholder: 'none'});
   const java = h('input', {type: 'checkbox', checked: settings.java});
-  const shape = h('select', null, ['massif', 'ridges', 'ranges'].map(s =>
-    h('option', {value: s, selected: s === settings.shape}, s)));
-  const view = h('select', null, [['map', 'a map'], ['3d', '3D']].map(([v, label]) =>
-    h('option', {value: v, selected: v === settings.view}, label)));
-  const colour = h('select', null, ['height', 'package'].map(c =>
-    h('option', {value: c, selected: c === settings.colour}, c)));
+  const shape = segmented(SHAPES, settings.shape);
+  const view = segmented(VIEWS, settings.view);
+  const colour = segmented(COLOURS, settings.colour);
 
   const update = () => {
     for (const input of [waits, hide]) {
@@ -101,21 +122,20 @@ export function peakControls(settings, changed) {
     input.addEventListener('input', update);
   update();
 
-  return h('div', {class: 'controls'},
-    h('label', null, 'Peaks by ', grain),
-    h('label', null, 'at most ', count),
-    h('label', null, 'up to ', coverage, '% covered'),
-    h('label', {title: 'The samples whose top frame this finds are left out: threads waiting'},
-      'Leave out waits ', waits),
-    h('label', {title: 'The frames this finds are left out of the stacks, their time given to their callers'},
-      'Hide ', hide),
-    h('label', {title: 'Leaves out the native samples: threads blocked in native code, waiting'},
-      java, ' Java samples only (CPU)'),
-    h('label', {title: 'A massif: each caller a sector as high as its time. Ridges: each a ridge out to it. '
-                       + 'Ranges: ridges, a caller several mountains share drawn once, a saddle between them'},
-      'Mountains as ', shape, ' in ', view),
-    h('label', {title: 'By package: a hue per package, sub-packages near their parent; the height still sets how light'},
-      'coloured by ', colour),
+  return {view, settings: h('div', null,
+    section('Samples',
+      field('Leave out waits', waits, 'The samples whose top frame this finds are left out: threads waiting'),
+      field('Hide frames', hide, 'The frames this finds are left out of the stacks, their time given to their callers'),
+      h('label', {class: 'check', title: 'Leaves out the native samples: threads blocked in native code, waiting'},
+        java, ' Java samples only (CPU)')),
+    section('Peaks',
+      field('One per', grain),
+      field('At most', h('span', {class: 'unit'}, count, ' peaks')),
+      field('Until', h('span', {class: 'unit'}, coverage, ' % covered'),
+            'No more peaks once those taken hold this share of the samples')),
+    section('Landscape',
+      field('Mountains', shape, SHAPE_TITLE.samples),
+      field('Colour', colour, COLOUR_TITLE)),
     h('button', {type: 'button', class: 'button', onclick: () => {
       grain.value = DEFAULTS.grain;
       count.value = String(DEFAULTS.count);
@@ -124,10 +144,9 @@ export function peakControls(settings, changed) {
       hide.value = DEFAULTS.hide;
       java.checked = DEFAULTS.java;
       shape.value = DEFAULTS.shape;
-      view.value = DEFAULTS.view;
       colour.value = DEFAULTS.colour;
       update();
-    }}, 'Defaults'));
+    }}, 'Reset to defaults'))};
 }
 
 /**

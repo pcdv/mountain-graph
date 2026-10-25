@@ -25,6 +25,8 @@ import {advanced, tuning} from '../components/advanced.js';
 import {anonymizeControls} from '../components/anonymizing.js';
 import {timeline} from '../components/timeline.js';
 import {span, checked} from '../model/timeline.js';
+import {fileMenu} from '../components/file-menu.js';
+import {folded} from '../components/form.js';
 import {floating, keepView, remembered} from './page.js';
 
 /** @typedef {import('../profile/profile.js').Profile} Profile */
@@ -112,22 +114,23 @@ function display(page, name, samplings, which, saved) {
       strip.hidden = false;
     }
     // the view fills the window under the bar: there first, to take its shape from
-    replace(bar, summary(name, p), samplingChoice(samplings, which, to => {
+    replace(bar, ...summary(name, p), samplingChoice(samplings, which, to => {
       writeSetting(SAMPLING, samplings[to].key);
       page.remember();
       display(page, name, samplings, to, focus);
     }));
     main.classList.add('stage');
     let tuned = tuning();
-    replace(main, map, h('div', {class: 'floats'}, floating('Peaks', 'table', table),
-                         floating('Advanced', 'advanced', h('div', null, advanced(t => {
-                           tuned = t;
-                           page.relayout();
-                         }), anonymizeControls(() => page.reopen())))));
+    const knobs = advanced(t => {
+      tuned = t;
+      page.relayout();
+    });
+    replace(main, map, h('div', {class: 'floats'}, floating('Peaks', 'table', table)));
     /** @param {import('../components/peak-controls.js').PeakSettings} settings */
     const show = settings => {
       last = settings;
       const {grain, count, coverage, waits, hide, java, shape, view, colour} = settings;
+      knobs.fit({shape, view});
       if (kept?.waits !== waits) {
         const {profile, left} = leaveOut(p, waits);
         kept = {waits, kept: profile, left};
@@ -175,7 +178,10 @@ function display(page, name, samplings, which, saved) {
     };
     /** @type {import('../components/peak-controls.js').PeakSettings | null} */
     let last = null;
-    bar.append(peakControls(peakSettings(), show));
+    const controls = peakControls(peakSettings(), show);
+    replace(page.tools, controls.view);
+    replace(page.settings, controls.settings, folded('Fine tuning', knobs.element),
+            folded('Anonymizing', anonymizeControls(() => page.reopen())));
     // laid out again in the window's shape, the bar in place, and as it is resized
     page.relayout = () => last && show(last);
     page.relayout();
@@ -198,21 +204,24 @@ function samplingChoice(samplings, which, choose) {
                    samplings.map((s, i) => h('option', {value: String(i)}, s.label)));
   select.value = String(which);
   select.addEventListener('change', () => choose(Number(select.value)));
-  return h('label', {class: 'sampling'}, 'Samples ', select);
+  return h('label', {class: 'sampling', title: 'What the samples count'}, select);
 }
 
 /**
  * @param {string} name of the file
  * @param {Profile} p
+ * @returns {HTMLElement[]} its name and what it holds, for the header
  */
 function summary(name, p) {
   let ms = 0;
   for (let i = 0; i < p.kind.length; i++)
     if (p.stack[i] >= 0)
       ms += weightOf(p, i);
-  return h('div', {class: 'summary'},
-    h('b', null, name),
-    h('span', {class: 'muted'}, p.start
+  const brief = p.start
+    ? `${p.kind.length.toLocaleString()} samples, ${(p.end / 1e9).toFixed(1)} s`
+    : `${p.kind.length.toLocaleString()} stacks, ${amount(ms, p.unit)}`;
+  return fileMenu(name, brief,
+    h('p', null, p.start
       ? `${p.kind.length.toLocaleString()} samples (${amount(ms, p.unit)} with a stack), `
         + `${p.parent.length.toLocaleString()} stack nodes, ${p.threads.length} threads, `
         + `${p.operations.count.toLocaleString()} operations, recorded from ${p.start} `

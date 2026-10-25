@@ -19,23 +19,36 @@ const KEY = 'mountaingraph.tuning';
  * @property {number} max
  * @property {number} step
  * @property {string} title what it does
+ * @property {(s: Shown) => boolean} when whether it changes anything in the landscape shown
  */
+
+/**
+ * @typedef {object} Shown
+ * @property {import('../model/terrain.js').Shape} shape
+ * @property {'map' | '3d'} view
+ */
+
+/** @param {Shown} s */
+const ridged = s => s.shape !== 'massif';
+const always = () => true;
+/** @param {Shown} s */
+const inRelief = s => s.view === '3d';
 
 /** @type {Knob[]} */
 const KNOBS = [
-  {key: 'foot', label: 'Foot height', min: 0, max: 0.6, step: 0.05,
+  {key: 'foot', label: 'Foot height', min: 0, max: 0.6, step: 0.05, when: ridged,
    title: 'Ridges and ranges: a low dome under each mountain, as high as this share of its peak, so that its bulk shows its weight'},
-  {key: 'ridge', label: 'Ridge width', min: 0.06, max: 0.4, step: 0.02,
+  {key: 'ridge', label: 'Ridge width', min: 0.06, max: 0.4, step: 0.02, when: ridged,
    title: "Ridges and ranges: the peak's ridge, as a share of the mountain's radius"},
-  {key: 'near', label: 'Saddle reach', min: 1, max: 3, step: 0.1,
+  {key: 'near', label: 'Saddle reach', min: 1, max: 3, step: 0.1, when: s => s.shape === 'ranges',
    title: 'Ranges: how far apart two mountains may stand, in the sum of their radii, for a caller they share to make a saddle'},
-  {key: 'trail', label: 'Trail threshold', min: 0.05, max: 1, step: 0.05,
+  {key: 'trail', label: 'Trail threshold', min: 0.05, max: 1, step: 0.05, when: always,
    title: "The least share of the smaller mountain's time through a shared caller, for a trail"},
-  {key: 'trails', label: 'Trails per mountain', min: 0, max: 8, step: 1, title: 'The most trails from a mountain'},
-  {key: 'curve', label: '3D height curve', min: 0.3, max: 1, step: 0.05,
+  {key: 'trails', label: 'Trails per mountain', min: 0, max: 8, step: 1, when: always, title: 'The most trails from a mountain'},
+  {key: 'curve', label: '3D height curve', min: 0.3, max: 1, step: 0.05, when: inRelief,
    title: 'Heights as the time to this power: 0.5 lets small peaks show, 1 makes them as high as their time'},
-  {key: 'bump', label: 'Island bumps', min: 0, max: 0.03, step: 0.002, title: 'How rough the islands are'},
-  {key: 'rock', label: 'Island rock slope', min: 1, max: 8, step: 0.5,
+  {key: 'bump', label: 'Island bumps', min: 0, max: 0.03, step: 0.002, when: inRelief, title: 'How rough the islands are'},
+  {key: 'rock', label: 'Island rock slope', min: 1, max: 8, step: 0.5, when: inRelief,
    title: 'How steep a slope turns to rock: lower, more rock'},
 ];
 
@@ -59,7 +72,8 @@ export function tuning() {
 
 /**
  * @param {(tuning: AllTuning) => void} changed given the new values, each time one is let go
- * @returns {HTMLElement}
+ * @returns {{element: HTMLElement, fit: (shown: Shown) => void}} the sliders, and what shows only those
+ *          that change the landscape shown
  */
 export function advanced(changed) {
   const now = tuning();
@@ -100,6 +114,7 @@ export function advanced(changed) {
       input.value = out.textContent = String(defaults[knob.key]);
     }
     save();
-  }}, 'Defaults');
-  return h('div', {class: 'knobs'}, rows.map(r => r.row), reset);
+  }}, 'Reset the tuning');
+  return {element: h('div', {class: 'knobs'}, rows.map(r => r.row), reset),
+          fit: shown => rows.forEach(({knob, row}) => row.hidden = !knob.when(shown))};
 }

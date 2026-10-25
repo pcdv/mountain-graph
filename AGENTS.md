@@ -48,7 +48,8 @@ on its own line, so reformat only the file being edited.
   anonymizing; for a heap, ownership (the chains of holders) and context. No DOM, tested with Node.
 - `web/js/views/` — what draws: the 2D map, the 3D terrain, the peaks table. `palette.js` is the
   neutral module for constants that several views share.
-- `web/js/components/` — the panels and controls floating over the view.
+- `web/js/components/` — the panels floating over the view, the header's file menu, and the settings
+  pane with the controls in it (`form.js` holds the pieces they are built of).
 - `web/js/lib/` — `dom.js`, `dialog.js`, `settings.js` (with their `.d.ts` and `web-lib.json`) are copies
   from `../web-lib`; `format.js` is this project's own.
 - `test/` mirrors `web/js/`; `test/fixtures/` holds a small real recording and the program that
@@ -59,8 +60,8 @@ on its own line, so reformat only the file being edited.
   whatever the process had in memory.
 
 Settings are kept in `localStorage` under `mountaingraph.*` (`view`, `sampling`, `tuning`,
-`anonymize`, `peaks.*` for samples, `heap.*` for a heap, `float.*`, `timeline.hold`,
-`panel.width`); give a new one the same prefix.
+`anonymize`, `peaks.*` for samples, `heap.*` for a heap, `float.*` for the panes, the settings
+pane included, `timeline.hold`, `panel.width`); give a new one the same prefix.
 
 ## Rules
 

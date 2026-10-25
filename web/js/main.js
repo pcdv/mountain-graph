@@ -2,8 +2,9 @@
 /**
  * The page: a file picked or dropped, then the view of its kind (kinds/):
  * samples as the methods where the time goes, a heap as the objects that hold
- * the memory. Each a map of mountains filling the window under a bar of
- * controls, with a table of the peaks floating over it.
+ * the memory. Each a map of mountains filling the window under the header,
+ * with a table of the peaks floating over it and its settings in a pane
+ * docked beside it.
  */
 import {$, h, replace} from './lib/dom.js';
 import {loadFile, loadParse} from './load.js';
@@ -12,6 +13,7 @@ import {keepFile, lastFile, lastInterval, forgetFile} from './last-file.js';
 import {landing} from './landing.js';
 import {anonymizing} from './components/anonymizing.js';
 import {screenshotKeys} from './components/screenshot.js';
+import {settingsPane} from './components/settings-pane.js';
 import {showSamples} from './kinds/samples.js';
 import {showHeap} from './kinds/heap.js';
 
@@ -27,6 +29,8 @@ const progressFill = /** @type {HTMLElement} */ (progress.querySelector('.progre
 const page = {
   main: $('main', HTMLElement),
   bar: $('bar', HTMLElement),
+  tools: $('tools', HTMLElement),
+  settings: $('settings-body', HTMLElement),
   strip: $('timeline', HTMLElement),
   relayout: () => {},
   remember: () => {},
@@ -34,6 +38,7 @@ const page = {
 };
 
 closeButton.addEventListener('click', close);
+settingsPane($('settings', HTMLElement), $('settings-toggle', HTMLButtonElement), () => page.relayout());
 show(landing());
 
 picker.addEventListener('change', () => {
@@ -148,6 +153,8 @@ function show(content) {
   page.remember = () => {};
   page.main.classList.remove('stage');
   replace(page.bar);
+  replace(page.tools);
+  replace(page.settings);
   replace(page.strip);
   page.strip.hidden = true;
   replace(page.main, content);

@@ -17,14 +17,40 @@
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
+  <!-- one row, in this order whatever the width: the app, the file, how it is shown, the actions -->
   <header>
-    <h1>MountainGraph</h1>
-    <label class="button">Open a file… <input id="picker" type="file"></label>
-    <button id="close" class="button" type="button" hidden title="Close the graph">Close</button>
+    <h1>
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2.5 12c0-5 4.3-8.5 9.5-8.5s9.5 3.6 9.5 8.3c0 5.2-4.4 8.7-9.6 8.7S2.5 17 2.5 12z"/>
+        <path d="M6.5 12.3c0-3 2.4-5.3 5.5-5.3s5.4 2.2 5.4 5c0 3-2.5 5.1-5.6 5.1-3 0-5.3-1.8-5.3-4.8z"/>
+        <path d="M10 12.2c0-1.2.9-2 2-2s2 .8 2 1.9-.9 2-2.1 2c-1.1 0-1.9-.8-1.9-1.9z"/>
+      </svg>
+      MountainGraph
+    </h1>
     <div id="bar"></div>
+    <div id="tools"></div>
+    <button id="settings-toggle" class="button" type="button" aria-controls="settings" title="Settings of the view">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h7M13 4h1M2 12h1M7 12h7"/><circle cx="11" cy="4" r="2"/><circle cx="5" cy="12" r="2"/></svg>
+      <span>Settings</span>
+    </button>
+    <label class="button primary">Open… <input id="picker" type="file"></label>
+    <button id="close" class="button icon" type="button" hidden title="Close the file" aria-label="Close the file">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+    </button>
   </header>
   <div id="timeline" hidden></div>
-  <main id="main"></main>
+  <div id="workspace">
+    <main id="main"></main>
+    <aside id="settings" hidden aria-label="Settings">
+      <div class="settings-head">
+        <h2>Settings</h2>
+        <button class="button icon close" type="button" title="Close the settings" aria-label="Close the settings">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+        </button>
+      </div>
+      <div id="settings-body"></div>
+    </aside>
+  </div>
   <!-- shown while no file is open (landing.js) -->
   <template id="landing">
     <div class="landing">

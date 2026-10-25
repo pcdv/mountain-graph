@@ -1,12 +1,22 @@
 :root {
-  --bg: #fbfaf7;
+  --bg: #f7f7f4;
+  /* what stands over the view: the header, the panes, the menus */
+  --surface: #ffffff;
+  --sunk: #efeee9;
   --fg: #1f2328;
-  --muted: #6a6f76;
-  --line: #d9d6cf;
+  --muted: #646a72;
+  --line: #dcdad3;
+  --line-strong: #bfbcb2;
   --accent: #3d6b4f;
+  --on-accent: #ffffff;
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
   --error: #b42318;
   --drop: #e8f0ea;
-  --float: rgba(251, 250, 247, 0.92);
+  --float: rgba(255, 255, 255, 0.92);
+  --shadow: 0 1px 2px rgba(31, 35, 40, 0.06), 0 8px 24px rgba(31, 35, 40, 0.08);
+  --radius: 8px;
+  --control: 28px;
+  --mono: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
   /* the operations of the timeline, as in jfr-web */
   --series-1: #2a78d6;
   --series-2: #eb6834;
@@ -23,13 +33,18 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #16181b;
+    --surface: #1e2125;
+    --sunk: #111315;
     --fg: #e6e4df;
     --muted: #9a9ea5;
     --line: #34383d;
+    --line-strong: #4a4f56;
     --accent: #8fc4a1;
+    --on-accent: #10261a;
     --error: #ff8a7a;
     --drop: #1f2a23;
-    --float: rgba(22, 24, 27, 0.9);
+    --float: rgba(30, 33, 37, 0.92);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
@@ -43,6 +58,10 @@
   }
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -54,41 +73,143 @@ body.dropping {
   background: var(--drop);
 }
 
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+svg {
+  flex: none;
+}
+
+/* the header: one row in a fixed order, what does not fit cut short rather than wrapped */
 header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 6px 16px;
+  gap: 12px;
+  height: 48px;
+  box-sizing: border-box;
+  padding: 0 12px 0 16px;
   border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 8px 0 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+h1 .mark {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
 }
 
 #bar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px 16px;
+  gap: 10px;
+  flex: 1;
   min-width: 0;
 }
 
-#bar .summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 8px;
-  font-size: 12px;
+#tools:empty {
+  display: none;
 }
 
-#bar .sampling {
-  font-size: 12px;
+.file-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: var(--control);
+  padding: 0 6px 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.file-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name svg {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+}
+
+.file-name:hover, .file-name:has(+ .brief + :popover-open) {
+  border-color: var(--line);
+  background: var(--sunk);
+}
+
+#bar .brief {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the file's menu: all that is known of it, under its name */
+.file-menu {
+  position: fixed;
+  inset: auto;
+  width: min(560px, calc(100vw - 16px));
+  max-height: calc(100vh - 72px);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 14px 16px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+}
+
+.file-menu h2 {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.file-menu p {
+  margin: 0 0 10px;
+}
+
+.file-menu h3 {
+  margin: 16px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.file-menu .actions {
+  display: flex;
+  gap: 8px;
 }
 
 /* the recording's timeline, under the header: an interval dragged on it sets the samples in focus */
 #timeline {
   padding: 4px 16px;
   border-bottom: 1px solid var(--line);
-}
-
-#timeline[hidden] {
-  display: none;
+  background: var(--surface);
 }
 
 .timeline-plot {
@@ -104,10 +225,6 @@ header {
   flex-wrap: wrap;
   gap: 2px 12px;
   font-size: 12px;
-}
-
-.timeline-legend[hidden] {
-  display: none;
 }
 
 .timeline-key {
@@ -148,16 +265,22 @@ button.timeline-key:hover, .timeline-key.on {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 24px;
+  min-height: 28px;
   font-size: 12px;
 }
 
 .timeline-bar .button {
+  --control: 22px;
   font-size: 12px;
-  padding: 0 8px;
 }
 
-/* a profile open: the view fills the window under the header, the rest floats over it */
+.timeline-bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* a profile open: the view fills the window under the header, the settings docked at its right */
 body:has(main.stage) {
   display: flex;
   flex-direction: column;
@@ -165,10 +288,17 @@ body:has(main.stage) {
   overflow: hidden;
 }
 
+body:has(main.stage) #workspace {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 main.stage {
   position: relative;
   flex: 1;
-  min-height: 0;
+  min-width: 0;
   padding: 0;
 }
 
@@ -177,7 +307,219 @@ main.stage .stage-view {
   inset: 0;
 }
 
-/* the panes floating at the top left, one under the other */
+/* nothing to set without a view */
+#settings-toggle {
+  display: none;
+}
+
+body:has(main.stage) #settings-toggle {
+  display: inline-flex;
+}
+
+body:not(:has(main.stage)) #settings {
+  display: none;
+}
+
+#settings-toggle[aria-expanded=true] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+#settings {
+  flex: 0 0 320px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.settings-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 6px 16px;
+  background: var(--surface);
+}
+
+.settings-head h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+#settings-body {
+  padding: 0 16px 16px;
+}
+
+#settings-body > .button {
+  margin-top: 14px;
+}
+
+.settings-section {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.settings-section:first-child {
+  border-top: none;
+  padding-top: 4px;
+}
+
+.settings-section h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+details.settings-section {
+  display: block;
+}
+
+details.settings-section > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  list-style: none;
+}
+
+details.settings-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.settings-section > summary::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border: solid var(--muted);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+}
+
+details.settings-section[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+details.settings-section[open] > summary {
+  margin-bottom: 8px;
+}
+
+/* a setting: its label at the left, the control filling the rest */
+.field {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.field-label {
+  color: var(--muted);
+}
+
+.field:has(.pattern) {
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.unit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+/* a few values all in sight, one chosen */
+.segmented {
+  display: flex;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--sunk);
+}
+
+.segmented label {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented span {
+  flex: 1;
+  padding: 2px 6px;
+  border-radius: 5px;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.segmented span:hover {
+  color: var(--fg);
+}
+
+.segmented input:checked + span {
+  background: var(--surface);
+  color: var(--fg);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.segmented input:focus-visible + span {
+  outline: 2px solid var(--accent);
+}
+
+input:not([type=checkbox], [type=radio], [type=range]), select, textarea {
+  box-sizing: border-box;
+  min-height: var(--control);
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}
+
+input[type=checkbox], input[type=range] {
+  accent-color: var(--accent);
+}
+
+input[type=number] {
+  width: 5em;
+}
+
+input.pattern {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+input.invalid {
+  border-color: var(--error);
+}
+
+/* the panes floating over the view at the top left, one under the other */
 .floats {
   position: absolute;
   top: 12px;
@@ -202,18 +544,16 @@ main.stage .stage-view {
   overflow: auto;
   padding: 4px 10px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--float);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
 }
 
 .floating > summary {
   cursor: pointer;
   font-weight: 600;
-}
-
-h1 {
-  margin: 0;
-  font-size: 16px;
+  line-height: 26px;
 }
 
 h2 {
@@ -226,15 +566,50 @@ main {
 }
 
 .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: var(--control);
   white-space: nowrap;
-  padding: 2px 10px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
   cursor: pointer;
 }
 
 .button:hover {
   border-color: var(--accent);
+}
+
+.button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.button.primary:hover {
+  filter: brightness(1.08);
+}
+
+.button.icon {
+  width: var(--control);
+  padding: 0;
+}
+
+.button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
 }
 
 .button input {
@@ -243,6 +618,40 @@ main {
 
 .muted {
   color: var(--muted);
+}
+
+/* narrower: the file's line, then the labels of the buttons, give way to the view; the settings over it */
+@media (max-width: 900px) {
+  #bar .brief {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  h1 {
+    font-size: 0;
+    margin: 0;
+  }
+
+  #settings-toggle span {
+    display: none;
+  }
+
+  #settings {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(320px, 100%);
+    box-shadow: var(--shadow);
+    z-index: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
 }
 
 .landing {
@@ -355,42 +764,6 @@ th {
   overflow-wrap: anywhere;
 }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 16px;
-}
-
-.controls input, .controls select {
-  font: inherit;
-  padding: 1px 4px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: transparent;
-  color: inherit;
-}
-
-.controls input[type=number] {
-  width: 4em;
-}
-
-.controls .pattern {
-  width: 16em;
-  font-family: ui-monospace, monospace;
-  font-size: 13px;
-}
-
-.controls .invalid {
-  border-color: var(--error);
-}
-
-button.button {
-  font: inherit;
-  background: transparent;
-  color: inherit;
-}
-
 .peaks tr.peak {
   cursor: pointer;
 }
@@ -466,8 +839,9 @@ canvas.map {
   max-height: 40%;
   padding: 6px 10px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--float);
+  box-shadow: var(--shadow);
   pointer-events: none;
   overflow: auto;
   font-size: 13px;
@@ -530,10 +904,6 @@ canvas.map {
   display: flex;
   max-width: calc(100% - 24px);
   pointer-events: none;
-}
-
-.map-dock[hidden] {
-  display: none;
 }
 
 .map-dock > * {
@@ -599,8 +969,9 @@ canvas.map {
   overflow: auto;
   padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--float);
+  box-shadow: var(--shadow);
 }
 
 .map-panel .panel-head {
@@ -635,25 +1006,25 @@ canvas.map {
   font-size: 10px;
 }
 
+/* the 3D view's own controls, a toolbar over it: they act on the terrain shown, not on what it is made of */
 .map-holder.three .relief {
-  padding: 2px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--float);
   position: absolute;
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--float);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
   font-size: 12px;
+  white-space: nowrap;
   color: var(--fg);
-  text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg);
-}
-
-.map-holder.three .relief label[hidden] {
-  display: none;
 }
 
 .map-holder.three .relief label {
@@ -673,8 +1044,9 @@ canvas.map {
   max-width: 40%;
   padding: 6px 10px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--float);
+  box-shadow: var(--shadow);
   display: flex;
   flex-wrap: wrap;
   gap: 4px 14px;
@@ -708,12 +1080,12 @@ canvas.map {
   white-space: nowrap;
 }
 
+/* each slider under its label: the pane is narrow */
 .knobs {
   display: grid;
-  grid-template-columns: auto 20px 120px 20px 3.5em;
+  grid-template-columns: 22px minmax(0, 1fr) 22px 3.5em;
   align-items: center;
-  gap: 2px 10px;
-  padding: 4px 0 6px;
+  gap: 0 6px;
   font-size: 12px;
 }
 
@@ -721,13 +1093,24 @@ canvas.map {
   display: contents;
 }
 
+.knobs .knob > span:first-child {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+.knobs input[type=range] {
+  width: 100%;
+  margin: 0;
+}
+
 .knobs .nudge {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface);
   color: var(--fg);
   font: inherit;
   line-height: 1;
@@ -735,7 +1118,7 @@ canvas.map {
 }
 
 .knobs .nudge:hover {
-  border-color: var(--fg);
+  border-color: var(--accent);
 }
 
 .knobs .value {
@@ -744,9 +1127,9 @@ canvas.map {
 }
 
 .knobs .button {
-  grid-column: 1;
+  grid-column: 1 / -1;
   justify-self: start;
-  margin-top: 4px;
+  margin-top: 12px;
 }
 
 .toast {
@@ -756,23 +1139,18 @@ canvas.map {
   transform: translateX(-50%);
   padding: 6px 14px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--float);
+  box-shadow: var(--shadow);
   color: var(--fg);
   font-size: 12px;
   z-index: 10;
 }
 
-.toast[hidden] {
-  display: none;
-}
-
 .anonymizing {
   display: grid;
-  gap: 6px;
-  padding: 6px 0 4px;
-  border-top: 1px solid var(--line);
-  font-size: 12px;
+  gap: 8px;
+  font-size: 13px;
 }
 
 .anonymizing label {
@@ -781,18 +1159,16 @@ canvas.map {
 }
 
 .anonymizing label:first-child, .anonymizing label.inline {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .anonymizing textarea {
-  box-sizing: border-box;
   width: 100%;
-  font: inherit;
-  font-family: monospace;
-  background: none;
-  color: var(--fg);
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  resize: vertical;
 }
 
 .anonymizing .button {
@@ -881,4 +1257,12 @@ canvas.map {
 
 .callers .pick:hover {
   text-decoration: underline;
+}
+
+.file-menu .report-table {
+  width: 100%;
+}
+
+.file-menu .report-table td:first-child {
+  width: 45%;
 }
