@@ -35,7 +35,12 @@ const page = {
   strip: $('timeline', HTMLElement),
   relayout: () => {},
   remember: () => {},
-  reopen: () => current && (current instanceof File ? open(current, true) : openParse(current)),
+  // what is shown is kept first, as the page does when closed: the new view comes back as the old one was left
+  // (the 3D camera, the blocks, the peak chosen), not as it was when last kept
+  reopen: () => {
+    page.remember();
+    return current && (current instanceof File ? open(current, true) : openParse(current));
+  },
 };
 
 closeButton.addEventListener('click', close);
