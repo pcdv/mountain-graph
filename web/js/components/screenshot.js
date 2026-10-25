@@ -2,9 +2,10 @@
 /**
  * A picture of the view shown, by hotkey: S saves it as a PNG, C copies it to the clipboard. It holds the
  * canvas of the map or of the 3D view, and the names over the peaks of the 3D view, which are not drawn
- * in it; not the panels floating over it.
+ * in it; the panels floating over it too with Shift (S and C in capitals), drawn again by paint-dom.js.
  */
 import {h} from '../lib/dom.js';
+import {paintElements} from './paint-dom.js';
 
 /** How long the message stays, ms. */
 const TOAST = 2000;
@@ -35,9 +36,10 @@ function viewCanvas(root) {
 
 /**
  * @param {HTMLCanvasElement} view
+ * @param {boolean} [panels] whether the panels floating over the view are in the picture too
  * @returns {HTMLCanvasElement} a copy of it, with the names of the peaks over it
  */
-export function compose(view) {
+export function compose(view, panels = false) {
   const out = document.createElement('canvas');
   out.width = view.width;
   out.height = view.height;
@@ -62,6 +64,11 @@ export function compose(view) {
     g.fillStyle = style.color;
     g.fillText(name.textContent ?? '', x, y);
   }
+  if (panels) {
+    // the hovered line and the panel of the peak, over the view as on the page, those shown
+    const shown = view.closest('.terrain')?.querySelectorAll('.map-info:not([hidden]), .map-dock:not([hidden]) .map-panel') ?? [];
+    paintElements(g, [...shown], box, k);
+  }
   return out;
 }
 
@@ -78,15 +85,16 @@ function png(canvas) {
  * @param {'save' | 'copy'} how
  * @param {string} name of the file, without its extension
  * @param {ParentNode} [root] where the view is
+ * @param {boolean} [panels] with the panels floating over the view
  */
-export async function screenshot(how, name, root = document) {
+export async function screenshot(how, name, root = document, panels = false) {
   const view = viewCanvas(root);
   if (!view) {
     say('Nothing to take a picture of');
     return;
   }
   try {
-    const blob = await png(compose(view));
+    const blob = await png(compose(view, panels));
     if (how === 'copy') {
       await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
       say('Picture copied');
@@ -116,7 +124,7 @@ export function screenshotKeys(name) {
     const key = e.key.toLowerCase();
     if (key === 's' || key === 'c') {
       e.preventDefault();
-      screenshot(key === 's' ? 'save' : 'copy', name());
+      screenshot(key === 's' ? 'save' : 'copy', name(), document, e.shiftKey);
     }
   });
 }
