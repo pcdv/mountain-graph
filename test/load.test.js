@@ -197,7 +197,7 @@ describe('a heap dump', () => {
   });
 
   test('has its names anonymized as samples have', async () => {
-    const anonymous = {packages: false, depth: 2, keep: [], replace: [{from: 'String', to: 'Text'}]};
+    const anonymous = {enabled: true, packages: false, depth: 2, keep: [], replace: [{from: 'String', to: 'Text'}]};
     const {heap: {profile}} = await loadHeap(picked(dump, 'heap.hprof'), {parse: inThread(dump), anonymous});
 
     assert.ok(profile.strings.includes('java.lang.Text'));

@@ -15,9 +15,10 @@ const KEY = 'mountaingraph.anonymize';
 /** @returns {Rules} as last set; nothing replaced at first */
 export function anonymizing() {
   /** @type {Rules} */
-  const rules = {packages: false, depth: 2, keep: KEPT, replace: []};
+  const rules = {enabled: false, packages: false, depth: 2, keep: KEPT, replace: []};
   try {
     const kept = JSON.parse(readSetting(KEY) ?? '{}');
+    rules.enabled = kept.enabled === true;
     rules.packages = kept.packages === true;
     if (Number.isInteger(kept.depth) && kept.depth >= 1 && kept.depth <= 10)
       rules.depth = kept.depth;
@@ -48,6 +49,13 @@ export function anonymizeControls(apply) {
   const rules = anonymizing();
   const save = () => writeSetting(KEY, JSON.stringify(rules));
 
+  const enabled = h('input', {type: 'checkbox', checked: rules.enabled, onchange: () => {
+    rules.enabled = enabled.checked;
+    body.classList.toggle('off', !rules.enabled);
+    for (const el of body.querySelectorAll('input, textarea'))
+      /** @type {HTMLInputElement} */ (el).disabled = !rules.enabled;
+    save();
+  }});
   const packages = h('input', {type: 'checkbox', checked: rules.packages, onchange: () => {
     rules.packages = packages.checked;
     save();
@@ -72,14 +80,20 @@ export function anonymizeControls(apply) {
     save();
   }}, rules.replace.map(r => `${r.from} => ${r.to}`).join('\n'));
 
-  return h('div', {class: 'anonymizing'},
-    helpTip(h('div', {class: 'muted'}, 'Names replaced as the file is read'), 'anonymizing',
-            'Packages and texts replaced in the names, to share a picture without what they say; Apply reads the file again'),
-    h('label', {title: 'com.acme.billing.Invoice becomes com.bart.lisa.Invoice, each package everywhere the same'},
+  const body = h('div', {class: 'anonymizing-body'},
+    h('label', {class: 'inline', title: 'com.acme.billing.Invoice becomes com.bart.lisa.Invoice, each package everywhere the same'},
       packages, ' Replace the packages by aliases'),
     h('label', {class: 'inline', title: 'Segments after the domain that get aliases: 2 is com.x.y, what is under keeps its name'},
       'Depth ', depth),
     h('label', null, 'Packages kept', keep),
-    h('label', null, 'Replace', replace),
+    h('label', null, 'Replace', replace));
+  for (const el of body.querySelectorAll('input, textarea'))
+    /** @type {HTMLInputElement} */ (el).disabled = !rules.enabled;
+  body.classList.toggle('off', !rules.enabled);
+
+  return h('div', {class: 'anonymizing'},
+    helpTip(h('label', {class: 'inline'}, enabled, ' Replace names as the file is read'), 'anonymizing',
+            'Packages and texts replaced in the names, to share a picture without what they say; Apply reads the file again'),
+    body,
     h('button', {type: 'button', class: 'button', onclick: apply, title: 'Reads the file again with these settings'}, 'Apply'));
 }

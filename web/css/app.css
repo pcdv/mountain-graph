@@ -1159,10 +1159,19 @@ canvas.map.dragging {
   gap: 2px;
 }
 
-.anonymizing label:first-child, .anonymizing label.inline {
+.anonymizing label.inline {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.anonymizing-body {
+  display: grid;
+  gap: 8px;
+}
+
+.anonymizing-body.off {
+  opacity: 0.5;
 }
 
 .anonymizing textarea {

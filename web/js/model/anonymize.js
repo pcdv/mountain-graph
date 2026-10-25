@@ -23,6 +23,7 @@ const DOMAINS = new Set(['com', 'org', 'net', 'io', 'edu', 'gov', 'dev', 'app', 
 
 /**
  * @typedef {object} Rules
+ * @property {boolean} enabled whether anything is replaced: the rules below are kept, but ignored, when not
  * @property {boolean} packages whether the packages get aliases
  * @property {number} depth how many package segments get aliases, after the domain: 2 for com.x.y, the
  *           sub-packages under keep their names
@@ -53,7 +54,7 @@ export function alias(n) {
  * @returns {boolean} whether they change anything
  */
 export function active(rules) {
-  return rules.packages || rules.replace.some(r => r.from !== '');
+  return rules.enabled && (rules.packages || rules.replace.some(r => r.from !== ''));
 }
 
 /**

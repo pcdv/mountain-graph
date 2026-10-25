@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {alias, anonymizer, KEPT} from '../../web/js/model/anonymize.js';
 
 const profile = strings => ({strings, threads: [{name: 'main', id: 1}, {name: 'com.foo.Pool', id: 2}]});
-const rules = (more = {}) => ({packages: true, depth: 2, keep: KEPT, replace: [], ...more});
+const rules = (more = {}) => ({enabled: true, packages: true, depth: 2, keep: KEPT, replace: [], ...more});
 
 test('aliases: the dictionary first, then a, b, c… and aa, ab…', () => {
   assert.deepEqual([0, 1, 2].map(alias), ['bart', 'lisa', 'homer']);
