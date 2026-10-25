@@ -62,9 +62,12 @@ export function heapSettings() {
  * @returns {import('./peak-controls.js').Controls} those that do not apply to the ranking chosen hidden
  */
 export function heapControls(settings, changed) {
-  const basis = segmented([['owned', 'What they hold', 'A chain of holders is one peak, as deep as the object '
-                                                        + 'that actually retains the memory'],
-                           ['shallow', 'Own size', 'The objects at the top of a stack']], settings.basis);
+  const basis = segmented([['owned', 'What they hold', 'Which objects keep the memory alive. A chain of holders is one '
+                                                        + 'peak, as deep as the object that actually retains the memory; '
+                                                        + 'the slopes go down to what it holds'],
+                           ['shallow', 'Own size', 'Which classes take the most room themselves: the shallow size of '
+                                                   + 'their instances, not what they point to. The slopes are the '
+                                                   + 'objects that hold them']], settings.basis);
   const wrappers = segmented([['skip', 'Skipped'], ['show', 'As peaks']], settings.wrappers);
   const grain = segmented([['method', 'Class'], ['package', 'Package']], settings.grain);
   const context = h('select', null, [1, 2, 3, 4, 5].map(n =>
@@ -76,11 +79,12 @@ export function heapControls(settings, changed) {
   const colour = segmented(COLOURS, settings.colour);
 
   const wrapped = field('Thin wrappers', wrappers, 'A thin wrapper owns almost none of what it holds: a handler or a '
-                        + 'manager the walk entered the graph by. Skipped, what it holds belongs to the objects inside it');
-  const gathered = field('One per', grain);
+                        + 'manager the walk entered the graph by. Skipped, what it holds belongs to the objects inside it',
+                        'wrappers');
+  const gathered = field('One per', grain, 'What a peak gathers: the instances of a class, or of a package', 'grain');
   const framed = field('Context', context, 'How many frames make a peak: the class alone, or the class and the '
-                       + 'objects holding it, so that a cache and the map it holds are one peak');
-  const coloured = field('Colour', colour, COLOUR_TITLE);
+                       + 'objects holding it, so that a cache and the map it holds are one peak', 'context');
+  const coloured = field('Colour', colour, COLOUR_TITLE, 'colour');
 
   const update = () => {
     const n = count.valueAsNumber, c = coverage.valueAsNumber, k = Number(context.value);
@@ -107,15 +111,16 @@ export function heapControls(settings, changed) {
 
   return {view, settings: h('div', null,
     section('Peaks',
-      field('Ranked by', basis),
+      field('Ranked by', basis, 'What a peak is: the objects that keep the memory alive, or the classes that take the '
+                                + 'most room themselves', 'basis'),
       wrapped,
       gathered,
       framed,
-      field('At most', h('span', {class: 'unit'}, count, ' peaks')),
+      field('At most', h('span', {class: 'unit'}, count, ' peaks'), 'The most peaks, the heaviest first', 'count'),
       field('Until', h('span', {class: 'unit'}, coverage, ' % covered'),
-            'No more peaks once those taken hold this share of the memory')),
+            'No more peaks once those taken hold this share of the memory', 'coverage')),
     section('Landscape',
-      field('Mountains', shape, SHAPE_TITLE.heap),
+      field('Mountains', shape, SHAPE_TITLE.heap, 'shapes'),
       coloured),
     h('button', {type: 'button', class: 'button', onclick: () => {
       basis.value = DEFAULTS.basis;

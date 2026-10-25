@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MountainGraph</title>
   <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/help.css">
   <!-- three.js, pinned: the only dependency, loaded when the 3D view is first shown -->
   <script type="importmap">
     {
@@ -29,6 +30,9 @@
     </h1>
     <div id="bar"></div>
     <div id="tools"></div>
+    <a id="help" class="button icon" href="help.html" target="_blank" title="Help (?)" aria-label="Help">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M6.2 6.3a1.9 1.9 0 1 1 2.7 1.7c-.6.3-.9.7-.9 1.3M8 11.4v.1"/></svg>
+    </a>
     <button id="settings-toggle" class="button" type="button" aria-controls="settings" title="Settings of the view">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h7M13 4h1M2 12h1M7 12h7"/><circle cx="11" cy="4" r="2"/><circle cx="5" cy="12" r="2"/></svg>
       <span>Settings</span>

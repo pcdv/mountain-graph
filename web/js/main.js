@@ -13,6 +13,7 @@ import {keepFile, lastFile, lastInterval, forgetFile} from './last-file.js';
 import {landing} from './landing.js';
 import {anonymizing} from './components/anonymizing.js';
 import {screenshotKeys} from './components/screenshot.js';
+import {installHelp} from './components/help.js';
 import {settingsPane} from './components/settings-pane.js';
 import {showSamples} from './kinds/samples.js';
 import {showHeap} from './kinds/heap.js';
@@ -182,6 +183,7 @@ function showProgress(phase, percent) {
 }
 
 // S saves a picture of the view, C copies it
+installHelp($('help', HTMLElement));
 screenshotKeys(() => (current?.name ?? 'mountain-graph').replace(/(\.\w+)?(\.gz)?$/, ''));
 
 // the file opened last, shown again: a dump as its parse, a reload then being about the view, not the file

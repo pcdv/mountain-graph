@@ -15,6 +15,7 @@ import {readSetting, writeSetting} from '../lib/settings.js';
 import {callersTree} from './callers.js';
 import {heldBy, holdersOf} from './holders.js';
 import {amount} from '../model/units.js';
+import {helpLink} from './help.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -159,6 +160,7 @@ export function terrainFrame(t, trees, selection, how, redraw) {
     panel.replaceChildren(
       h('div', {class: 'panel-head'},
         h('b', null, shown?.name ?? tree.name),
+        helpLink('panel', 'the panel'),
         ...shown ? [h('button', {type: 'button', class: 'button', title: 'Back to the peak', onclick: () => {
           selection.subject = selection.nodes?.[m];
           render(m);

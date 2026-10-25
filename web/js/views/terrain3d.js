@@ -18,6 +18,7 @@ import {FADE} from '../components/crossfade.js';
 import {field} from '../components/form.js';
 import {contour, levels} from '../model/contours.js';
 import {zoneCells} from '../model/zones.js';
+import {helpLink} from '../components/help.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST} from './blocks3d.js';
 import {sea, sky, shores, bump, landColour, bedColour, LEVEL, DEEP, HAZE, SUN, SEA_TUNING} from './sea3d.js';
@@ -360,7 +361,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                                blockify();
                                redraw();
                              }});
-    const size = field('Block size', fine);
+    const size = field('Block size', fine, undefined, 'blocks');
     size.hidden = !blocky;
     const cubed = h('input', {type: 'checkbox', checked: blocky, onchange: () => {
       viewpoint.blocks = blocky = cubed.checked;
@@ -390,10 +391,11 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                                    blockify();
                                  redraw();
                                }});
-    const tide = field('Sea level', rising);
+    const tide = field('Sea level', rising, undefined, 'sea');
     tide.hidden = !islands;
-    const knobs = [field('Relief', slider), h('label', {class: 'check'}, isles, ' Islands'), tide,
-                   h('label', {class: 'check'}, cubed, ' Blocks'), size];
+    const knobs = [field('Relief', slider, undefined, 'relief'),
+                   h('label', {class: 'check'}, isles, ' Islands', helpLink('islands', 'islands')), tide,
+                   h('label', {class: 'check'}, cubed, ' Blocks', helpLink('blocks', 'blocks')), size];
     if (knobsIn)
       knobsIn.replaceChildren(...knobs);
     loading.replaceWith(renderer.domElement, labels, ...knobsIn ? [] : [h('div', {class: 'relief'}, knobs)]);

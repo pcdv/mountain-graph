@@ -9,6 +9,7 @@ import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {WAITS} from '../model/samples.js';
 import {segmented, field, section} from './form.js';
+import {helpLink} from './help.js';
 
 /** @typedef {import('../model/peaks.js').Grain} Grain */
 /** @typedef {import('../model/terrain.js').Shape} Shape */
@@ -124,18 +125,19 @@ export function peakControls(settings, changed) {
 
   return {view, settings: h('div', null,
     section('Samples',
-      field('Leave out waits', waits, 'The samples whose top frame this finds are left out: threads waiting'),
-      field('Hide frames', hide, 'The frames this finds are left out of the stacks, their time given to their callers'),
+      field('Leave out waits', waits, 'The samples whose top frame this finds are left out: threads waiting', 'waits'),
+      field('Hide frames', hide, 'The frames this finds are left out of the stacks, their time given to their callers',
+            'hide'),
       h('label', {class: 'check', title: 'Leaves out the native samples: threads blocked in native code, waiting'},
-        java, ' Java samples only (CPU)')),
+        java, ' Java samples only (CPU)', helpLink('java', 'Java samples only'))),
     section('Peaks',
-      field('One per', grain),
-      field('At most', h('span', {class: 'unit'}, count, ' peaks')),
+      field('One per', grain, 'What a peak gathers: a method, a class or a package', 'method'),
+      field('At most', h('span', {class: 'unit'}, count, ' peaks'), 'The most peaks, the heaviest first', 'count'),
       field('Until', h('span', {class: 'unit'}, coverage, ' % covered'),
-            'No more peaks once those taken hold this share of the samples')),
+            'No more peaks once those taken hold this share of the samples', 'coverage')),
     section('Landscape',
-      field('Mountains', shape, SHAPE_TITLE.samples),
-      field('Colour', colour, COLOUR_TITLE)),
+      field('Mountains', shape, SHAPE_TITLE.samples, 'shapes'),
+      field('Colour', colour, COLOUR_TITLE, 'colour')),
     h('button', {type: 'button', class: 'button', onclick: () => {
       grain.value = DEFAULTS.grain;
       count.value = String(DEFAULTS.count);

@@ -1,0 +1,167 @@
+/* the help: a page of its own, or the content of the dialog that shows it (components/help.js) */
+
+body.help {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: 24px;
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 16px 20px 64px;
+  line-height: 1.55;
+}
+
+body.help .contents {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+body.help .contents a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+body.help .contents a:hover {
+  color: var(--accent);
+}
+
+body.help main {
+  padding: 0;
+  min-width: 0;
+}
+
+body.help h1 {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+body.help h2 {
+  margin: 32px 0 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 17px;
+}
+
+body.help h3 {
+  margin: 20px 0 4px;
+  font-size: 14px;
+}
+
+body.help section {
+  scroll-margin-top: 8px;
+}
+
+body.help [id] {
+  scroll-margin-top: 12px;
+}
+
+/* the feature asked for, when the page was opened at it */
+body.help :target {
+  background: var(--accent-soft);
+  border-radius: 4px;
+}
+
+body.help a {
+  color: var(--accent);
+}
+
+body.help code, body.help kbd {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--sunk);
+  font: 12.5px var(--mono);
+}
+
+body.help dl {
+  margin: 8px 0;
+}
+
+body.help dt {
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+body.help dd {
+  margin: 2px 0 0 16px;
+  color: var(--fg);
+}
+
+body.help small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+body.help .muted {
+  color: var(--muted);
+}
+
+@media (max-width: 700px) {
+  body.help {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.help .contents {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+}
+
+/* in the dialog: the page fills it */
+dialog.help {
+  width: min(60rem, calc(100vw - 32px));
+  height: min(46rem, calc(100vh - 32px));
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+dialog.help::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+dialog.help iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+dialog.help .button.close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+/* the "?" beside a setting: opens the help at it, or in a tab with a modifier */
+a.help-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: middle;
+}
+
+a.help-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

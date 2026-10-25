@@ -28,6 +28,7 @@ import {span, checked} from '../model/timeline.js';
 import {fileMenu} from '../components/file-menu.js';
 import {folded, section} from '../components/form.js';
 import {floating, keepView, remembered} from './page.js';
+import {helpLink} from '../components/help.js';
 
 /** @typedef {import('../profile/profile.js').Profile} Profile */
 /** @typedef {import('../load.js').Sampling} Sampling */
@@ -208,7 +209,7 @@ function samplingChoice(samplings, which, choose) {
                    samplings.map((s, i) => h('option', {value: String(i)}, s.label)));
   select.value = String(which);
   select.addEventListener('change', () => choose(Number(select.value)));
-  return h('label', {class: 'sampling', title: 'What the samples count'}, select);
+  return h('label', {class: 'sampling', title: 'What the samples count'}, select, helpLink('sampling', 'what the samples count'));
 }
 
 /**

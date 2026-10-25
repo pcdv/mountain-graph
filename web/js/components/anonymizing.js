@@ -6,6 +6,7 @@
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {KEPT} from '../model/anonymize.js';
+import {helpLink} from './help.js';
 
 const KEY = 'mountaingraph.anonymize';
 
@@ -72,6 +73,7 @@ export function anonymizeControls(apply) {
   }}, rules.replace.map(r => `${r.from} => ${r.to}`).join('\n'));
 
   return h('div', {class: 'anonymizing'},
+    h('div', {class: 'muted'}, 'Names replaced as the file is read', helpLink('anonymizing', 'anonymizing')),
     h('label', {title: 'com.acme.billing.Invoice becomes com.bart.lisa.Invoice, each package everywhere the same'},
       packages, ' Replace the packages by aliases'),
     h('label', {class: 'inline', title: 'Segments after the domain that get aliases: 2 is com.x.y, what is under keeps its name'},

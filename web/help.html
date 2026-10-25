@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MountainGraph help</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/help.css">
+</head>
+<body class="help">
+<!--
+  The help of the page, shown in a dialog (components/help.js) or on its own. One section per feature, its id
+  the anchor the "?" beside the feature opens: keep an id when its text changes, and give a new feature its own.
+-->
+<nav class="contents" aria-label="Contents">
+  <b>Contents</b>
+  <a href="#reading">Reading the landscape</a>
+  <a href="#moving">Moving around</a>
+  <a href="#peaks">Peaks</a>
+  <a href="#heap">Heap settings</a>
+  <a href="#samples">Samples settings</a>
+  <a href="#landscape">Landscape</a>
+  <a href="#panel">The panel</a>
+  <a href="#view3d">3D view</a>
+  <a href="#timeline">Timeline</a>
+  <a href="#tuning">Fine tuning</a>
+  <a href="#anonymizing">Anonymizing</a>
+  <a href="#screenshot">Pictures</a>
+</nav>
+
+<main>
+<h1>MountainGraph help</h1>
+<p class="muted">A file is read here, in the browser: nothing is sent anywhere. Files are recognized from their
+  content, not their name: JFR recordings, profiles dumped by jfr-web or jheap, collapsed stacks, and heap dumps
+  (<code>.hprof</code>, gzipped or not).</p>
+
+<section id="reading">
+  <h2>Reading the landscape</h2>
+  <p>The weight of what is measured is drawn as relief. For a <b>profile</b> it is the time spent in methods, for a
+    <b>heap dump</b> the memory held by objects. The same picture reads the same in both:</p>
+  <ul>
+    <li>A <b>peak</b> is one thing that weighs a lot: a method, a class, a package, or a chain of objects
+      holding memory. The higher and wider it is, the more it weighs.</li>
+    <li>The <b>slopes</b> around a peak are what leads to it. Each step out from the peak is one more frame: for
+      samples, the method that called it; for a heap, the object that holds it. Going out is going toward
+      the start of execution, or toward the root of the heap.</li>
+    <li>A <b>sector</b> is one frame at one depth. Its angle is its share of the frame it leads to, so the
+      sectors of a ring add up to the ring inside it.</li>
+    <li>The <b>plain</b> is what no peak holds. Where a sector has nothing further out, the plain begins: execution
+      entered there, or the object was the root.</li>
+  </ul>
+  <p>The names over the peaks are shortened to their last two parts (<code>cfg.ConfigImpl</code>). The full name is
+    in the line under the view when a frame is hovered, and in the panel when a peak is clicked.</p>
+  <p>Hovering a frame <b>lights every frame of the same name</b>, in all the mountains: this is how to see where a
+    class or a method shows up elsewhere. The line at the bottom left tells what is hovered: its size, its share
+    of its peak, and the path that leads from it to the peak. For a heap, the path is the object first and the
+    objects holding it after it, out to the peak: the same as the start of <a href="#panel">Held by</a>.</p>
+  <p id="zones">The thin lines inside a mountain are the limits of the <b>zones</b> that can be hovered: each
+    frame is one zone. A frame holding less than half a percent of its peak has none, or the slopes would be all
+    lines. The first frames out from a peak are drawn as a disc around its summit, split in sectors, each as wide
+    as the frame it stands for: this is where the biggest holders of a peak are, however far their ridges
+    would reach. The heavier lines between mountains are their <b>divides</b>.</p>
+</section>
+
+<section id="moving">
+  <h2>Moving around</h2>
+  <h3 id="map2d">2D</h3>
+  <p>The wheel zooms around the mouse, a drag moves the map, a double click shows the whole terrain again. Where
+    the map was is kept when a setting changes. A click on a mountain opens its <a href="#panel">panel</a>; a click
+    on the plain closes it.</p>
+  <h3 id="map3d">3D</h3>
+  <p>A drag turns the terrain around the point looked at, the right button (or two fingers) moves it, the wheel
+    zooms. The camera is kept like the 2D map's. The relief, the islands and the blocks have their own section in
+    the settings, <a href="#view3d">shown in 3D only</a>.</p>
+</section>
+
+<section id="peaks">
+  <h2>Peaks</h2>
+  <p>What makes a peak, and how many are drawn. Settings that do not apply to the choice made are not shown.</p>
+
+  <h3 id="count">At most</h3>
+  <p>The most peaks drawn, the heaviest first.</p>
+  <h3 id="coverage">Until</h3>
+  <p>No more peaks once the ones taken hold this share of the whole (100 % means the count above decides). The rest is
+    the plain.</p>
+</section>
+
+<section id="heap">
+  <h2>Heap settings</h2>
+
+  <h3 id="basis">Ranked by</h3>
+  <p>What a peak of a heap is. The two choices tell two different things, and they are not shown alike.</p>
+  <dl>
+    <dt>What they hold <small>(the default)</small></dt>
+    <dd>The question is <i>which objects keep the memory alive</i>. The heap is read as a tree: each object
+      is held by the first object found that points to it, from a root of the heap (a thread, a static field…).
+      A peak is a <b>chain of holders</b>, reported at the deepest object that still holds most of what is
+      above it, so a cache and the map inside it make one peak, not two. Its height is what it holds, its
+      own objects included. The mountain is what the peak <b>holds</b>: the slopes go down to what it holds.
+      The panel has two tabs, <a href="#panel">Holds</a> and Held by, and an object clicked in either can be
+      walked to.</dd>
+    <dt>Own size</dt>
+    <dd>The question is <i>which classes take the most room themselves</i>. A peak is a class or package
+      (<a href="#grain">One per</a>), its height the <b>shallow size</b> of its instances: only their own fields,
+      not what they point to. A <code>byte[]</code> is a peak because there are many of them, not because it holds
+      anything. The mountain is what <b>holds</b> those objects: the slopes go out through the objects that
+      reference them, toward the roots. The panel has one list, <i>held by</i>, which is those slopes
+      as a tree.</dd>
+  </dl>
+  <p>So the same <code>String</code> may be a small peak of its own in <i>Own size</i> and only a slope of the
+    object that owns it in <i>What they hold</i>. When a peak looks wrong, check which of the two it is.</p>
+
+  <h3 id="wrappers">Thin wrappers</h3>
+  <p><i>What they hold</i> only. A thin wrapper is an object that passes on almost everything it holds to several
+    others and owns under 1 % of it: a handler or a manager the walk entered the graph by. It does not consume
+    memory, it is where the walk got in. <b>Skipped</b> (default), what it holds belongs to the objects inside it,
+    which are the peaks. <b>As peaks</b> keeps it as one peak, a big and mostly empty mountain.</p>
+
+  <h3 id="grain">One per</h3>
+  <p><i>Own size</i> only. What a peak gathers: all the instances of a <b>class</b>, or all the classes of a
+    <b>package</b>. For samples the same setting offers the method too: see <a href="#samples">Samples settings</a>.</p>
+
+  <h3 id="context">Context</h3>
+  <p><i>Own size</i> only. How many frames make a peak. <b>The class alone</b> gathers all the instances of a class
+    wherever they are. <b>2 frames</b> and more gather the instances of a class <i>held by</i> one class (or by
+    one chain of two, three…): <code>HashMap$Node ← ConcurrentHashMap</code> and <code>HashMap$Node ← Cache</code> are
+    two peaks, so that a map and what it holds are seen as one thing. The name reads "the object ← its holder".
+    More frames make more, smaller peaks.</p>
+</section>
+
+<section id="samples">
+  <h2>Samples settings</h2>
+  <p>For a recording of samples (JFR, jfr-web profiles, collapsed stacks). A file may hold several kinds of
+    samples (CPU time, wall clock, allocation): the choice in the header says which counts.</p>
+  <h3 id="sampling">What the samples count</h3>
+  <p>The weight of a sample: time on the CPU, time elapsed (waiting included), or bytes allocated. A profile that
+    knows only one has no choice.</p>
+  <h3 id="waits">Leave out waits</h3>
+  <p>A regular expression for top frames: the samples whose top frame matches are not counted. A thread waiting in a socket
+    read or a poll weighs time waited, not work, and would be the highest peak of a wall-clock profile.
+    Empty for none.</p>
+  <h3 id="hide">Hide frames</h3>
+  <p>A regular expression for frames to take out of the stacks: their time goes to their callers. By default the JDK
+    is hidden (<code>java.*</code>, <code>jdk.*</code>, <code>sun.*</code>…), so that the time goes to the
+    application code that called it: <code>String.equals</code> is seen as the code that compares.</p>
+  <h3 id="java">Java samples only</h3>
+  <p>Leaves out the native samples: threads blocked in native code, waiting.</p>
+  <h3 id="method">One per</h3>
+  <p>What a peak gathers: a <b>method</b>, a <b>class</b> (all its methods), or a <b>package</b>. CPU time is spread
+    over many methods: gathered, fewer peaks hold more of it. The slopes are the <b>callers</b>.</p>
+</section>
+
+<section id="landscape">
+  <h2>Landscape</h2>
+  <h3 id="shapes">Mountains</h3>
+  <p>How the slopes around a peak are raised. All three come from the same tree.</p>
+  <dl>
+    <dt>Massif</dt>
+    <dd>Each sector is raised to its weight, in rings: the peak at the centre and one ring for each step out. A
+      frame never weighs more than the one it leads to, so the slopes only go down. A single path keeps its
+      height (a mesa); a fork steps it down. The first rings are narrow, as a path may be many frames long.</dd>
+    <dt>Ridges</dt>
+    <dd>Each frame is a ridge from the one before it out to the middle of its sector, as wide and as high as
+      its weight, lower the further out. One way in gives a single spur, many a star. The summit is a dome whose
+      sectors are the first frames (<a href="#zones">zones</a>).</dd>
+    <dt>Ranges</dt>
+    <dd>Ridges, with a frame that several mountains share drawn once, between them: a <b>saddle</b>, as high
+      as the most one of them goes through it, marked <code>)(</code> and named. Its own callers follow it.
+      A frame most mountains share (a thread's main loop) is not merged: it would pull everything together.
+      Where two mountains meet and are not joined, a divide.</dd>
+  </dl>
+  <p>Mountains related through a frame they share, however far apart, are linked by a dashed <b>trail</b>, named
+    after the frame, wider the more of the smaller mountain went through it. The
+    <a href="#tuning">fine tuning</a> sets how many and how strong.</p>
+
+  <h3 id="colour">Colour</h3>
+  <p><b>Height</b> tints by weight only. <b>Package</b> gives each package a hue, sub-packages near their parent, the
+    height still setting how light it is; a legend names the main ones. In 3D, the highest rock and snow are
+    painted on top and are not a package. Package colours are for peaks that are a single frame: a heap by
+    <i>Own size</i> with the class alone, or a profile.</p>
+
+  <h3 id="view">2D or 3D</h3>
+  <p>The same terrain as a topographic map (contours each half the height of the one above) or in three dimensions.</p>
+</section>
+
+<section id="panel">
+  <h2>The panel</h2>
+  <p>A click on a mountain opens its panel at the right of the view; drag its left edge to widen it, and close it
+    with the cross or a click on the plain.</p>
+  <h3 id="callers">Callers and callees <small>(samples)</small></h3>
+  <p><b>Callers</b>: the tree of what called the peak, the heaviest first, which are the slopes. <b>Callees</b>:
+    what the peak itself called, and the methods where time was spent at the top.</p>
+  <h3 id="holds">Holds <small>(heap, ranked by what they hold)</small></h3>
+  <p>What the object holds, as a tree, the heaviest first. A name clicked shows that object instead, with the same
+    two tabs; <b>← peak</b> goes back.</p>
+  <h3 id="heldby">Held by <small>(heap)</small></h3>
+  <p>Who holds the object: the object first, then the one that holds it, out to the root. Each level's size is
+    what that holder holds, so it only grows outward; the shares are those of the outermost holder.</p>
+  <p><i>Own size</i> peaks show this list alone: they hold nothing of their own to list, the slopes are what holds them.</p>
+</section>
+
+<section id="view3d">
+  <h2>3D view</h2>
+  <p>The settings of the 3D view are in their own section of the settings, shown in 3D only.</p>
+  <h3 id="relief">Relief</h3>
+  <p>The height of the highest peak, as a share of the terrain's size. Heights are the weight to a power (the
+    <a href="#tuning">height curve</a>), so that small peaks show.</p>
+  <h3 id="islands">Islands</h3>
+  <p>The plain becomes a sea, the mountains islands: sand along the shore, grass, then rock where it is steep.</p>
+  <h3 id="sea">Sea level</h3>
+  <p>How high the water is: a higher sea covers more of the land, a lower one uncovers more. The land keeps its shape under the sea.</p>
+  <h3 id="blocks">Blocks</h3>
+  <p>The land is built of blocks. <b>Block size</b> is the size of one, in cells of the terrain: smaller blocks
+    follow the mountains more closely and take longer to build.</p>
+</section>
+
+<section id="timeline">
+  <h2>Timeline</h2>
+  <p>For a recording with time (not collapsed stacks): the strip under the header shows the weight of the samples over
+    the recording. <b>Drag</b> to choose an interval; the landscape is built from the samples inside it. Drag an
+    edge of the interval to adjust it, drag inside to slide it along the recording (its width is kept), click
+    outside to clear it. The landscape follows a drag every 150 ms and again when it is let go.</p>
+  <p>When the samples are in operations (flak requests, <code>jfrweb.ops</code>), the bars are stacked by
+    operation in the colours of jfr-web, a legend names them, and a click on one shows that operation alone.</p>
+  <h3 id="hold">Keep the peaks of the whole recording</h3>
+  <p>The peaks stay where they are, with the scale of the whole recording, and each mountain grows or shrinks in place
+    as the interval moves, instead of the peaks being chosen again in each interval. This is how to see
+    something move.</p>
+</section>
+
+<section id="tuning">
+  <h2>Fine tuning</h2>
+  <p>The values the terrain is raised with, as sliders (− and + move one step), remembered. Only those that change
+    what is shown are listed.</p>
+  <dl>
+    <dt>Foot height</dt><dd>Ridges and ranges: a low dome under each mountain, as high as this share of its peak, so
+      that its bulk shows its weight.</dd>
+    <dt>Ridge width</dt><dd>The peak's ridge, as a share of the mountain's radius. It is also the radius of the
+      summit's disc of <a href="#zones">zones</a>.</dd>
+    <dt>Saddle reach</dt><dd>Ranges: how far apart two mountains may stand, in the sum of their radii, for a frame
+      they share to make a saddle.</dd>
+    <dt>Trail threshold</dt><dd>The least share of the smaller mountain's weight through a shared frame, for a trail.</dd>
+    <dt>Trails per mountain</dt><dd>The most trails from a mountain, the strongest first.</dd>
+    <dt>3D height curve</dt><dd>Heights as the weight to this power: 0.5 lets small peaks show, 1 makes them as high
+      as their weight.</dd>
+    <dt>Island bumps</dt><dd>How rough the islands are.</dd>
+    <dt>Island rock slope</dt><dd>How steep a slope turns to rock: lower, more rock.</dd>
+  </dl>
+</section>
+
+<section id="anonymizing">
+  <h2>Anonymizing</h2>
+  <p>Replaces names as a file is read, to share a picture or a profile without what its names say. A change applies
+    when the file is read again: <b>Apply</b>.</p>
+  <ul>
+    <li><b>Replace the packages by aliases</b>: each package becomes a made-up one, the same everywhere
+      (<code>com.acme.billing.Invoice</code> becomes <code>com.bart.lisa.Invoice</code>).</li>
+    <li><b>Depth</b>: how many segments after the domain get aliases; 2 is <code>com.x.y</code>, what is under keeps its name.</li>
+    <li><b>Packages kept</b>: these keep their names, with what is under them (<code>java</code>, <code>org.apache</code>).</li>
+    <li><b>Replace</b>: one per line, <code>text =&gt; replacement</code>, wherever the text is found in a name.</li>
+  </ul>
+</section>
+
+<section id="screenshot">
+  <h2>Pictures</h2>
+  <p>With the view shown: <kbd>S</kbd> saves it as a PNG, <kbd>C</kbd> copies it to the clipboard. The picture
+    has the map or the 3D canvas, with the names over the peaks, and not the panels floating over it.</p>
+  <p>The page's <b>Help</b> opens with <kbd>?</kbd> or <kbd>F1</kbd>; a <b>?</b> beside a setting opens it at that setting.</p>
+</section>
+</main>
+</body>
+</html>
