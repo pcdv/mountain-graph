@@ -140,7 +140,7 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
 }
 
 /**
- * Downloads the full paths as a profile JSON: the context setting is not
+ * Downloads the full paths as a Flamepack: the context setting is not
  * applied, so nothing is lost before the file is read elsewhere.
  *
  * @param {string} name of the heap dump
@@ -150,7 +150,7 @@ function download(name, p) {
   const doc = encode(p);
   const blob = new Blob([JSON.stringify(doc)], {type: 'application/json'});
   const url = URL.createObjectURL(blob);
-  const a = h('a', {href: url, download: `${name.replace(/(\.jheap)?\.(hprof|json)(\.gz)?$/i, '')}.profile.json`});
+  const a = h('a', {href: url, download: `${name.replace(/(\.jheap|\.flamepack)?\.(hprof|json)(\.gz)?$/i, '')}.flamepack.json`});
   document.body.append(a);
   a.click();
   a.remove();
@@ -178,7 +178,7 @@ function summary(name, p, stats, restored) {
     restored ? h('p', {class: 'muted'}, 'Its parse is kept in the browser: open the dump again to parse it again.') : null,
     h('div', {class: 'actions'},
       h('button', {type: 'button', class: 'button',
-        title: 'Download every path as a profile JSON, the format jfr-web reads',
+        title: 'Download every path as a Flamepack (.flamepack.json), which jfr-web reads too',
         onclick: () => download(name, p)}, 'Export JSON'),
       restored ? h('button', {type: 'button', class: 'button',
         title: 'Drops the parse kept in the browser: the page starts empty next time',

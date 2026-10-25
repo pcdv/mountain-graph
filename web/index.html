@@ -69,12 +69,6 @@
           Samples choice in the top bar switches between them.</p>
       </section>
       <section class="kind profiles">
-        <h3>Profiles dumped by jfr-web</h3>
-        <p>A profile as <a href="https://github.com/pcdv/jfr-web" target="_blank" rel="noopener">jfr-web</a> serves
-          it (<code>/api/sessions/:id/profile</code>), or the <code>profile.json</code> of one of its static exports,
-          gzipped or not.</p>
-      </section>
-      <section class="kind profiles">
         <h3>Collapsed stacks</h3>
         <p>The text format of
           <a href="https://github.com/brendangregg/FlameGraph" target="_blank" rel="noopener">FlameGraph</a>'s
@@ -86,14 +80,37 @@
         <h3>Heap dumps (.hprof)</h3>
         <p>As jmap and jcmd write them, parsed in the page by
           <a href="https://github.com/pcdv/jheap" target="_blank" rel="noopener">jheap</a>'s parser. Dumps of up to
-          roughly 100 million objects open directly.</p>
+          roughly 100 million objects open directly; a gzipped or larger one is parsed by the <code>jheap</code>
+          command, into a Flamepack (below).</p>
       </section>
-      <section class="kind heap">
-        <h3>Profiles dumped by jheap, for compressed or very large dumps</h3>
-        <p>A gzipped dump, or one too large for the page, is parsed by the <code>jheap</code> command of
-          <a href="https://github.com/pcdv/jheap" target="_blank" rel="noopener">jheap</a>, which keeps its parse
-          beside it as <code>&lt;name&gt;.jheap.json</code>. Open that file as you would the dump. A heap exported by
-          this page opens the same way.</p>
+
+      <h2 class="flamepack">Flamepack</h2>
+      <p class="flamepack-intro muted">Collapsed stacks packed with a string dictionary, and enriched with each sample's
+        time, thread and operation: <code>.flamepack.json</code>, gzipped or not
+        (<a href="https://github.com/pcdv/flamepack" target="_blank" rel="noopener">the format</a>). Written by:</p>
+      <section class="kind flamepack">
+        <h3>jfr-web: time samples <span class="chip profiles">time</span></h3>
+        <p>A session's profile as <a href="https://github.com/pcdv/jfr-web" target="_blank" rel="noopener">jfr-web</a>
+          serves it (<code>/api/sessions/:id/profile</code>), or from one of its static exports. Operations, such as
+          requests, become roots of the flame graph and lines of the timeline.</p>
+      </section>
+      <section class="kind flamepack">
+        <h3>jfr-web: allocations <span class="chip heap">memory</span></h3>
+        <p>The allocation samples of a session (<code>/api/sessions/:id/profile?samples=alloc</code>), weighing the
+          bytes they stand for, the class allocated on top of each stack.</p>
+      </section>
+      <section class="kind flamepack">
+        <h3>jheap: a heap <span class="chip heap">memory</span></h3>
+        <p>The parse that the <code>jheap</code> command of
+          <a href="https://github.com/pcdv/jheap" target="_blank" rel="noopener">jheap</a> keeps beside a dump,
+          <code>&lt;name&gt;.jheap.json</code>, or writes with <code>--save</code>; a heap exported by this page too.
+          Open it as you would the dump.</p>
+      </section>
+      <section class="kind flamepack">
+        <h3>Your own tool <span class="chip profiles">time</span> <span class="chip heap">memory</span></h3>
+        <p>Nothing in the format is specific to Java: any profiler, or a converter from another format, can write
+          it. <a href="https://github.com/pcdv/flamepack/blob/master/SPEC.md#a-minimal-document" target="_blank"
+          rel="noopener">A minimal document</a> needs only stacks and weights.</p>
       </section>
     </div>
   </template>

@@ -668,13 +668,29 @@ main {
   margin: 0;
 }
 
-/* each kind of file has its tint: the time in blue, the memory in orange */
+/* each kind of file has its tint: the time in blue, the memory in orange, Flamepack, which holds either, in violet */
 .landing .profiles {
   --tint: var(--series-1);
 }
 
 .landing .heap {
   --tint: var(--series-2);
+}
+
+.landing .flamepack {
+  --tint: var(--series-7);
+}
+
+.landing .chip {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tint) 14%, transparent);
+  color: var(--tint);
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: 2px;
 }
 
 .landing > h2:first-child {

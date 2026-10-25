@@ -32,7 +32,8 @@
 <main>
 <h1>MountainGraph help</h1>
 <p class="muted">A file is read here, in the browser: nothing is sent anywhere. Files are recognized from their
-  content, not their name: JFR recordings, profiles dumped by jfr-web or jheap, collapsed stacks, and heap dumps
+  content, not their name: JFR recordings, Flamepacks (written by jfr-web, jheap or other tools), collapsed stacks,
+  and heap dumps
   (<code>.hprof</code>, gzipped or not).</p>
 
 <section id="reading">
@@ -134,7 +135,7 @@
 
 <section id="samples">
   <h2>Samples settings</h2>
-  <p>For a recording of samples (JFR, jfr-web profiles, collapsed stacks). A file may hold several kinds of
+  <p>For a recording of samples (JFR, Flamepack, collapsed stacks). A file may hold several kinds of
     samples (CPU time, wall clock, allocation): the choice in the header says which counts.</p>
   <h3 id="sampling">What the samples count</h3>
   <p>The weight of a sample: time (the wall clock: Java and native samples, waiting included) or bytes allocated. A

@@ -36,8 +36,8 @@ on its own line, so reformat only the file being edited.
 - `web/js/main.js` — wiring only: opening a file, its progress, the view of its kind, the file
   kept for a reload.
 - `web/js/load.js` — a picked or dropped file, told by its content, to what it holds: samples
-  (jfr-web's format, version 4 or 3; collapsed stacks; a JFR recording) or a heap (a dump, or the
-  profile jheap keeps of one), gzipped or not.
+  (Flamepack, version 4 or 3; collapsed stacks; a JFR recording) or a heap (a dump, or the
+  Flamepack jheap keeps of one), gzipped or not.
 - `web/js/kinds/` — the view of each kind of file: `samples.js`, `heap.js`, and `page.js` for what
   they share. A new kind of file is a reader, a case in `load.js` and a module here.
 - `web/js/hprof/` — a heap dump to a profile: `jheap.wasm` (jheap's parser, built in jheap),
@@ -94,7 +94,8 @@ behind). The lib has its own tests; this project has none of them.
 `web/js/profile/profile.js` is a byte-identical copy of jfr-web's
 (`src/main/resources/jfrweb/ui/js/`), and its test differs only in import paths. Diff against
 jfr-web before touching it, and keep the copies identical. A change to `profile.js` or to the
-profile format is a jfr-web change first.
+profile format is a jfr-web change first. The format is Flamepack, specified in
+[flamepack](https://github.com/pcdv/flamepack) (`../flamepack`): a change to it updates the spec too.
 
 `web/js/hprof/jheap.wasm` is jheap's parser, built and copied here by jheap's
 `crates/jheap-wasm/install.mjs`; `jheap.js` follows its exports. A change to the parse (what a

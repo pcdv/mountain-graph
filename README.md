@@ -30,10 +30,12 @@ allocations:
   which weigh different things, so both are read and a *Samples* choice in the top bar switches
   between the wall clock (Java and native samples, weighing time) and the allocations (weighing
   bytes). There are no operations in a recording read this way.
-- **The profile format of [jfr-web](https://github.com/pcdv/jfr-web)** (version 4, or 3), as
-  `GET /api/sessions/:id/profile` sends it: front-coded strings, the tree of stacks, the samples as
-  columns. A static export of jfr-web (`jfr-web export <file.jfr> -o <dir>`) holds one per
-  recording under `data/`: `static.json` maps `api/sessions/<id>/profile` to its file.
+- **[Flamepack](https://github.com/pcdv/flamepack)** (`.flamepack.json`, version 4, or 3):
+  collapsed stacks packed with a string dictionary and enriched with each sample's time, thread and
+  operation. [jfr-web](https://github.com/pcdv/jfr-web) writes it from its recordings, time or
+  allocations (`GET /api/sessions/:id/profile`; a static export, `jfr-web export <file.jfr> -o <dir>`,
+  holds one per recording under `data/`, `static.json` mapping `api/sessions/<id>/profile` to its
+  file), jheap from a heap dump (below), and any other tool can.
 - **Collapsed stacks**, the text format of [FlameGraph](https://github.com/brendangregg/FlameGraph)'s
   `stackcollapse` scripts (`a;b;c 12` per line), which any profiler can produce. Their counts
   are samples, with no time, thread or operation.
@@ -45,8 +47,8 @@ And the memory of a JVM:
   reads the file a slice at a time: a dump of 4.6 GB and 46 million objects opens in under 20
   seconds, the page responsive throughout. WebAssembly addresses 4 GiB, so the page reads heaps up
   to roughly 100 million objects. Beyond, or for a gzipped dump, the `jheap` command parses it
-  and keeps its parse beside it, `<name>.jheap.json`, which the page opens as it opens the dump.
-  So does a heap the page exported.
+  and keeps its parse beside it, `<name>.jheap.json`, a Flamepack the page opens as it opens the
+  dump. So does a heap the page exported, `<name>.flamepack.json`.
 
 A heap's peaks are ranked by what they hold, as the deepest chain of holders that still retains
 most of the weight. Clicking one opens a panel with what it **holds** and who it is **held by**:
