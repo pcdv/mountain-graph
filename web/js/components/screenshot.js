@@ -65,8 +65,9 @@ export function compose(view, panels = false) {
     g.fillText(name.textContent ?? '', x, y);
   }
   if (panels) {
-    // the hovered line and the panel of the peak, over the view as on the page, those shown
-    const shown = view.closest('.terrain')?.querySelectorAll('.map-info:not([hidden]), .map-dock:not([hidden]) .map-panel') ?? [];
+    // the hovered line, the panel of the peak and the legend of the colours, over the view as on the page, those shown
+    const shown = (view.closest('.stage-view') ?? view.closest('.terrain'))
+      ?.querySelectorAll('.map-info:not([hidden]), .map-dock:not([hidden]) .map-panel, .hue-legend') ?? [];
     paintElements(g, [...shown], box, k);
   }
   return out;
