@@ -1,10 +1,10 @@
 // @ts-check
 /**
  * The help: one page, help.html, with an anchor for each feature, shown in a dialog over the view. A
- * "?" beside a setting opens it there. The "?" is a link to the page, so that a click with a modifier
- * opens it in a tab of its own, and a keyboard or a screen reader finds it as a link.
+ * setting's label, hovered (lib/tip.js), says in short what it does, and opens the help there for more.
  */
 import {h} from '../lib/dom.js';
+import {tip} from '../lib/tip.js';
 
 const PAGE = 'help.html';
 
@@ -51,25 +51,16 @@ export function openHelp(anchor) {
 }
 
 /**
- * A "?" that opens the help at a feature.
+ * Gives an element a short help, shown while it is hovered, with a button to the help at a feature.
  *
+ * @template {HTMLElement} T
+ * @param {T} el the label of the feature
  * @param {string} anchor the id of a section of help.html
- * @param {string} [about] what it is about, for who reads the link aloud
- * @returns {HTMLAnchorElement}
+ * @param {string} message what the feature does, in a sentence or two
+ * @returns {T} el
  */
-export function helpLink(anchor, about = '') {
-  const link = /** @type {HTMLAnchorElement} */ (h('a', {class: 'help-link', href: `${PAGE}#${anchor}`, target: '_blank',
-                                                         title: 'Help on this', 'aria-label': `Help${about ? ` on ${about}` : ''}`}, '?'));
-  link.addEventListener('click', e => {
-    // with a modifier, or a middle click, the browser's own: the page in a tab
-    if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0)
-      return;
-    e.preventDefault();
-    // the "?" sits in a label: a click must not reach its control
-    e.stopPropagation();
-    openHelp(anchor);
-  });
-  return link;
+export function helpTip(el, anchor, message) {
+  return tip(el, message, {label: 'More', open: () => openHelp(anchor)});
 }
 
 /**

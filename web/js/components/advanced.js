@@ -7,7 +7,7 @@
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {TUNING} from '../model/terrain.js';
-import {helpLink} from './help.js';
+import {helpTip} from './help.js';
 import {VIEW_TUNING} from '../views/terrain3d.js';
 
 const KEY = 'mountaingraph.tuning';
@@ -116,7 +116,8 @@ export function advanced(changed) {
     }
     save();
   }}, 'Reset the tuning');
-  return {element: h('div', {class: 'knobs'}, h('div', {class: 'muted'}, 'What each one does', helpLink('tuning', 'fine tuning')),
+  return {element: h('div', {class: 'knobs'}, helpTip(h('div', {class: 'muted'}, 'The values the terrain is raised with'), 'tuning',
+                             'Hover a slider for what it does; the help says it for all of them'),
                      rows.map(r => r.row), reset),
           fit: shown => rows.forEach(({knob, row}) => row.hidden = !knob.when(shown))};
 }

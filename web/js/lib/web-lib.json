@@ -3,15 +3,18 @@
   "modules": [
     "dom",
     "dialog",
-    "settings"
+    "settings",
+    "tip"
   ],
-  "commit": "09ad882",
+  "commit": "4b9f432",
   "files": {
     "dom.js": "86f1d4add5f35d3e",
     "dom.d.ts": "8b13854c6394e484",
     "dialog.js": "2fb9278cecc15598",
     "dialog.d.ts": "ce581585c6009816",
-    "settings.js": "7d5fadcb2d5e29de",
-    "settings.d.ts": "d11722bf2eff7f13"
+    "settings.js": "8c60c3985bb42a78",
+    "settings.d.ts": "4b111d34b757d232",
+    "tip.js": "70db0ab36ea235a9",
+    "tip.d.ts": "6cb5f7d736a294c5"
   }
 }

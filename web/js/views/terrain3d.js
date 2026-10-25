@@ -18,7 +18,7 @@ import {FADE} from '../components/crossfade.js';
 import {field} from '../components/form.js';
 import {contour, levels} from '../model/contours.js';
 import {zoneCells} from '../model/zones.js';
-import {helpLink} from '../components/help.js';
+import {helpTip} from '../components/help.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST} from './blocks3d.js';
 import {sea, sky, shores, bump, landColour, bedColour, LEVEL, DEEP, HAZE, SUN, SEA_TUNING} from './sea3d.js';
@@ -361,7 +361,8 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                                blockify();
                                redraw();
                              }});
-    const size = field('Block size', fine, undefined, 'blocks');
+    const size = field('Block size', fine, 'The size of a block, in cells of the terrain: smaller blocks follow the '
+                       + 'mountains more closely and take longer to build', 'blocks');
     size.hidden = !blocky;
     const cubed = h('input', {type: 'checkbox', checked: blocky, onchange: () => {
       viewpoint.blocks = blocky = cubed.checked;
@@ -391,11 +392,13 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                                    blockify();
                                  redraw();
                                }});
-    const tide = field('Sea level', rising, undefined, 'sea');
+    const tide = field('Sea level', rising, 'How high the water is: a higher sea covers more of the land', 'sea');
     tide.hidden = !islands;
-    const knobs = [field('Relief', slider, undefined, 'relief'),
-                   h('label', {class: 'check'}, isles, ' Islands', helpLink('islands', 'islands')), tide,
-                   h('label', {class: 'check'}, cubed, ' Blocks', helpLink('blocks', 'blocks')), size];
+    const knobs = [field('Relief', slider, 'The height of the highest peak, as a share of the terrain\'s size', 'relief'),
+                   helpTip(h('label', {class: 'check'}, isles, ' Islands'), 'islands',
+                           'The plain becomes a sea and the mountains islands: sand, grass, and rock where it is steep'),
+                   tide,
+                   helpTip(h('label', {class: 'check'}, cubed, ' Blocks'), 'blocks', 'The land built of blocks'), size];
     if (knobsIn)
       knobsIn.replaceChildren(...knobs);
     loading.replaceWith(renderer.domElement, labels, ...knobsIn ? [] : [h('div', {class: 'relief'}, knobs)]);

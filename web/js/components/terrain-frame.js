@@ -15,7 +15,7 @@ import {readSetting, writeSetting} from '../lib/settings.js';
 import {callersTree} from './callers.js';
 import {heldBy, holdersOf} from './holders.js';
 import {amount} from '../model/units.js';
-import {helpLink} from './help.js';
+import {helpTip} from './help.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -159,8 +159,11 @@ export function terrainFrame(t, trees, selection, how, redraw) {
     const shown = subject >= 0 && subject !== selection.nodes?.[m] ? selection.holdsAt?.(subject) : undefined;
     panel.replaceChildren(
       h('div', {class: 'panel-head'},
-        h('b', null, shown?.name ?? tree.name),
-        helpLink('panel', 'the panel'),
+        helpTip(h('b', null, shown?.name ?? tree.name), 'panel', selection.holdsAt
+          ? 'Holds: what the object holds. Held by: who holds it, out to the root. A name clicked shows that object'
+          : selection.callees
+            ? 'Callers: what called the peak, its slopes. Callees: what it called, and where the time went at the top'
+            : 'Who holds the objects of this peak, the heaviest first: the slopes of its mountain'),
         ...shown ? [h('button', {type: 'button', class: 'button', title: 'Back to the peak', onclick: () => {
           selection.subject = selection.nodes?.[m];
           render(m);

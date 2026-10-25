@@ -143,25 +143,36 @@ dialog.help .button.close {
   right: 8px;
 }
 
-/* the "?" beside a setting: opens the help at it, or in a tab with a modifier */
-a.help-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  margin-left: 4px;
-  border: 1px solid var(--line-strong);
-  border-radius: 50%;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  text-decoration: none;
-  vertical-align: middle;
+/* a label with a short help while hovered (lib/tip.js), and a button to this page in it */
+.has-tip {
+  text-decoration: underline dotted var(--line-strong);
+  text-underline-offset: 3px;
 }
 
-a.help-link:hover {
-  border-color: var(--accent);
+.tip-bubble {
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  font: 13px/1.45 system-ui, sans-serif;
+  text-align: left;
+  white-space: normal;
+}
+
+.tip-more {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tip-more:hover {
+  text-decoration: underline;
 }

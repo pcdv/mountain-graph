@@ -10,7 +10,7 @@
 import {h} from '../lib/dom.js';
 import * as fmt from '../lib/format.js';
 import {amount} from '../model/units.js';
-import {helpLink} from './help.js';
+import {helpTip} from './help.js';
 import {histogram, interval, span, operations, within} from '../model/timeline.js';
 
 /** @typedef {import('../profile/profile.js').Profile} Profile */
@@ -54,9 +54,9 @@ export function timeline({changed, holding, hold, initial = null, operation = ()
   const clear = h('button', {type: 'button', class: 'button', hidden: true, title: 'Back to the whole recording'},
                   'Clear');
   const held = h('input', {type: 'checkbox', checked: holding, onchange: () => hold(held.checked)});
-  const keep = h('label', {title: 'The peaks of the whole recording, where they stand there, whatever is in focus: '
-                                   + 'each mountain grows or shrinks in place as the interval moves'},
-                 held, ' Keep the peaks of the whole recording', helpLink('hold', 'keeping the peaks'));
+  const keep = helpTip(h('label', null, held, ' Keep the peaks of the whole recording'), 'hold',
+                       'The peaks of the whole recording, where they stand there, whatever is in focus: '
+                       + 'each mountain grows or shrinks in place as the interval moves');
   const legend = h('div', {class: 'timeline-legend', hidden: true});
   const element = h('div', {class: 'timeline'}, canvas, legend, h('div', {class: 'timeline-bar'}, label, clear, keep));
 

@@ -6,7 +6,7 @@
  * it is only a convenience, and the page works without it.
  *
  * Keys are global to the origin: each project starts its own with its name,
- * e.g. "jfrweb.live.window".
+ * e.g. "app.live.window".
  */
 
 export function readSetting(key) {

@@ -5,7 +5,7 @@
  * of a few values shown side by side.
  */
 import {h} from '../lib/dom.js';
-import {helpLink} from './help.js';
+import {helpTip} from './help.js';
 
 /** @typedef {HTMLElement & {value: string}} Choice a segmented control, read and set as a select */
 
@@ -35,14 +35,15 @@ export function segmented(options, value) {
 /**
  * @param {string} label
  * @param {HTMLElement} control
- * @param {string} [title] what it does, shown on hover
- * @param {string} [help] the id of its section of the help, which a "?" beside the label opens
+ * @param {string} [title] what it does, shown on hover: as a tip with a button to the help when it has help
+ * @param {string} [help] the id of its section of the help
  * @returns {HTMLElement} the label beside the control, or above it for a wide one (CSS)
  */
 export function field(label, control, title, help) {
-  // a link is not labelable: a click on the label still reaches the control
-  return h('label', {class: 'field', title}, h('span', {class: 'field-label'}, label, help ? helpLink(help, label) : null),
-           control);
+  const name = h('span', {class: 'field-label'}, label);
+  if (help)
+    helpTip(name, help, title ?? label);
+  return h('label', {class: 'field', title: help ? undefined : title}, name, control);
 }
 
 /**
