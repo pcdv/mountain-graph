@@ -70,6 +70,12 @@ const ZOOM = 0.0014;
 /** @type {ViewTuning} */
 export const VIEW_TUNING = {curve: 0.65, ...SEA_TUNING};
 
+/**
+ * The flame graph standing behind the terrain: its foot as a share of the highest peak's height, and how far it
+ * leans back from upright, toward the angle the camera looks down at by default (about 37°).
+ */
+const PANEL_FOOT = 0.5, PANEL_LEAN = Math.PI / 6;
+
 /** How much of its colour the land keeps along the lines of the zones. */
 const ZONE_LINE = 0.6;
 
@@ -298,10 +304,21 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     /** @type {import('./flame3d.js').FlamePanel | null} */
     let panel = null;
     let flaming = Boolean(flameOf && viewpoint.panel);
-    // its foot level with the highest peak, which would hide it standing on the plain, and out of the sea
+    /** @returns {{foot: number, top: number, back: number}} where the panel stands: the y of its foot and of its
+     *          top, and the z of its top, the farthest back it goes; its foot is at the far edge of the terrain */
+    const panelSpan = () => {
+      const h = panel?.height ?? 0;
+      // halfway up the highest peak, which would hide much of it standing on the plain, and out of the sea
+      const foot = Math.max(lift(t.top) * PANEL_FOOT, islands ? level * side : 0) + side / 100;
+      return {foot, top: foot + h * Math.cos(PANEL_LEAN), back: -(H - 1) / 2 - side / 20 - h * Math.sin(PANEL_LEAN)};
+    };
+    // leaning back, facing the camera looking down on the terrain, its foot behind the terrain's far edge
     const placePanel = () => {
-      if (panel)
-        panel.mesh.position.y = panel.height / 2 + Math.max(lift(t.top), islands ? level * side : 0) + side / 100;
+      if (!panel)
+        return;
+      const {foot} = panelSpan(), half = panel.height / 2;
+      panel.mesh.rotation.x = -PANEL_LEAN;
+      panel.mesh.position.set(0, foot + half * Math.cos(PANEL_LEAN), -(H - 1) / 2 - side / 20 - half * Math.sin(PANEL_LEAN));
     };
     // the trails on the water, as sea lanes
     const flood = () => {
@@ -328,7 +345,6 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       if (flaming && !panel && flameOf) {
         // as wide as the terrain, a little behind its far edge
         panel = flamePanel(T, flameOf(), W, renderer.capabilities.getMaxAnisotropy());
-        panel.mesh.position.z = -(H - 1) / 2 - side / 20;
         flood();
         scene.add(panel.mesh);
       }
@@ -523,10 +539,13 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       render();
     };
     controls.addEventListener('change', () => {
-      // turning around a point of the terrain, however far it was moved
+      // turning around a point of the terrain, however far it was moved, or of the flame graph standing behind it:
+      // the camera can be moved up and back to its top
       const target = controls.target;
-      const x = Math.max(-W / 2, Math.min(W / 2, target.x)), z = Math.max(-H / 2, Math.min(H / 2, target.z));
-      const y = Math.max(0, Math.min(lift(t.top), target.y));
+      const span = panel ? panelSpan() : null;
+      const x = Math.max(-W / 2, Math.min(W / 2, target.x));
+      const z = Math.max(span ? span.back : -H / 2, Math.min(H / 2, target.z));
+      const y = Math.max(0, Math.min(Math.max(lift(t.top), span?.top ?? 0), target.y));
       if (x !== target.x || y !== target.y || z !== target.z) {
         camera.position.add(new T.Vector3(x - target.x, y - target.y, z - target.z));
         target.set(x, y, z);
@@ -539,7 +558,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     /** from the south, high, far enough for the whole width and depth to show, and the flame graph's top */
     const home = () => {
       const half = Math.tan(camera.fov * Math.PI / 360);
-      const tall = panel ? panel.mesh.position.y + panel.height / 2 : 0;
+      const tall = panel ? panelSpan().top : 0;
       const far = 1.1 * Math.max(W / 2 / (half * camera.aspect), H / 2 / half, tall / half);
       controls.target.set(0, tall / 3, 0);
       camera.position.set(0, 0.6 * far, 0.8 * far);
