@@ -233,6 +233,7 @@ its start and its end as far as a view could draw them, the rest folded into a s
   the shallow view counts it as no class at the top, in a context too
 - [ ] The page says when a file is reduced (its `reduced` member): the totals of the table may
   be low, folds show as ridges, an object unfolded in the panel lists a fold
-- [ ] Reduced in the page too: a "Save with loss…" beside the export
+- [x] Reduced in the page too: "Save with loss…" in a heap's file menu, a level to choose, the
+  size said before the file is saved (not for a profile of duplicate Strings)
 - [ ] Profiles of samples: a reduction of their own, as the timeline and the filters read every
   sample

@@ -205,6 +205,19 @@ h1 .mark {
   gap: 8px;
 }
 
+.file-menu .save-reduced {
+  margin-top: 12px;
+}
+
+.file-menu .save-reduced > summary {
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.file-menu .save-reduced .field {
+  margin-bottom: 8px;
+}
+
 /* the recording's timeline, under the header: an interval dragged on it sets the samples in focus */
 #timeline {
   padding: 4px 16px;

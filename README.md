@@ -48,7 +48,11 @@ And the memory of a JVM:
   seconds, the page responsive throughout. WebAssembly addresses 4 GiB, so the page reads heaps up
   to roughly 100 million objects. Beyond, or for a gzipped dump, the `jheap` command parses it
   and keeps its parse beside it, `<name>.jheap.json`, a Flamepack the page opens as it opens the
-  dump. So does a heap the page exported, `<name>.flamepack.json`.
+  dump. So does a heap the page exported, `<name>.flamepack.json`. The file's menu also has
+  **Save with loss…**: the heap reduced to what the page draws, for a gallery or a report, in a
+  `<name>-reduced.flamepack.json.gz` a few percent of the dump's profile, at a level of loss that
+  is chosen and its size said before the file is saved (`tools/reduce.js` does the same from a
+  terminal).
 - **Duplicate Strings**, from `jheap <dump> dups --save <name>.flamepack.json`: a peak is a value
   held in several copies, as high as what keeping one copy would save, and its slopes are the
   objects that hold the copies, out to the root. The page recognises the file by its `duplicates`

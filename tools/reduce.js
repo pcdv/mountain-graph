@@ -4,8 +4,8 @@
 // --level: how much may be lost (LEVELS), 1 by default. --check: what each view draws otherwise.
 import {readFileSync, writeFileSync} from 'node:fs';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {decodeHeap, encode} from '../web/js/profile/heap.js';
-import {reduce, compare, LEVELS} from '../web/js/model/reduce.js';
+import {decodeHeap} from '../web/js/profile/heap.js';
+import {reduce, reducedDocument, compare, LEVELS} from '../web/js/model/reduce.js';
 
 const args = process.argv.slice(2);
 const flag = (/** @type {string} */ name) => {
@@ -31,7 +31,7 @@ const after = reduce(before, loss);
 const FORMAT = ['version', 'minor', 'unit', 'weights', 'start', 'end', 'strings', 'stacks', 'samples', 'threads',
                 'operations', 'meta'];
 const beside = Object.fromEntries(Object.entries(doc).filter(([key]) => !FORMAT.includes(key)));
-const json = JSON.stringify({...encode(after), ...beside, reduced: loss});
+const json = JSON.stringify(reducedDocument(after, loss, beside));
 writeFileSync(output, output.endsWith('.gz') ? gzipSync(json, {level: 9}) : json);
 console.log(`level ${level}: ${before.parent.length} nodes → ${after.parent.length}, ${json.length} bytes, `
             + `${gzipSync(json, {level: 9}).length} gzipped`);

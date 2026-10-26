@@ -24,7 +24,7 @@ import {SYNTHETIC} from '../profile/profile.js';
 import {ownershipPeaks, mountainsOf, sums, THIN} from './ownership.js';
 import {peaks as shallowPeaks, mountains, owner} from './peaks.js';
 import {contextStacks} from './context.js';
-import {FOLD, stacksOf, stacksToProfile} from '../profile/heap.js';
+import {FOLD, encode, stacksOf, stacksToProfile} from '../profile/heap.js';
 
 /** @typedef {import('../profile/heap.js').HeapProfile} HeapProfile */
 /** @typedef {import('./ownership.js').Sums} Sums */
@@ -70,6 +70,34 @@ export const LEVELS = [
   {least: 3e-4, peaks: 10, context: 1, totals: false, together: true, strays: true},
   {least: 3e-3, peaks: 10, context: 1, totals: false, together: true, strays: true},
 ];
+
+/**
+ * What each level is called and says, for whoever chooses one.
+ *
+ * @type {{name: string, about: string}[]}
+ */
+export const LEVEL_TEXT = [
+  {name: 'Little', about: "every ridge down to a pixel wide, and the table's totals"},
+  {name: 'Some', about: 'the same drawings; a total may miss a class held in a fold'},
+  {name: 'Much', about: 'only the ridges 3 pixels wide or more'},
+];
+
+/** The level proposed: what most of a gallery wants. */
+export const DEFAULT_LEVEL = 1;
+
+/**
+ * The document of a reduced profile: the profile as Flamepack writes it, what a heap keeps beside
+ * it, and the loss it was reduced with, which a viewer may say.
+ *
+ * @param {HeapProfile} reduced as `reduce` gives it
+ * @param {Loss} loss that it was reduced with
+ * @param {object} [beside] the members of the original that are not Flamepack's: jheap's report of
+ *        the dump, the summary of duplicates
+ * @returns {object} ready for JSON.stringify
+ */
+export function reducedDocument(reduced, loss, beside = {}) {
+  return {...encode(reduced), ...beside, reduced: loss};
+}
 
 /**
  * @param {HeapProfile} p a heap's profile: no time, no operation

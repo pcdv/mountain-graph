@@ -61,6 +61,9 @@ class FakeNode {
       this.appendChild(c);
   }
 
+  /** Takes it out of nothing: the fake keeps no parent. */
+  remove() {}
+
   /** @param {...Node} children */
   replaceChildren(...children) {
     this.children = [];

@@ -25,6 +25,8 @@ import {contextStacks} from '../model/context.js';
 import {ownershipPeaks, mountainsOf, holdersOf, holdsOf, THIN} from '../model/ownership.js';
 import {fileMenu} from '../components/file-menu.js';
 import {folded, section} from '../components/form.js';
+import {saveReduced} from '../components/save-reduced.js';
+import {saveFile, savedName} from '../save-file.js';
 import {floating, keepView, remembered} from './page.js';
 
 /** @typedef {import('../profile/heap.js').HeapProfile} HeapProfile */
@@ -150,13 +152,7 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
  */
 function download(name, p, duplicates) {
   const doc = {...encode(p), ...duplicates ? {duplicates} : {}};
-  const blob = new Blob([JSON.stringify(doc)], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = h('a', {href: url, download: `${name.replace(/(\.jheap|\.flamepack)?\.(hprof|json)(\.gz)?$/i, '')}.flamepack.json`});
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  saveFile(savedName(name, '.flamepack.json'), new Blob([JSON.stringify(doc)], {type: 'application/json'}));
 }
 
 /**
@@ -198,6 +194,8 @@ function summary(name, p, stats, restored, duplicates) {
       restored ? h('button', {type: 'button', class: 'button',
         title: 'Drops the parse kept in the browser: the page starts empty next time',
         onclick: () => forgetFile().then(() => location.reload())}, 'Forget the parse') : null),
+    // what is reduced is how a heap's classes hold each other, which a profile of duplicate Strings has not
+    duplicates ? null : saveReduced(name, p),
     report ? h('h3', null, 'Parse report') : null,
     report ? parseReport(report) : null);
 }
