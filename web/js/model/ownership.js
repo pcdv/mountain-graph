@@ -7,7 +7,7 @@
  *
  * No DOM: tested with Node.
  */
-import {weightOf} from '../profile/profile.js';
+import {weightOf, SYNTHETIC} from '../profile/profile.js';
 
 /** @typedef {import('../profile/heap.js').HeapProfile} Profile */
 /** @typedef {import('../profile/profile.js').Frame} BaseFrame */
@@ -35,6 +35,8 @@ import {weightOf} from '../profile/profile.js';
  * @property {Float64Array | null} objects the objects that end at each node, null when the
  *           profile does not count them
  * @property {Float64Array | null} held the objects each node holds, itself and its contents
+ * @property {Uint8Array} folded 1 for a synthetic node (a fold of a reduced profile, a truncated
+ *           stack): no object, and what is under it is not walked
  * @property {number[][]} children
  * @property {number[]} roots
  */
@@ -86,7 +88,9 @@ function sum(p) {
   const children = Array.from({length: n}, () => []);
   /** @type {number[]} */
   const roots = [];
+  const folded = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
+    folded[i] = (p.frame[i] & 7) === SYNTHETIC ? 1 : 0;
     if (p.parent[i] < 0)
       roots.push(i);
     else
@@ -112,16 +116,16 @@ function sum(p) {
         held[parent] += held[node];
     }
   }
-  return {total, own, objects, held, children, roots};
+  return {total, own, objects, held, folded, children, roots};
 }
 
 /**
  * The node that owns the memory under one: follow the heaviest child while it
  * holds most of what is above it, and stop when the weight spreads over
- * several children.
+ * several children. A fold is not followed: it holds no object.
  *
  * @param {number} node
- * @param {{total: Float64Array, children: number[][]}} s
+ * @param {Pick<Sums, 'total' | 'children' | 'folded'>} s
  * @param {number} [share] 0 to 1, the part of its parent a child must hold to be followed
  * @returns {number}
  */
@@ -130,7 +134,7 @@ export function anchorOf(node, s, share = 0.5) {
   for (;;) {
     let heaviest = -1;
     for (const c of s.children[cur]) {
-      if (heaviest < 0 || s.total[c] > s.total[heaviest])
+      if (!s.folded[c] && (heaviest < 0 || s.total[c] > s.total[heaviest]))
         heaviest = c;
     }
     if (heaviest < 0 || s.total[heaviest] < share * s.total[cur])
@@ -141,10 +145,10 @@ export function anchorOf(node, s, share = 0.5) {
 
 /**
  * The chain from a node down its heaviest branch, as long as each child holds
- * most of its parent.
+ * most of its parent. A fold is not followed: it holds no object.
  *
  * @param {number} node
- * @param {{total: Float64Array, children: number[][]}} s
+ * @param {Pick<Sums, 'total' | 'children' | 'folded'>} s
  * @param {number} [share]
  * @returns {number[]} the node first, the owner last
  */
@@ -155,7 +159,7 @@ export function chainOf(node, s, share = 0.5) {
   for (;;) {
     let heaviest = -1;
     for (const c of s.children[cur]) {
-      if (heaviest < 0 || s.total[c] > s.total[heaviest])
+      if (!s.folded[c] && (heaviest < 0 || s.total[c] > s.total[heaviest]))
         heaviest = c;
     }
     if (heaviest < 0 || s.total[heaviest] < share * s.total[cur])
@@ -190,6 +194,11 @@ export function ownership(p, least = 0, {thin = THIN} = {}) {
   const anchors = new Map();
   /** @param {number} node */
   const walk = node => {
+    // A fold stands for objects too small to tell apart, gathered: none of
+    // them owns anything worth a peak, and the fold is no object. What it
+    // weighs is its holder's, in the holder's total.
+    if (s.folded[node])
+      return;
     const chain = chainOf(node, s);
     const anchor = /** @type {number} */ (chain[chain.length - 1]);
     // What hangs beside the chain is held by something else: a chain of its

@@ -3,6 +3,7 @@ import {describe, it} from 'node:test';
 import {strict as assert} from 'node:assert';
 import {sums, anchorOf, ownership, ownershipPeaks, mountainsOf, holdersOf, outermostOf, holdsOf} from '../../web/js/model/ownership.js';
 import {stacksToProfile} from '../../web/js/profile/heap.js';
+import {COMPILED, SYNTHETIC} from '../../web/js/profile/profile.js';
 
 /**
  * A chain of containers, each holding the next, beside a holder whose weight
@@ -20,6 +21,21 @@ function chain() {
     // a small branch, below the report's threshold
     ['System Class;Shared;Tiny', 1],
   ]));
+}
+
+/**
+ * A cache holding a fold (a synthetic frame, as a truncated stack is too) of
+ * objects too small to tell apart, two of them heavier than the cache itself.
+ */
+function folded() {
+  return /** @type {any} */ ({
+    strings: ['Java Frame', 'Cache', '(…)', 'Left', 'Right'],
+    parent: Int32Array.from([-1, 0, 1, 2, 2]),
+    frame: Int32Array.from([0 << 3 | COMPILED, 1 << 3 | COMPILED, 2 << 3 | SYNTHETIC, 3 << 3 | COMPILED, 4 << 3 | COMPILED]),
+    stack: Int32Array.from([1, 3, 4]),
+    weight: Float64Array.from([10, 45, 45]),
+    weights: [1, 1],
+  });
 }
 
 describe('sums', () => {
@@ -106,6 +122,13 @@ describe('ownership', () => {
     // Shared holds 65 bytes: above 50, below 70
     assert.deepEqual(ownership(chain(), 50).map(o => o.name).sort(), ['Node', 'Shared']);
     assert.deepEqual(ownership(chain(), 70).map(o => o.name), ['Node']);
+  });
+
+  it('does not walk into a fold: what it holds is its holder\'s', () => {
+    const owned = ownership(folded());
+
+    assert.deepEqual(owned.map(o => o.name), ['Cache']);
+    assert.equal(owned[0].total, 100);
   });
 });
 
