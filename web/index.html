@@ -65,8 +65,8 @@
       <h2 class="profiles">Profiles</h2>
       <section class="kind profiles">
         <h3>JFR recordings (.jfr)</h3>
-        <p>Recordings of JDK 11 and later, gzipped or not. Wall-clock samples and allocations are both read; a
-          Samples choice in the top bar switches between them.</p>
+        <p>Recordings of JDK 11 and later, gzipped or not. Wall-clock samples and allocations are both read;
+          you can switch between both modes from the top bar.</p>
       </section>
       <section class="kind profiles">
         <h3>Collapsed stacks</h3>
@@ -78,10 +78,11 @@
       <h2 class="heap">Heap dumps</h2>
       <section class="kind heap">
         <h3>Heap dumps (.hprof)</h3>
-        <p>As jmap and jcmd write them, parsed in the page by
-          <a href="https://github.com/pcdv/jheap" target="_blank" rel="noopener">jheap</a>'s parser. Dumps of up to
-          roughly 100 million objects open directly; a gzipped or larger one is parsed by the <code>jheap</code>
-          command, into a Flamepack (below).</p>
+        <p>Produced by jmap, jcmd or the JVM itself. It is parsed in-browser with
+          <a href="https://github.com/pcdv/jheap" target="_blank" rel="noopener">jheap</a>'s parser.
+          If the dump is too big (more than 100M objects) prefer using <code>jheap</code> directly to produce 
+          a smaller file in the Flamepack format. Parsing is faster from the command line than from the browser.
+          </p>
       </section>
 
       <h2 class="flamepack">Flamepack</h2>
