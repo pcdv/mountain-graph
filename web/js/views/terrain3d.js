@@ -12,7 +12,7 @@
  * three.js is loaded from a CDN (see the import map of index.html) when the
  * view is first shown: the rest of the page does without it.
  */
-import {h} from '../lib/dom.js';
+import {h, replace} from '../lib/dom.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
 import {FADE} from '../components/crossfade.js';
 import {field} from '../components/form.js';
@@ -22,6 +22,8 @@ import {helpTip} from '../components/help.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST} from './blocks3d.js';
 import {sea, sky, shores, bump, landColour, bedColour, LEVEL, DEEP, HAZE, SUN, SEA_TUNING} from './sea3d.js';
+import {flamePanel} from './flame3d.js';
+import {tipOf, placeTip} from './flame-draw.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -54,6 +56,7 @@ const ZOOM = 0.0014;
  * @property {{x: number, y: number, k: number}} [map] where the 2D view is: the cell at its centre, and
  *           the zoom, 1 showing the whole terrain
  * @property {string[]} [flame] the names from the root down to the frame the flame graph is zoomed on
+ * @property {boolean} [panel] whether a flame graph stands behind the terrain
  */
 
 /**
@@ -97,10 +100,12 @@ export function closeTerrainView() {
  *        by this call
  * @param {HTMLElement | null} [knobsIn] where the controls of the relief, the islands and the blocks go
  *        (the settings pane), in place of those of the view before; none, over the view
+ * @param {(() => Frame) | null} [flameOf] the tree of the whole profile, for a flame graph standing
+ *        behind the terrain: made only when it is shown; none, and there is no such choice
  * @returns {HTMLElement}
  */
 export function terrainView(t, trees, selection, viewpoint, hues = null, tuning = {}, shown = () => {},
-                            knobsIn = null) {
+                            knobsIn = null, flameOf = null) {
   const tuned = {...VIEW_TUNING, ...tuning};
   // the view before this one stays on show, so freed only once this one has taken over
   const before = release;
@@ -289,8 +294,20 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     const dome = sky(T, side * 9);
     scene.add(dome.mesh);
     const haze = new T.Fog(HAZE, side * 1.6, side * 7);
+    // or a flame graph standing behind the terrain, made when first shown
+    /** @type {import('./flame3d.js').FlamePanel | null} */
+    let panel = null;
+    let flaming = Boolean(flameOf && viewpoint.panel);
+    // its foot level with the highest peak, which would hide it standing on the plain, and out of the sea
+    const placePanel = () => {
+      if (panel)
+        panel.mesh.position.y = panel.height / 2 + Math.max(lift(t.top), islands ? level * side : 0) + side / 100;
+    };
     // the trails on the water, as sea lanes
-    const flood = () => trailSegments.position.y = islands ? level * side : 0;
+    const flood = () => {
+      trailSegments.position.y = islands ? level * side : 0;
+      placePanel();
+    };
     flood();
     scene.add(new T.HemisphereLight(0xffffff, 0x8a8170, 1.8));
     const sun = new T.DirectionalLight(0xffffff, 1.6);
@@ -306,6 +323,24 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     scene.add(ring);
 
     const renderer = new T.WebGLRenderer({antialias: true, preserveDrawingBuffer: true}); // kept, for a screenshot
+    /** shows the panel or takes it away, as the setting says */
+    const stand = () => {
+      if (flaming && !panel && flameOf) {
+        // as wide as the terrain, a little behind its far edge
+        panel = flamePanel(T, flameOf(), W, renderer.capabilities.getMaxAnisotropy());
+        panel.mesh.position.z = -(H - 1) / 2 - side / 20;
+        flood();
+        scene.add(panel.mesh);
+      }
+      else if (!flaming && panel) {
+        scene.remove(panel.mesh);
+        panel.dispose();
+        panel = null;
+        tip.hidden = true;
+      }
+    };
+    // what the panel's frame hovered is
+    const tip = h('div', {class: 'flame-tip', hidden: true});
     renderer.setPixelRatio(devicePixelRatio || 1);
     renderer.setClearColor(colors.halo);
     const camera = new T.PerspectiveCamera(40, 1, side / 100, side * 14);
@@ -340,6 +375,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                                oninput: () => {
                                  viewpoint.relief = relief = Number(slider.value);
                                  raise();
+                                 placePanel();
                                  if (islands) {
                                    // steeper or flatter: more rock or less
                                    paint();
@@ -397,9 +433,20 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                            'The plain becomes a sea and the mountains islands: sand, grass, and rock where it is steep'),
                    tide,
                    helpTip(h('label', {class: 'check'}, cubed, ' Blocks'), 'blocks', 'The land built of blocks'), size];
+    if (flameOf) {
+      const flamed = h('input', {type: 'checkbox', checked: flaming, onchange: () => {
+        viewpoint.panel = flaming = flamed.checked;
+        stand();
+        redraw();
+      }});
+      knobs.push(helpTip(h('label', {class: 'check'}, flamed, ' Flame graph'), 'flame-panel',
+                         'The whole profile as a flame graph, standing behind the terrain: a frame hovered on '
+                         + 'either is lit on both'));
+    }
     if (knobsIn)
       knobsIn.replaceChildren(...knobs);
-    loading.replaceWith(renderer.domElement, labels, ...knobsIn ? [] : [h('div', {class: 'relief'}, knobs)]);
+    loading.replaceWith(renderer.domElement, labels, tip, ...knobsIn ? [] : [h('div', {class: 'relief'}, knobs)]);
+    stand();
 
     /**
      * @param {any} to a point, a Vector3
@@ -461,6 +508,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
         }
       color.needsUpdate = true;
       cubes?.light(n => frame.lit() < 0 || !frame.isLit(n) ? 0 : n === frame.lit() ? 0.9 : 0.55);
+      panel?.light(frame.lit() >= 0 ? t.nodes[frame.lit()].name : null);
       const chosen = frame.chosen();
       ring.visible = chosen >= 0;
       if (chosen >= 0) {
@@ -484,11 +532,12 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       render();
     });
 
-    /** from the south, high, far enough for the whole width and depth to show */
+    /** from the south, high, far enough for the whole width and depth to show, and the flame graph's top */
     const home = () => {
       const half = Math.tan(camera.fov * Math.PI / 360);
-      const far = 1.1 * Math.max(W / 2 / (half * camera.aspect), H / 2 / half);
-      controls.target.set(0, 0, 0);
+      const tall = panel ? panel.mesh.position.y + panel.height / 2 : 0;
+      const far = 1.1 * Math.max(W / 2 / (half * camera.aspect), H / 2 / half, tall / half);
+      controls.target.set(0, tall / 3, 0);
       camera.position.set(0, 0.6 * far, 0.8 * far);
       controls.update();
     };
@@ -522,15 +571,19 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
 
     // picking: the mouse's ray marched over the heights, the first cell it goes under
     const raycaster = new T.Raycaster();
-    /** @param {MouseEvent} e @returns {number} the node under the mouse, -1 on the plain */
-    const nodeAt = e => {
+    /**
+     * @param {MouseEvent} e
+     * @returns {{node: number, distance: number}} the node under the mouse, -1 on the plain, and how far
+     *          along the ray the ground is, Infinity if it misses the terrain
+     */
+    const groundAt = e => {
       const top = lift(t.top);
       const box = renderer.domElement.getBoundingClientRect();
       raycaster.setFromCamera(new T.Vector2((e.clientX - box.left) / box.width * 2 - 1,
                                             1 - (e.clientY - box.top) / box.height * 2), camera);
       const {origin, direction} = raycaster.ray;
       if (direction.y >= 0)
-        return -1;
+        return {node: -1, distance: Infinity};
       const from = Math.max(0, (origin.y - top) / -direction.y), to = origin.y / -direction.y;
       for (let d = from; d <= to; d += 0.5) {
         const x = Math.round(origin.x + d * direction.x + (W - 1) / 2);
@@ -538,23 +591,64 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
         if (x < 0 || z < 0 || x >= W || z >= H)
           continue;
         if (origin.y + d * direction.y <= lift(t.heights[z * W + x]))
-          return t.cells[z * W + x];
+          return {node: t.cells[z * W + x], distance: d};
       }
-      return -1;
+      return {node: -1, distance: Infinity};
+    };
+    /** @type {Map<string, number>} the first node of each name, for a frame of the panel to light the terrain */
+    const named = new Map();
+    t.nodes.forEach((n, i) => named.has(n.name) || named.set(n.name, i));
+    /**
+     * @param {MouseEvent} e
+     * @returns {{node: number, box?: import('../model/flame.js').Box | null}} what is under the mouse: a node
+     *          of the terrain, -1 for none, or the panel in front of it and its box there
+     */
+    const pointed = e => {
+      const ground = groundAt(e);
+      const on = panel?.hit(raycaster);
+      return on && on.distance < ground.distance ? {node: -1, box: on.box} : {node: ground.node};
     };
     /** @type {number[] | null} where the mouse went down: a drag is no click */
     let down = null;
     const canvas = renderer.domElement;
     canvas.addEventListener('pointerdown', (/** @type {PointerEvent} */ e) => down = [e.clientX, e.clientY]);
     canvas.addEventListener('click', (/** @type {MouseEvent} */ e) => {
-      if (down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 4)
-        frame.click(nodeAt(e));
+      if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) >= 4)
+        return;
+      const at = pointed(e);
+      if (at.box === undefined)
+        frame.click(at.node);
+      else if (at.box && panel) {
+        // zoomed on the frame or back out to it: told anew of what is under the mouse
+        panel.click(at.box);
+        hover(e);
+        render();
+      }
     });
+    /** @param {MouseEvent} e */
+    const hover = e => {
+      const at = pointed(e);
+      const box = at.box ?? null;
+      if (panel?.hover(box))
+        render();
+      tip.hidden = !box || !panel;
+      if (box && panel) {
+        replace(tip, ...tipOf(panel.flame, box, panel.zoomed(), selection.unit ?? 'ms'));
+        placeTip(tip, e);
+      }
+      // a frame of the panel lights the frames of its name on the terrain, if it has any
+      frame.hover(box ? named.get(box.frame.name) ?? -1 : at.node);
+    };
     canvas.addEventListener('mousemove', (/** @type {MouseEvent} */ e) => {
       if (e.buttons === 0)
-        frame.hover(nodeAt(e));
+        hover(e);
     });
-    canvas.addEventListener('mouseleave', () => frame.hover(-1));
+    canvas.addEventListener('mouseleave', () => {
+      if (panel?.hover(null))
+        render();
+      tip.hidden = true;
+      frame.hover(-1);
+    });
     canvas.addEventListener('dblclick', () => {
       home();
       render();
@@ -574,6 +668,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       trailLines.dispose();
       trailMaterial.dispose();
       cubes?.dispose();
+      panel?.dispose();
       water.dispose();
       dome.dispose();
       renderer.dispose();

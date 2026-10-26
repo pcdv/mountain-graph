@@ -49,8 +49,9 @@ on its own line, so reformat only the file being edited.
   anonymizing; for a heap, ownership (the chains of holders), context, and the reduction of a
   profile to what is drawn (`reduce.js`). No DOM, tested with Node.
 - `tools/` — command lines over the modules: `reduce.js`.
-- `web/js/views/` — what draws: the 2D map, the 3D terrain, the flame graph (`flame.js`, over the
-  layout in `model/flame.js`), the peaks table. `palette.js` is the
+- `web/js/views/` — what draws: the 2D map, the 3D terrain, the flame graph (`flame.js` on the page,
+  `flame3d.js` as a panel in the 3D world, both painting with `flame-draw.js` over the layout in
+  `model/flame.js`), the peaks table. `palette.js` is the
   neutral module for constants that several views share.
 - `web/js/components/` — the panels floating over the view, the header's file menu, and the settings
   pane with the controls in it (`form.js` holds the pieces they are built of).

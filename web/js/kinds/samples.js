@@ -182,7 +182,8 @@ function display(page, name, samplings, which, saved) {
       const legend = coloured ? hueLegend(coloured.legend) : null;
       if (view === '3d')
         // over the view shown, which stays until the new one has drawn: no blank frame
-        crossfade(map, shown => terrainView(t, trees, selection, viewpoint, hues, tuned, shown, relief), ...legend ? [legend] : []);
+        crossfade(map, shown => terrainView(t, trees, selection, viewpoint, hues, tuned, shown, relief,
+                                            () => tree(q, filter).root), ...legend ? [legend] : []);
       else {
         closeTerrainView();
         replace(map, mapView(t, trees, selection, viewpoint, hues), legend);

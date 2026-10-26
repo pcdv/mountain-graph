@@ -129,7 +129,8 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
       const legend = coloured ? hueLegend(coloured.legend) : null;
 
       if (view === '3d')
-        crossfade(map, shown => terrainView(t, trees, selection, viewpoint, hues, tuned, shown, relief), ...legend ? [legend] : []);
+        crossfade(map, shown => terrainView(t, trees, selection, viewpoint, hues, tuned, shown, relief,
+                                            () => tree(p, filter).root), ...legend ? [legend] : []);
       else {
         closeTerrainView();
         replace(map, mapView(t, trees, selection, viewpoint, hues), legend);
