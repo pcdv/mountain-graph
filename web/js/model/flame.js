@@ -120,6 +120,20 @@ export function follow(flame, path) {
 
 /**
  * @param {Flame} flame
+ * @param {Box} box
+ * @returns {number} the deepest level a callee of the box reaches, its own if it has none
+ */
+export function deepest(flame, box) {
+  const end = box.left + box.frame.total;
+  let level = box.level;
+  // its callees are in its width, on each level up to the deepest
+  while (flame.levels[level + 1]?.some(b => b.left >= box.left && b.left < end && b.frame.total > 0))
+    level++;
+  return level;
+}
+
+/**
+ * @param {Flame} flame
  * @param {RegExp} pattern
  * @returns {number} the weight of the frames matching, each counted once: not again under a match
  */

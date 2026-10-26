@@ -3,10 +3,11 @@
  * The flame graph in the 3D world: a panel standing behind the terrain, its
  * root on the ground, painted as on the page (flame-draw.js) on a texture.
  * Hovered and clicked through the ray of the mouse, as the terrain is: a click
- * zooms on a frame, a click on a faded one under it zooms back out. A frame
+ * zooms on a frame, and the panel is cut down to it and its callees, its
+ * caller kept on the foot, faded, which a click zooms back out to. A frame
  * lit on the terrain is coloured on the panel wherever it is called.
  */
-import {layout, pick} from '../model/flame.js';
+import {layout, pick, deepest} from '../model/flame.js';
 import {ROW, paintFlame} from './flame-draw.js';
 
 /** @typedef {import('../model/flame.js').Box} Box */
@@ -23,12 +24,12 @@ const LEVELS = Math.floor(4096 / SCALE / ROW);
  * @typedef {object} FlamePanel
  * @property {any} mesh the plane, facing the south, its foot at y 0 unless moved
  * @property {Flame} flame
- * @property {number} height of the plane, in the units of the world
+ * @property {() => number} height of the plane, in the units of the world: lower when zoomed
  * @property {() => Box | null} zoomed
  * @property {(raycaster: any) => {box: Box | null, distance: number} | null} hit where the ray meets the
  *           panel, and the box there; null if it misses the panel
  * @property {(box: Box | null) => boolean} hover outlines the box; whether it changed
- * @property {(box: Box) => void} click zooms on the box, or back out to it
+ * @property {(box: Box) => void} click zooms on the box, or back out to it: the panel's height changes
  * @property {(name: string | null) => void} light colours the frames of that name, none for null
  * @property {() => void} dispose
  */
@@ -42,7 +43,9 @@ const LEVELS = Math.floor(4096 / SCALE / ROW);
  */
 export function flamePanel(T, root, width, anisotropy) {
   const flame = layout(root);
-  const high = Math.min(flame.levels.length, LEVELS) * ROW;
+  // the most rows the panel shows: zoomed, it shows fewer, as high as the frame's callees go
+  const most = Math.min(flame.levels.length, LEVELS);
+  const high = most * ROW;
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH * SCALE;
   canvas.height = high * SCALE;
@@ -58,17 +61,26 @@ export function flamePanel(T, root, width, anisotropy) {
   texture.anisotropy = anisotropy;
   // unlit and out of the haze: it reads the same from any side and distance
   const material = new T.MeshBasicMaterial({map: texture, transparent: true, fog: false, toneMapped: false});
-  const height = width * high / WIDTH;
-  const geometry = new T.PlaneGeometry(width, height);
+  const full = width * high / WIDTH;
+  const geometry = new T.PlaneGeometry(width, full);
   const mesh = new T.Mesh(geometry, material);
-  mesh.position.y = height / 2;
+  mesh.position.y = full / 2;
 
+  // the rows shown: from the level on the panel's foot, as many as `rows`
+  let first = 0, rows = most;
   const paint = () => {
+    // zoomed, the frame's caller is kept on the foot, faded, to zoom back out by; the rows under it go
+    const z = look.zoomed;
+    first = z ? z.level - 1 : 0;
+    rows = Math.min(LEVELS, (z ? deepest(flame, z) : flame.levels.length - 1) - first + 1);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.scale(SCALE, SCALE);
-    // the root on the bottom row, the deepest frames cut at the top
-    paintFlame(ctx, flame, look, WIDTH, high);
+    // the first level on the bottom row, the deepest frames cut at the top
+    paintFlame(ctx, flame, look, WIDTH, high + first * ROW);
+    // the plane as high as the rows shown, the texture's bottom on it
+    texture.repeat.set(1, rows / most);
+    mesh.scale.y = rows / most;
     texture.needsUpdate = true;
   };
   paint();
@@ -76,13 +88,13 @@ export function flamePanel(T, root, width, anisotropy) {
   return {
     mesh,
     flame,
-    height,
+    height: () => full * rows / most,
     zoomed: () => look.zoomed,
     hit(raycaster) {
       const [at] = raycaster.intersectObject(mesh);
       if (!at?.uv)
         return null;
-      return {box: pick(flame, look.zoomed, at.uv.x, Math.floor(at.uv.y * high / ROW)), distance: at.distance};
+      return {box: pick(flame, look.zoomed, at.uv.x, first + Math.floor(at.uv.y * rows)), distance: at.distance};
     },
     hover(box) {
       if (box === look.hovered)

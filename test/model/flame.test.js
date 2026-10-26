@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {layout, range, pick, pathOf, follow, matched} from '../../web/js/model/flame.js';
+import {layout, range, pick, pathOf, follow, matched, deepest} from '../../web/js/model/flame.js';
 
 /**
  * @param {string} name
@@ -44,6 +44,13 @@ test('the path of a frame is found again in a tree that has it', () => {
   assert.equal(follow(layout(root), ['a', 'a.y'])?.frame.name, 'a.y');
   assert.equal(follow(layout(root), ['a', 'zz']), null);
   assert.equal(follow(layout(root), [])?.frame.name, 'root');
+});
+
+test('a frame reaches as deep as its deepest callee', () => {
+  assert.equal(deepest(flame, flame.root), 2);
+  assert.equal(deepest(flame, flame.levels[1][0]), 2);
+  assert.equal(deepest(flame, flame.levels[1][1]), 1);
+  assert.equal(deepest(flame, flame.levels[2][1]), 2);
 });
 
 test('a match counts once, not again under a match', () => {

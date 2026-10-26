@@ -307,7 +307,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     /** @returns {{foot: number, top: number, back: number}} where the panel stands: the y of its foot and of its
      *          top, and the z of its top, the farthest back it goes; its foot is at the far edge of the terrain */
     const panelSpan = () => {
-      const h = panel?.height ?? 0;
+      const h = panel?.height() ?? 0;
       // halfway up the highest peak, which would hide much of it standing on the plain, and out of the sea
       const foot = Math.max(lift(t.top) * PANEL_FOOT, islands ? level * side : 0) + side / 100;
       return {foot, top: foot + h * Math.cos(PANEL_LEAN), back: -(H - 1) / 2 - side / 20 - h * Math.sin(PANEL_LEAN)};
@@ -316,7 +316,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     const placePanel = () => {
       if (!panel)
         return;
-      const {foot} = panelSpan(), half = panel.height / 2;
+      const {foot} = panelSpan(), half = panel.height() / 2;
       panel.mesh.rotation.x = -PANEL_LEAN;
       panel.mesh.position.set(0, foot + half * Math.cos(PANEL_LEAN), -(H - 1) / 2 - side / 20 - half * Math.sin(PANEL_LEAN));
     };
@@ -644,6 +644,8 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       else if (at.box && panel) {
         // zoomed on the frame or back out to it: told anew of what is under the mouse
         panel.click(at.box);
+        // lower or higher as it shows fewer rows or more: its foot stays
+        placePanel();
         hover(e);
         render();
       }
