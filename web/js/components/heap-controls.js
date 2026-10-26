@@ -105,8 +105,30 @@ export function heapControls(settings, changed, duplicates = false) {
   const coloured = field('Colour', colour, COLOUR_TITLE, 'colour');
   const ranked = field('Ranked by', basis, 'What a peak is: the objects that keep the memory alive, or the classes that take '
                        + 'the most room themselves', 'basis');
+  // the flame graph has every path of the heap: none of these change it, and a line says so in their place
+  const peaked = section('Peaks', ranked, wrapped, gathered, framed,
+    field('At most', h('span', {class: 'unit'}, count, ' peaks'), 'The most peaks, the heaviest first', 'count'),
+    field('Until', h('span', {class: 'unit'}, coverage, ' % covered'),
+          'No more peaks once those taken hold this share of the memory', 'coverage'));
+  const landscape = section('Landscape', field('Mountains', shape, SHAPE_TITLE.heap, 'shapes'), coloured);
+  const reset = h('button', {type: 'button', class: 'button', onclick: () => {
+    basis.value = DEFAULTS.basis;
+    wrappers.value = DEFAULTS.wrappers;
+    grain.value = DEFAULTS.grain;
+    context.value = String(DEFAULTS.context);
+    count.value = String(DEFAULTS.count);
+    coverage.value = String(DEFAULTS.coverage * 100);
+    shape.value = DEFAULTS.shape;
+    colour.value = DEFAULTS.colour;
+    update();
+  }}, 'Reset to defaults');
+  const whole = h('p', {class: 'muted'}, 'The flame graph shows every path of the heap, from its roots to the objects. '
+                  + 'Nothing here changes it: these settings are for the peaks.');
 
   const update = () => {
+    const flame = view.value === 'flame';
+    peaked.hidden = landscape.hidden = reset.hidden = flame;
+    whole.hidden = !flame;
     const n = count.valueAsNumber, c = coverage.valueAsNumber, k = Number(context.value);
     // what the ranking chosen does not use is not shown: it would change nothing
     const owned = basis.value === 'owned';
@@ -130,29 +152,7 @@ export function heapControls(settings, changed, duplicates = false) {
     input.addEventListener('input', update);
   update();
 
-  return {view, settings: h('div', null,
-    section('Peaks',
-      ranked,
-      wrapped,
-      gathered,
-      framed,
-      field('At most', h('span', {class: 'unit'}, count, ' peaks'), 'The most peaks, the heaviest first', 'count'),
-      field('Until', h('span', {class: 'unit'}, coverage, ' % covered'),
-            'No more peaks once those taken hold this share of the memory', 'coverage')),
-    section('Landscape',
-      field('Mountains', shape, SHAPE_TITLE.heap, 'shapes'),
-      coloured),
-    h('button', {type: 'button', class: 'button', onclick: () => {
-      basis.value = DEFAULTS.basis;
-      wrappers.value = DEFAULTS.wrappers;
-      grain.value = DEFAULTS.grain;
-      context.value = String(DEFAULTS.context);
-      count.value = String(DEFAULTS.count);
-      coverage.value = String(DEFAULTS.coverage * 100);
-      shape.value = DEFAULTS.shape;
-      colour.value = DEFAULTS.colour;
-      update();
-    }}, 'Reset to defaults'))};
+  return {view, settings: h('div', null, whole, peaked, landscape, reset)};
 }
 
 /**

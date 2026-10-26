@@ -130,13 +130,17 @@ function display(page, name, samplings, which, saved) {
       tuned = t;
       page.relayout();
     });
-    replace(main, map, h('div', {class: 'floats'}, floating('Peaks', 'table', table)));
+    const fine = folded('Fine tuning', knobs.element);
+    const peaked = floating('Peaks', 'table', table);
+    replace(main, map, h('div', {class: 'floats'}, peaked));
     /** @param {import('../components/peak-controls.js').PeakSettings} settings */
     const show = settings => {
       last = settings;
       const {grain, count, coverage, waits, hide, java, shape, view, colour} = settings;
       knobs.fit({shape, view});
       terrain3d.hidden = view !== '3d';
+      // the flame graph has no peaks, and no terrain to tune
+      fine.hidden = peaked.hidden = view === 'flame';
       if (kept?.waits !== waits) {
         const {profile, left} = leaveOut(p, waits);
         kept = {waits, kept: profile, left};
@@ -146,6 +150,12 @@ function display(page, name, samplings, which, saved) {
       // an operation alone leaves out the samples outside operations
       const only = operation ? {all: false, name: operation} : {all: true};
       const filter = {...only, hide, java, ...focus};
+      if (view === 'flame') {
+        // the whole profile, not its peaks
+        closeTerrainView();
+        replace(map, flameView(tree(q, filter).root, q.unit, viewpoint));
+        return;
+      }
       // the mountains spread in the window's shape
       const aspect = Math.max(1, main.clientWidth / Math.max(1, main.clientHeight));
       /** @type {import('../model/terrain.js').Anchor | undefined} */
@@ -168,13 +178,6 @@ function display(page, name, samplings, which, saved) {
         r = peaks(q, filter, {count, coverage, grain});
       const m = mountains(q, filter, r.peaks, grain);
       selection.callees = name => callees(q, filter, name, grain);
-      if (view === 'flame') {
-        // the whole profile, not its peaks: the table of peaks is still there
-        closeTerrainView();
-        replace(map, flameView(tree(q, filter).root, q.unit, viewpoint));
-        replace(table, peaksView(r, m, unfolded, kept.left, p.unit));
-        return;
-      }
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
       const t = terrain(trees, {shape, aspect, tuning: tuned, anchor});
       const coloured = colour === 'package' ? packageHues(t, grain) : null;
@@ -194,7 +197,7 @@ function display(page, name, samplings, which, saved) {
     let last = null;
     const controls = peakControls(peakSettings(), show);
     replace(page.tools, controls.view);
-    replace(page.settings, controls.settings, terrain3d, folded('Fine tuning', knobs.element),
+    replace(page.settings, controls.settings, terrain3d, fine,
             folded('Anonymizing', anonymizeControls(() => page.reopen())));
     // laid out again in the window's shape, the bar in place, and as it is resized
     page.relayout = () => last && show(last);

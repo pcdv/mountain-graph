@@ -72,7 +72,9 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
       tuned = t;
       page.relayout();
     });
-    replace(main, map, h('div', {class: 'floats'}, floating('Peaks', 'table', table)));
+    const fine = folded('Fine tuning', knobs.element);
+    const peaked = floating('Peaks', 'table', table);
+    replace(main, map, h('div', {class: 'floats'}, peaked));
 
     // the profiles of the context setting, made once each, not on each setting
     // or resize: the walk of the paths is the slow part of a redraw
@@ -85,9 +87,17 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
       const {basis, wrappers, grain, count, coverage, shape, view, colour, context} = settings;
       knobs.fit({shape, view});
       terrain3d.hidden = view !== '3d';
+      // the flame graph has no peaks, and no terrain to tune
+      fine.hidden = peaked.hidden = view === 'flame';
 
       // no filter for a heap: no operations, no threads, no time
       const filter = {all: true};
+      if (view === 'flame') {
+        // every path of the heap, from its roots to the objects, whatever the peaks are
+        closeTerrainView();
+        replace(map, flameView(tree(p, filter).root, 'bytes', viewpoint));
+        return;
+      }
       const aspect = Math.max(1, main.clientWidth / Math.max(1, main.clientHeight));
 
       // what the chains of holders retain, or the objects at the top of a stack
@@ -115,13 +125,6 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
         m = mountains(gathered, filter, r.peaks, by);
       }
       selection.holds = basis === 'owned';
-      if (view === 'flame') {
-        // every path of the heap, from its roots to the objects, whatever the peaks are
-        closeTerrainView();
-        replace(map, flameView(tree(p, filter).root, 'bytes', viewpoint));
-        replace(table, peaksView(r, m, unfolded, 0, 'bytes'));
-        return;
-      }
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
       const t = terrain(trees, {shape, aspect, tuning: tuned});
       const coloured = colour === 'package' && basis === 'shallow' && context === 1 ? packageHues(t, by) : null;
@@ -142,7 +145,7 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
     let last = null;
     const controls = heapControls(heapSettings(), show, duplicates !== null);
     replace(page.tools, controls.view);
-    replace(page.settings, controls.settings, terrain3d, folded('Fine tuning', knobs.element),
+    replace(page.settings, controls.settings, terrain3d, fine,
             folded('Anonymizing', anonymizeControls(() => page.reopen())));
     page.relayout = () => last && show(last);
     page.relayout();

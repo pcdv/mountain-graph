@@ -437,11 +437,15 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       const flamed = h('input', {type: 'checkbox', checked: flaming, onchange: () => {
         viewpoint.panel = flaming = flamed.checked;
         stand();
+        // framed again, the panel in sight: it stands above the peaks, out of most views closer in
+        if (flaming)
+          home();
         redraw();
       }});
-      knobs.push(helpTip(h('label', {class: 'check'}, flamed, ' Flame graph'), 'flame-panel',
-                         'The whole profile as a flame graph, standing behind the terrain: a frame hovered on '
-                         + 'either is lit on both'));
+      // not a way of drawing the land, as islands and blocks are, but a second view beside it, with any of them
+      knobs.push(field('Flame graph', h('label', {class: 'check'}, flamed, ' Behind the terrain'),
+                       'The whole profile as a flame graph, standing behind the terrain above its peaks: a frame '
+                       + 'hovered on either is lit on both', 'flame-panel'));
     }
     if (knobsIn)
       knobsIn.replaceChildren(...knobs);

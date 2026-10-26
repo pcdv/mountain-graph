@@ -112,8 +112,18 @@ export function peakControls(settings, changed) {
   const shape = segmented(SHAPES, settings.shape);
   const view = segmented(VIEWS, settings.view);
   const colour = segmented(COLOURS, settings.colour);
+  // the flame graph has no peaks and no landscape: what sets them is not shown
+  const peaked = section('Peaks',
+    field('One per', grain, 'What a peak gathers: a method, a class or a package', 'method'),
+    field('At most', h('span', {class: 'unit'}, count, ' peaks'), 'The most peaks, the heaviest first', 'count'),
+    field('Until', h('span', {class: 'unit'}, coverage, ' % covered'),
+          'No more peaks once those taken hold this share of the samples', 'coverage'));
+  const landscape = section('Landscape',
+    field('Mountains', shape, SHAPE_TITLE.samples, 'shapes'),
+    field('Colour', colour, COLOUR_TITLE, 'colour'));
 
   const update = () => {
+    peaked.hidden = landscape.hidden = view.value === 'flame';
     for (const input of [waits, hide]) {
       const valid = isPattern(input.value);
       input.classList.toggle('invalid', !valid);
@@ -141,14 +151,8 @@ export function peakControls(settings, changed) {
             'hide'),
       helpTip(h('label', {class: 'check'}, java, ' Java samples only (CPU)'), 'java',
               'Leaves out the native samples: threads blocked in native code, waiting')),
-    section('Peaks',
-      field('One per', grain, 'What a peak gathers: a method, a class or a package', 'method'),
-      field('At most', h('span', {class: 'unit'}, count, ' peaks'), 'The most peaks, the heaviest first', 'count'),
-      field('Until', h('span', {class: 'unit'}, coverage, ' % covered'),
-            'No more peaks once those taken hold this share of the samples', 'coverage')),
-    section('Landscape',
-      field('Mountains', shape, SHAPE_TITLE.samples, 'shapes'),
-      field('Colour', colour, COLOUR_TITLE, 'colour')),
+    peaked,
+    landscape,
     h('button', {type: 'button', class: 'button', onclick: () => {
       grain.value = DEFAULTS.grain;
       count.value = String(DEFAULTS.count);
