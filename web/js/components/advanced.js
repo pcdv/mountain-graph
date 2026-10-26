@@ -26,7 +26,7 @@ const KEY = 'mountaingraph.tuning';
 /**
  * @typedef {object} Shown
  * @property {import('../model/terrain.js').Shape} shape
- * @property {'map' | '3d'} view
+ * @property {'map' | '3d' | 'flame'} view
  */
 
 /** @param {Shown} s */

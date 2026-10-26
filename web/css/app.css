@@ -890,6 +890,64 @@ canvas.map.dragging {
   cursor: grabbing;
 }
 
+/* the flame graph: the root at the bottom of the view, the search on the right under the panes */
+.flame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.flame-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.flame-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.flame-scroll {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* a short graph stands on the bottom, not hangs from the top */
+canvas.flame-canvas {
+  display: block;
+  width: 100%;
+  flex: none;
+  margin-top: auto;
+  cursor: pointer;
+}
+
+.flame-tip {
+  position: absolute;
+  z-index: 2;
+  max-width: 480px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.flame-tip-name {
+  font-family: var(--mono);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 .map-info {
   position: absolute;
   left: 12px;

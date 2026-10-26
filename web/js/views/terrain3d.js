@@ -53,6 +53,7 @@ const ZOOM = 0.0014;
  * @property {number} [level] of the sea, as a share of the longer side
  * @property {{x: number, y: number, k: number}} [map] where the 2D view is: the cell at its centre, and
  *           the zoom, 1 showing the whole terrain
+ * @property {string[]} [flame] the names from the root down to the frame the flame graph is zoomed on
  */
 
 /**

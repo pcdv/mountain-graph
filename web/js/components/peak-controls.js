@@ -26,7 +26,8 @@ import {helpTip} from './help.js';
  *           threads blocked in native code (a socket read, a poll) weigh time waited, not CPU
  * @property {Shape} shape of the mountains: a massif, ridges, or ridges joined at the callers they
  *           share (ranges)
- * @property {'map' | '3d'} view what shows them: a topographic map or a terrain in 3D
+ * @property {'map' | '3d' | 'flame'} view what shows them: a topographic map, a terrain in 3D, or a
+ *           flame graph, which shows the profile without peaks
  * @property {'height' | 'package'} colour of the land: by height only, or the hue of each frame's
  *           package too
  */
@@ -46,7 +47,17 @@ const KEY = 'mountaingraph.peaks.';
 export const SHAPES = [['massif', 'Massif'], ['ridges', 'Ridges'], ['ranges', 'Ranges']];
 
 /** @type {[string, string, string?][]} */
-export const VIEWS = [['map', '2D', 'A topographic map, zoomed with the wheel and moved by dragging'], ['3d', '3D', 'A terrain in 3D, turned with the mouse']];
+export const VIEWS = [['map', '2D', 'A topographic map, zoomed with the wheel and moved by dragging'],
+                      ['3d', '3D', 'A terrain in 3D, turned with the mouse'],
+                      ['flame', 'Flame', 'A flame graph: the whole profile, a frame as wide as its time, zoomed by clicking']];
+
+/**
+ * @param {string | null} s
+ * @returns {'map' | '3d' | 'flame'} the view named, or the map
+ */
+export function viewOf(s) {
+  return s === '3d' || s === 'flame' ? s : 'map';
+}
 
 /** @type {[string, string, string?][]} */
 export const COLOURS = [['height', 'Height'], ['package', 'Package']];
@@ -73,7 +84,7 @@ export function peakSettings() {
     hide: readSetting(KEY + 'hide') ?? DEFAULTS.hide,
     java: readSetting(KEY + 'java') === 'true',
     shape: shapeOf(readSetting(KEY + 'shape')),
-    view: readSetting(KEY + 'view') === '3d' ? '3d' : DEFAULTS.view,
+    view: viewOf(readSetting(KEY + 'view')),
     colour: readSetting(KEY + 'colour') === 'package' ? 'package' : DEFAULTS.colour,
   };
 }
@@ -114,7 +125,7 @@ export function peakControls(settings, changed) {
     /** @type {PeakSettings} */
     const next = {grain: /** @type {Grain} */ (grain.value), count: n, coverage: c / 100, waits: waits.value,
                   hide: hide.value, java: java.checked, shape: shapeOf(shape.value),
-                  view: view.value === '3d' ? '3d' : 'map', colour: colour.value === 'package' ? 'package' : 'height'};
+                  view: viewOf(view.value), colour: colour.value === 'package' ? 'package' : 'height'};
     for (const [key, value] of Object.entries(next))
       writeSetting(KEY + key, value);
     changed(next);

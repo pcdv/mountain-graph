@@ -13,6 +13,8 @@ import {peaks, mountains} from '../model/peaks.js';
 import {terrain} from '../model/terrain.js';
 import {peaksView} from '../views/peaks.js';
 import {mapView} from '../views/map.js';
+import {flameView} from '../views/flame.js';
+import {tree} from '../profile/profile.js';
 import {terrainView, closeTerrainView} from '../views/terrain3d.js';
 import {crossfade} from '../components/crossfade.js';
 import {packageHues} from '../model/hues.js';
@@ -113,6 +115,13 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
         m = mountains(gathered, filter, r.peaks, by);
       }
       selection.holds = basis === 'owned';
+      if (view === 'flame') {
+        // every path of the heap, from its roots to the objects, whatever the peaks are
+        closeTerrainView();
+        replace(map, flameView(tree(p, filter).root, 'bytes', viewpoint));
+        replace(table, peaksView(r, m, unfolded, 0, 'bytes'));
+        return;
+      }
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
       const t = terrain(trees, {shape, aspect, tuning: tuned});
       const coloured = colour === 'package' && basis === 'shallow' && context === 1 ? packageHues(t, by) : null;

@@ -6,7 +6,7 @@
  * a choice of samplings when the file holds several.
  */
 import {h, replace} from '../lib/dom.js';
-import {weightOf} from '../profile/profile.js';
+import {weightOf, tree} from '../profile/profile.js';
 import {amount} from '../model/units.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {keepInterval} from '../last-file.js';
@@ -15,6 +15,7 @@ import {callees} from '../model/callees.js';
 import {terrain, anchorOf} from '../model/terrain.js';
 import {peaksView} from '../views/peaks.js';
 import {mapView} from '../views/map.js';
+import {flameView} from '../views/flame.js';
 import {terrainView, closeTerrainView} from '../views/terrain3d.js';
 import {crossfade} from '../components/crossfade.js';
 import {leaveOut} from '../model/samples.js';
@@ -167,6 +168,13 @@ function display(page, name, samplings, which, saved) {
         r = peaks(q, filter, {count, coverage, grain});
       const m = mountains(q, filter, r.peaks, grain);
       selection.callees = name => callees(q, filter, name, grain);
+      if (view === 'flame') {
+        // the whole profile, not its peaks: the table of peaks is still there
+        closeTerrainView();
+        replace(map, flameView(tree(q, filter).root, q.unit, viewpoint));
+        replace(table, peaksView(r, m, unfolded, kept.left, p.unit));
+        return;
+      }
       const trees = r.peaks.flatMap(peak => m.get(peak.name) ?? []);
       const t = terrain(trees, {shape, aspect, tuning: tuned, anchor});
       const coloured = colour === 'package' ? packageHues(t, grain) : null;

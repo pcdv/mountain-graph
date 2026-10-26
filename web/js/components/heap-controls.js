@@ -9,7 +9,7 @@
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {segmented, field, section} from './form.js';
-import {SHAPES, VIEWS, COLOURS, SHAPE_TITLE, COLOUR_TITLE} from './peak-controls.js';
+import {SHAPES, VIEWS, COLOURS, SHAPE_TITLE, COLOUR_TITLE, viewOf} from './peak-controls.js';
 
 /** @typedef {import('../model/peaks.js').Grain} Grain */
 /** @typedef {import('../model/terrain.js').Shape} Shape */
@@ -27,7 +27,7 @@ import {SHAPES, VIEWS, COLOURS, SHAPE_TITLE, COLOUR_TITLE} from './peak-controls
  * @property {number} count the most peaks
  * @property {number} coverage 0 to 1: no more peaks once the ones taken hold this share
  * @property {Shape} shape of the mountains
- * @property {'map' | '3d'} view what shows them
+ * @property {'map' | '3d' | 'flame'} view what shows them
  * @property {'height' | 'package'} colour of the land
  */
 
@@ -51,7 +51,7 @@ export function heapSettings() {
     count: Number.isInteger(count) && count >= 1 ? count : DEFAULTS.count,
     coverage: coverage > 0 && coverage <= 1 ? coverage : DEFAULTS.coverage,
     shape: shapeOf(readSetting(KEY + 'shape')),
-    view: readSetting(KEY + 'view') === '3d' ? '3d' : DEFAULTS.view,
+    view: viewOf(readSetting(KEY + 'view')),
     colour: readSetting(KEY + 'colour') === 'package' ? 'package' : DEFAULTS.colour,
   };
 }
@@ -120,7 +120,7 @@ export function heapControls(settings, changed, duplicates = false) {
     const next = {basis: /** @type {'owned' | 'shallow'} */ (basis.value),
                   wrappers: /** @type {'skip' | 'show'} */ (wrappers.value),
                   grain: /** @type {Grain} */ (grain.value), context: k, count: n, coverage: c / 100,
-                  shape: shapeOf(shape.value), view: view.value === '3d' ? '3d' : 'map',
+                  shape: shapeOf(shape.value), view: viewOf(view.value),
                   colour: colour.value === 'package' ? 'package' : 'height'};
     for (const [key, value] of Object.entries(next))
       writeSetting(KEY + key, value);
