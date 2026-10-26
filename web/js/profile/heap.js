@@ -5,17 +5,20 @@
  * from the document jheap writes, written back as the page exports it, and
  * turned to collapsed stacks and back.
  *
- * The document is jfr-web's (version 4), the same shape as its server's
- * ProfileWriter, so an exported heap can be opened in jfr-web. Strings are
- * sorted and front-coded, the stack nodes depth first, the samples in time
- * order. A heap profile has no time: its samples are all at 0 and its weights
- * are bytes. It has one column jfr-web's have not, `samples.objects`, the
- * objects of each sample: an extra field, which jfr-web's pages ignore, so the
- * version stays 4 and an export still opens there. `decodeHeap` reads it.
+ * The document is Flamepack's, written as version 5, which is read here and in
+ * jfr-web as well as version 4. Strings are sorted and front-coded, the stack
+ * nodes depth first, in columns. A heap profile has no time, thread or
+ * operation, which version 5 leaves out: its samples are sorted by stack, so
+ * that the stacks written as differences cost next to nothing, and its
+ * weights are bytes. The column `samples.objects`, the objects of each
+ * sample, is a heap's own. `decodeHeap` reads it.
  *
  * No DOM: tested with Node.
  */
-import {VERSION, COMPILED, SYNTHETIC, decode, weightOf} from './profile.js';
+import {COMPILED, SYNTHETIC, decode, weightOf} from './profile.js';
+
+/** The version of the document `encode` writes. */
+const VERSION = 5;
 
 /**
  * The frame that stands for objects folded away by a reduction (model/reduce.js): synthetic,
@@ -47,7 +50,7 @@ export function decodeHeap(doc) {
 }
 
 /**
- * @param {HeapProfile} p
+ * @param {HeapProfile} p a heap's: no time, thread or operation is written
  * @returns {object} the document, ready for JSON.stringify
  */
 export function encode(p) {
@@ -56,8 +59,6 @@ export function encode(p) {
   const names = new Set();
   for (let i = 0; i < p.frame.length; i++)
     names.add(p.strings[p.frame[i] >>> 3]);
-  for (const t of p.threads)
-    names.add(t.name);
   const sorted = [...names].sort();
   /** @type {Map<string, number>} */
   const rank = new Map(sorted.map((s, i) => [s, i]));
@@ -108,35 +109,39 @@ export function encode(p) {
   }
 
   /** @type {number[]} */
-  const stacks = [];
+  const stackDepth = [], stackName = [], stackType = [];
   for (const node of order) {
     const frame = p.frame[node];
-    const name = /** @type {number} */ (rank.get(p.strings[frame >>> 3]));
-    stacks.push(depth[node], name << 3 | (frame & 7));
+    stackDepth.push(depth[node]);
+    stackName.push(/** @type {number} */ (rank.get(p.strings[frame >>> 3])));
+    stackType.push(frame & 7);
   }
 
-  const s = p.stack.length;
+  // by stack, the samples with none first: the node plus 1 as the difference with the last
+  const sample = Array.from(p.stack, (node, i) => i)
+    .sort((a, b) => (p.stack[a] < 0 ? 0 : position[p.stack[a]] + 1) - (p.stack[b] < 0 ? 0 : position[p.stack[b]] + 1));
+  let last = 0;
+  const differences = sample.map(i => {
+    const next = p.stack[i] < 0 ? 0 : position[p.stack[i]] + 1;
+    const d = next - last;
+    last = next;
+    return d;
+  });
+  const weight = p.weight;
+  const kind = sample.map(i => p.kind[i]);
+  const weights = p.weights.length === 1 && p.weights[0] === 1 ? {} : {weights: p.weights};
   return {
     version: VERSION,
     unit: p.unit,
-    weights: p.weights,
-    start: p.start,
-    end: p.end,
+    // what a version 5 document says only when it differs from what a reader assumes
+    ...weight ? {} : weights,
     strings,
-    stacks,
+    stacks: {depth: stackDepth, name: stackName, ...stackType.some(t => t !== 0) ? {type: stackType} : {}},
     samples: {
-      time: new Array(s).fill(0),
-      stack: Array.from(p.stack, node => node < 0 ? -1 : position[node]),
-      thread: Array.from(p.thread),
-      operation: Array.from(p.operation),
-      kind: Array.from(p.kind),
-      ...p.weight ? {weight: Array.from(p.weight)} : {},
-      ...p.objects ? {objects: Array.from(p.objects)} : {},
-    },
-    threads: p.threads.map(t => [rank.get(t.name), t.id]),
-    operations: {
-      name: [], start: [], duration: [], thread: [], detail: [], status: [],
-      failed: [], error: [], async: [], bytesIn: [], bytesOut: [],
+      stack: differences,
+      ...kind.some(k => k !== 0) ? {kind} : {},
+      ...weight ? {weight: sample.map(i => weight[i])} : {},
+      ...p.objects ? {objects: sample.map(i => /** @type {Float64Array} */ (p.objects)[i])} : {},
     },
   };
 }

@@ -49,9 +49,19 @@ test('a profile of version 4 loads as it is', async () => {
   assert.equal((await loadProfile(file(4))).unit, 'ms');
 });
 
+test('a profile of version 5 loads, what it leaves out read as its default', async () => {
+  const v5 = {version: 5, unit: 'count', strings: [' main', ' parse'], stacks: {depth: [0, 1], name: [0, 1]},
+              samples: {stack: [2, 0], weight: [3, 4]}};
+  const p = await loadProfile(new File([JSON.stringify(v5)], 'p5.json'));
+
+  assert.equal(p.unit, 'count');
+  assert.deepEqual([...p.stack], [1, 1]);
+  assert.deepEqual([weightOf(p, 0), weightOf(p, 1)], [3, 4]);
+});
+
 test('another version is refused in words for the user', async () => {
   await assert.rejects(loadProfile(file(2, 'old.json')), /old\.json is a profile of version 2/);
-  await assert.rejects(loadProfile(file(5, 'new.json')), /new\.json is a profile of version 5/);
+  await assert.rejects(loadProfile(file(6, 'new.json')), /new\.json is a profile of version 6.*versions 4 and 5/);
 });
 
 // recorded from fixtures/Work.java for 2.5 s with the profile settings (JDK 21), then reduced with `jfr scrub`

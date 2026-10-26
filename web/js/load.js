@@ -6,14 +6,14 @@
  * - A heap dump (`.hprof`) is parsed by jheap in a Web Worker (hprof/dump.js),
  *   a slice at a time: it is never read whole.
  * - Anything else is read whole, unzipped when gzipped: a JFR recording
- *   (jfr.js), a profile of jfr-web (version 4, or 3), a heap's profile as jheap
+ *   (jfr.js), a profile of jfr-web (version 5, 4 or 3), a heap's profile as jheap
  *   keeps it beside a dump (`<name>.jheap.json`), or collapsed stacks
  *   (collapsed.js).
  *
  * The kind says what the page shows: samples (time or allocations, by the
  * call paths that led there) or a heap (memory, by the references that hold it).
  */
-import {decode, VERSION} from './profile/profile.js';
+import {decode, VERSIONS} from './profile/profile.js';
 import {isCollapsed, readCollapsed} from './profile/collapsed.js';
 import {isJfr, readJfr} from './profile/jfr.js';
 import {anonymizer} from './model/anonymize.js';
@@ -180,8 +180,9 @@ function fromText(name, text) {
     throw new Error(`${name} is not a profile: it has no stacks or samples.`);
   if (doc.version === 3)
     doc = fromVersion3(doc);
-  if (doc.version !== VERSION)
-    throw new Error(`${name} is a profile of version ${doc.version}: this page reads version ${VERSION}.`);
+  if (!VERSIONS.includes(doc.version))
+    throw new Error(`${name} is a profile of version ${doc.version}: this page reads versions `
+                    + `${VERSIONS.join(' and ')}, and 3.`);
   // a heap's: the report of jheap's parse, or the objects of each path, which no profile of samples has
   if (doc.heap || Array.isArray(doc.samples?.objects))
     return {kind: 'heap', heap: heapOf(doc, doc.heap?.report ?? null), parse: null};

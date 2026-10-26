@@ -27,8 +27,11 @@ const doc = JSON.parse(bytes.toString('utf8'));
 const before = decodeHeap(doc);
 const loss = LEVELS[level];
 const after = reduce(before, loss);
-// what jheap keeps beside the profile, its report of the dump, goes along
-const json = JSON.stringify({...doc, ...encode(after), reduced: loss});
+// what a heap keeps beside the profile (jheap's report of the dump, duplicates) goes along
+const FORMAT = ['version', 'minor', 'unit', 'weights', 'start', 'end', 'strings', 'stacks', 'samples', 'threads',
+                'operations', 'meta'];
+const beside = Object.fromEntries(Object.entries(doc).filter(([key]) => !FORMAT.includes(key)));
+const json = JSON.stringify({...encode(after), ...beside, reduced: loss});
 writeFileSync(output, output.endsWith('.gz') ? gzipSync(json, {level: 9}) : json);
 console.log(`level ${level}: ${before.parent.length} nodes → ${after.parent.length}, ${json.length} bytes, `
             + `${gzipSync(json, {level: 9}).length} gzipped`);

@@ -30,7 +30,7 @@ allocations:
   which weigh different things, so both are read and a *Samples* choice in the top bar switches
   between the wall clock (Java and native samples, weighing time) and the allocations (weighing
   bytes). There are no operations in a recording read this way.
-- **[Flamepack](https://github.com/pcdv/flamepack)** (`.flamepack.json`, version 4, or 3):
+- **[Flamepack](https://github.com/pcdv/flamepack)** (`.flamepack.json`, version 5, 4 or 3):
   collapsed stacks packed with a string dictionary and enriched with each sample's time, thread and
   operation. [jfr-web](https://github.com/pcdv/jfr-web) writes it from its recordings, time or
   allocations (`GET /api/sessions/:id/profile`; a static export, `jfr-web export <file.jfr> -o <dir>`,

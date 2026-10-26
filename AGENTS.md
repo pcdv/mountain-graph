@@ -37,7 +37,7 @@ on its own line, so reformat only the file being edited.
 - `web/js/main.js` — wiring only: opening a file, its progress, the view of its kind, the file
   kept for a reload.
 - `web/js/load.js` — a picked or dropped file, told by its content, to what it holds: samples
-  (Flamepack, version 4 or 3; collapsed stacks; a JFR recording) or a heap (a dump, or the
+  (Flamepack, version 5, 4 or 3; collapsed stacks; a JFR recording) or a heap (a dump, or the
   Flamepack jheap keeps of one), gzipped or not.
 - `web/js/kinds/` — the view of each kind of file: `samples.js`, `heap.js`, and `page.js` for what
   they share. A new kind of file is a reader, a case in `load.js` and a module here.

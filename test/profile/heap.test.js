@@ -2,7 +2,7 @@
 import {describe, it} from 'node:test';
 import {strict as assert} from 'node:assert';
 import {encode, decodeHeap, stacksToProfile, stacksOf, FOLD} from '../../web/js/profile/heap.js';
-import {decode, VERSION, SYNTHETIC} from '../../web/js/profile/profile.js';
+import {decode, SYNTHETIC} from '../../web/js/profile/profile.js';
 
 /** @returns {Map<string, number>} */
 function stacks() {
@@ -14,12 +14,30 @@ function stacks() {
 }
 
 describe('encode', () => {
-  it('writes the version and the unit', () => {
-    const doc = encode(stacksToProfile(stacks()));
+  it('writes version 5 and the unit, and what a heap has not it leaves out', () => {
+    const doc = /** @type {any} */ (encode(stacksToProfile(stacks())));
 
-    assert.equal(doc.version, VERSION);
+    assert.equal(doc.version, 5);
     assert.equal(doc.unit, 'bytes');
-    assert.deepEqual(doc.weights, [1, 1]);
+    for (const member of ['weights', 'start', 'end', 'threads', 'operations'])
+      assert.equal(member in doc, false, member);
+    for (const column of ['time', 'thread', 'operation', 'kind', 'objects'])
+      assert.equal(column in doc.samples, false, column);
+    assert.equal('type' in doc.stacks, false);
+    assert.deepEqual(Object.keys(doc.stacks), ['depth', 'name']);
+  });
+
+  it('writes the samples sorted by stack, the differences small', () => {
+    const doc = /** @type {any} */ (encode(stacksToProfile(stacks())));
+
+    assert.ok(doc.samples.stack.every((/** @type {number} */ d) => d >= 0));
+    assert.equal(doc.samples.stack.length, 3);
+  });
+
+  it('writes the type of the frames only when one is not compiled', () => {
+    const doc = /** @type {any} */ (encode(stacksToProfile(new Map([['Root;(…);String', 5]]))));
+
+    assert.deepEqual(doc.stacks.type, [0, SYNTHETIC, 0]);
   });
 
   it('round-trips through the page decoder', () => {
@@ -27,9 +45,9 @@ describe('encode', () => {
     const after = decode(JSON.parse(JSON.stringify(encode(before))));
 
     assert.deepEqual([...frameNames(after)].sort(), [...frameNames(before)].sort());
-    assert.deepEqual([...after.weight ?? []], [...before.weight ?? []]);
+    assert.deepEqual([...after.weight ?? []].sort(), [...before.weight ?? []].sort());
     assert.equal(after.stack.length, before.stack.length);
-    assert.equal(after.threads[0].name, 'all');
+    assert.deepEqual(after.threads, [{name: '', id: 0}]);
   });
 
   it('keeps the paths and their weights', () => {
@@ -44,7 +62,6 @@ describe('encode', () => {
     const before = stacksToProfile(stacks(), counts);
     const after = decodeHeap(JSON.parse(JSON.stringify(encode(before))));
 
-    assert.deepEqual([...after.objects ?? []], [...before.objects ?? []]);
     assert.deepEqual([...after.objects ?? []].sort(), [1, 2, 3]);
   });
 
