@@ -1,8 +1,8 @@
 // @ts-check
 import {describe, it} from 'node:test';
 import {strict as assert} from 'node:assert';
-import {encode, decodeHeap, stacksToProfile, stacksOf} from '../../web/js/profile/heap.js';
-import {decode, VERSION} from '../../web/js/profile/profile.js';
+import {encode, decodeHeap, stacksToProfile, stacksOf, FOLD} from '../../web/js/profile/heap.js';
+import {decode, VERSION, SYNTHETIC} from '../../web/js/profile/profile.js';
 
 /** @returns {Map<string, number>} */
 function stacks() {
@@ -121,6 +121,13 @@ describe('the stacks of a profile, which the browser keeps as its document', () 
     const doc = structuredClone(encode(stacksToProfile(before)));
 
     assert.deepEqual([...stacksOf(decode(doc))], [...before]);
+  });
+
+  it('keeps a fold synthetic, as a reduction wrote it', () => {
+    const p = stacksToProfile(new Map([['Root;(…);String', 5]]));
+    const fold = [...p.frame].find(f => p.strings[f >>> 3] === FOLD);
+
+    assert.equal(/** @type {number} */ (fold) & 7, SYNTHETIC);
   });
 
   it('is much smaller than the paths, once there are many', () => {

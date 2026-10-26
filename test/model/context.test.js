@@ -46,4 +46,15 @@ describe('contextStacks', () => {
     assert.deepEqual([...out.keys()], ['Object ← Root']);
     assert.equal(out.get('Object ← Root'), 7);
   });
+
+  it('makes no peak of an end with a fold in it: the end is the fold', () => {
+    const out = contextStacks(new Map([
+      ['Root;Cache;(…)', 4],
+      ['Root;Cache;(…);Node', 3],
+      ['Root;(…);Cache;Node', 2],
+    ]), 2);
+
+    assert.deepEqual([...out.keys()].sort(), ['Root;(…);Node ← Cache', 'Root;Cache;(…)']);
+    assert.equal(out.get('Root;Cache;(…)'), 7);
+  });
 });

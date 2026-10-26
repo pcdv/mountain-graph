@@ -23,6 +23,7 @@ the project specifics. Repository hygiene — what a public repo may not contain
 | Tests | `npm test` (`node --test "test/**/*.test.js"`) |
 | Type check | `npx -p typescript tsc -p jsconfig.json` |
 | Update the heap parser | `node crates/jheap-wasm/install.mjs` in a jheap checkout beside this one, then `npm test` |
+| Reduce a heap's profile | `node tools/reduce.js [--level 0-2] [--check] <in> <out>` (`.gz` out gzips) |
 
 Node 21 or later, nothing to install. Run the tests and the type check before claiming a change
 works; both are expected to be green. There is no build step and no linter. `.prettierrc.json` sets Prettier as close
@@ -45,7 +46,9 @@ on its own line, so reformat only the file being edited.
 - `web/js/profile/` — the format readers (`profile.js`, `collapsed.js`, `jfr.js`; `heap.js` for a
   heap's profile, with its objects). No DOM.
 - `web/js/model/` — the analysis: peaks, callers, terrain, contours, divides, hues, timeline,
-  anonymizing; for a heap, ownership (the chains of holders) and context. No DOM, tested with Node.
+  anonymizing; for a heap, ownership (the chains of holders), context, and the reduction of a
+  profile to what is drawn (`reduce.js`). No DOM, tested with Node.
+- `tools/` — command lines over the modules: `reduce.js`.
 - `web/js/views/` — what draws: the 2D map, the 3D terrain, the peaks table. `palette.js` is the
   neutral module for constants that several views share.
 - `web/js/components/` — the panels floating over the view, the header's file menu, and the settings

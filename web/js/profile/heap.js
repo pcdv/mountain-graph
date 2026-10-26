@@ -15,7 +15,13 @@
  *
  * No DOM: tested with Node.
  */
-import {VERSION, COMPILED, decode, weightOf} from './profile.js';
+import {VERSION, COMPILED, SYNTHETIC, decode, weightOf} from './profile.js';
+
+/**
+ * The frame that stands for objects folded away by a reduction (model/reduce.js): synthetic,
+ * and kept so when stacks are written as text and read back.
+ */
+export const FOLD = '(…)';
 
 /** @typedef {import('./profile.js').Profile} Profile */
 
@@ -172,7 +178,7 @@ export function stacksToProfile(stacks, objects) {
 
     let node = -1;
     for (const name of path.split(';')) {
-      const f = intern(name) << 3 | COMPILED;
+      const f = intern(name) << 3 | (name === FOLD ? SYNTHETIC : COMPILED);
       const key = `${node}:${f}`;
       let child = nodes.get(key);
       if (child === undefined) {

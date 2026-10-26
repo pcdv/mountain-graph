@@ -214,3 +214,25 @@ either kind, told by their content, and shows the view of that kind (`kinds/`).
 - [ ] The shape, view and colour are remembered apart for samples and heaps: whether they should
   follow each other is open
 - Later: a dominator tree, and field names in the paths, both in jheap's parse first
+
+### Reduced for a gallery
+
+A heap's profile cut to what the page draws, for a gallery of real heaps opened in a demo page
+(`model/reduce.js`, `node tools/reduce.js [--level 0-2] [--check] <in> <out>`). Each view reads a
+path from one end: the owned view from the root, the shallow view from the object. A path keeps
+its start and its end as far as a view could draw them, the rest folded into a synthetic `(…)`.
+
+- [x] Two application servers' heaps, 2.3 and 3.1 MB of profile (69k and 68k nodes): 4k and 14k
+  nodes, 27 and 51 KB gzipped once in Flamepack 5 (Flamepack 5 alone: 193 and 188 KB), every
+  view with its same 10 peaks. `--check` compares the eight views the settings give
+- [x] Drawing the same to the pixel, for any setting, is possible and worthless: the file gets
+  no smaller. Almost every object holds others, so almost every node ends a path, and a fold
+  breaks the paths they share. What pays is folding together the siblings too light to draw, and
+  folding away the objects whose class, package and last frames cannot be a peak
+- [x] A fold is no object: the owned view does not walk into it, its bytes are its holder's;
+  the shallow view counts it as no class at the top, in a context too
+- [ ] The page says when a file is reduced (its `reduced` member): the totals of the table may
+  be low, folds show as ridges, an object unfolded in the panel lists a fold
+- [ ] Reduced in the page too: a "Save with loss…" beside the export
+- [ ] Profiles of samples: a reduction of their own, as the timeline and the filters read every
+  sample

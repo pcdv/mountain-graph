@@ -7,6 +7,7 @@
  *
  * No DOM: tested with Node.
  */
+import {FOLD} from '../profile/heap.js';
 
 /**
  * @param {Map<string, number>} stacks path → weight, root first, object last
@@ -22,6 +23,14 @@ export function contextStacks(stacks, context) {
   for (const [path, size] of stacks) {
     const frames = path.split(';');
     const n = Math.min(context, frames.length);
+    // what a reduction folded away makes no peak: an end with a fold in it is
+    // the fold, as an end with no class at the top
+    const fold = frames.lastIndexOf(FOLD);
+    if (fold >= frames.length - n) {
+      const key = frames.slice(0, fold + 1).join(';');
+      out.set(key, (out.get(key) ?? 0) + size);
+      continue;
+    }
     // the object first, then the holders outward: "SynchronizedMap ← Store"
     const label = frames.slice(-n).reverse().join(' ← ');
     const kept = frames.slice(0, frames.length - n);
