@@ -71,10 +71,10 @@ const ZOOM = 0.0014;
 export const VIEW_TUNING = {curve: 0.65, ...SEA_TUNING};
 
 /**
- * The flame graph standing behind the terrain: its foot as a share of the highest peak's height, and how far it
- * leans back from upright, toward the angle the camera looks down at by default (about 37°).
+ * How far the flame graph standing behind the terrain leans back from upright, toward the angle the camera
+ * looks down at by default (about 37°).
  */
-const PANEL_FOOT = 0.5, PANEL_LEAN = Math.PI / 6;
+const PANEL_LEAN = Math.PI / 6;
 
 /** How much of its colour the land keeps along the lines of the zones. */
 const ZONE_LINE = 0.6;
@@ -308,8 +308,8 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
      *          top, and the z of its top, the farthest back it goes; its foot is at the far edge of the terrain */
     const panelSpan = () => {
       const h = panel?.height() ?? 0;
-      // halfway up the highest peak, which would hide much of it standing on the plain, and out of the sea
-      const foot = Math.max(lift(t.top) * PANEL_FOOT, islands ? level * side : 0) + side / 100;
+      // on the plain, or the sea: a peak near the far edge may hide its foot, which is fine
+      const foot = (islands ? level * side : 0) + side / 100;
       return {foot, top: foot + h * Math.cos(PANEL_LEAN), back: -(H - 1) / 2 - side / 20 - h * Math.sin(PANEL_LEAN)};
     };
     // leaning back, facing the camera looking down on the terrain, its foot behind the terrain's far edge
@@ -453,14 +453,14 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       const flamed = h('input', {type: 'checkbox', checked: flaming, onchange: () => {
         viewpoint.panel = flaming = flamed.checked;
         stand();
-        // framed again, the panel in sight: it stands above the peaks, out of most views closer in
+        // framed again, the panel in sight: it stands behind the terrain, out of most views closer in
         if (flaming)
           home();
         redraw();
       }});
       // not a way of drawing the land, as islands and blocks are, but a second view beside it, with any of them
       knobs.push(field('Flame graph', h('label', {class: 'check'}, flamed, ' Behind the terrain'),
-                       'The whole profile as a flame graph, standing behind the terrain above its peaks: a frame '
+                       'The whole profile as a flame graph, standing behind the terrain: a frame '
                        + 'hovered on either is lit on both', 'flame-panel'));
     }
     if (knobsIn)
