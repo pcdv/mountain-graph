@@ -768,6 +768,11 @@ body:has(.landing)::before {
   transform: translateY(-1px);
 }
 
+/* the lone heap dump card spans both columns rather than leaving one empty */
+.landing .kind.heap {
+  grid-column: 1 / -1;
+}
+
 .landing .kind h3 {
   margin: 0 0 4px;
   font-size: 15px;
