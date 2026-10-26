@@ -57,11 +57,29 @@ export function heapSettings() {
 }
 
 /**
+ * The settings a profile of duplicate Strings is drawn with, whatever was chosen for a heap: a
+ * peak is a value, the last frame of its paths, ranked by its own weight, with the holders as
+ * slopes. They are not remembered, so that the next heap is drawn as it was left.
+ */
+const DUPLICATES = /** @type {const} */ ({basis: 'shallow', grain: 'method', context: 1, colour: 'height'});
+
+/**
+ * @param {HeapSettings} settings as chosen for a heap
+ * @returns {HeapSettings} those a profile of duplicate Strings is drawn with: the rest, the number of
+ *          peaks, the shape and the view, are as chosen
+ */
+export function asDuplicates(settings) {
+  return {...settings, ...DUPLICATES};
+}
+
+/**
  * @param {HeapSettings} settings the current ones
  * @param {(settings: HeapSettings) => void} changed given the new ones, each time one changes
+ * @param {boolean} [duplicates] the profile is of duplicate Strings: what ranks and gathers its peaks
+ *        is fixed, and not shown
  * @returns {import('./peak-controls.js').Controls} those that do not apply to the ranking chosen hidden
  */
-export function heapControls(settings, changed) {
+export function heapControls(settings, changed, duplicates = false) {
   const basis = segmented([['owned', 'What they hold', 'Which objects keep the memory alive. A chain of holders is one '
                                                         + 'peak, as deep as the object that actually retains the memory; '
                                                         + 'the slopes go down to what it holds'],
@@ -85,14 +103,17 @@ export function heapControls(settings, changed) {
   const framed = field('Context', context, 'How many frames make a peak: the class alone, or the class and the '
                        + 'objects holding it, so that a cache and the map it holds are one peak', 'context');
   const coloured = field('Colour', colour, COLOUR_TITLE, 'colour');
+  const ranked = field('Ranked by', basis, 'What a peak is: the objects that keep the memory alive, or the classes that take '
+                       + 'the most room themselves', 'basis');
 
   const update = () => {
     const n = count.valueAsNumber, c = coverage.valueAsNumber, k = Number(context.value);
     // what the ranking chosen does not use is not shown: it would change nothing
     const owned = basis.value === 'owned';
-    wrapped.hidden = !owned;
-    gathered.hidden = framed.hidden = owned;
-    coloured.hidden = owned || k !== 1;
+    ranked.hidden = duplicates;
+    wrapped.hidden = duplicates || !owned;
+    gathered.hidden = framed.hidden = duplicates || owned;
+    coloured.hidden = duplicates || owned || k !== 1;
     if (!Number.isInteger(n) || n < 1 || !(c > 0 && c <= 100) || !(k >= 1 && k <= 5))
       return;
     /** @type {HeapSettings} */
@@ -103,7 +124,7 @@ export function heapControls(settings, changed) {
                   colour: colour.value === 'package' ? 'package' : 'height'};
     for (const [key, value] of Object.entries(next))
       writeSetting(KEY + key, value);
-    changed(next);
+    changed(duplicates ? asDuplicates(next) : next);
   };
   for (const input of [basis, wrappers, grain, context, count, coverage, shape, view, colour])
     input.addEventListener('input', update);
@@ -111,8 +132,7 @@ export function heapControls(settings, changed) {
 
   return {view, settings: h('div', null,
     section('Peaks',
-      field('Ranked by', basis, 'What a peak is: the objects that keep the memory alive, or the classes that take the '
-                                + 'most room themselves', 'basis'),
+      ranked,
       wrapped,
       gathered,
       framed,

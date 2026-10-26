@@ -23,11 +23,26 @@ import {decodeHeap} from '../profile/heap.js';
  */
 
 /**
+ * What jheap says of a profile of duplicate Strings (`jheap <dump> dups --save`): its paths end
+ * at a value, each weighing what keeping one copy of that value would save, so the profile's
+ * bytes add up to `saving` and its objects to the copies.
+ *
+ * @typedef {object} HeapDuplicates
+ * @property {number} count values held in more than one copy, those the profile does not name included
+ * @property {number} copies Strings that hold them
+ * @property {number} bytes taken by those copies, Strings and arrays
+ * @property {number} saving bytes that keeping one copy of each would save
+ * @property {number} named values the profile names; the others share one frame
+ */
+
+/**
  * A heap, as the page shows it.
  *
  * @typedef {object} Heap
  * @property {HeapProfile} profile its paths, each with its bytes and its objects
  * @property {HeapStats} stats
+ * @property {HeapDuplicates | null} duplicates set when the profile is of duplicate Strings,
+ *           not of the heap: its peaks are values, not classes
  */
 
 /**
@@ -55,7 +70,19 @@ export function keptName(name) {
  */
 export function heapOf(doc, report) {
   const profile = decodeHeap(doc);
-  return {profile, stats: statsOf(profile, report)};
+  return {profile, stats: statsOf(profile, report), duplicates: duplicatesOf(doc.duplicates)};
+}
+
+/**
+ * @param {any} d the document's `duplicates` member, if it has one
+ * @returns {HeapDuplicates | null}
+ */
+function duplicatesOf(d) {
+  if (!d || typeof d !== 'object')
+    return null;
+  /** @param {string} key */
+  const n = key => Number.isFinite(d[key]) ? d[key] : 0;
+  return {count: n('count'), copies: n('copies'), bytes: n('bytes'), saving: n('saving'), named: n('named')};
 }
 
 /**

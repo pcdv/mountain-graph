@@ -35,10 +35,11 @@ import {floating, keepView, remembered} from './page.js';
  *
  * @param {import('./page.js').Page} page
  * @param {string} name of the file
- * @param {import('../hprof/dump.js').Heap} heap
+ * @param {import('../hprof/dump.js').Heap} heap when `duplicates` is set, the profile is of duplicate
+ *        Strings (jheap's `dups`): each peak is a value, held by the slopes, and what ranks them is fixed
  * @param {boolean} [restored] its parse was kept from the last time the page was open, not made now
  */
-export function showHeap(page, name, {profile: p, stats}, restored = false) {
+export function showHeap(page, name, {profile: p, stats, duplicates}, restored = false) {
   const {main, bar, strip} = page;
   page.relayout = () => {};
   main.classList.remove('stage');
@@ -57,7 +58,7 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
     const viewpoint = kept0.viewpoint;
     page.remember = () => keepView({open: [...unfolded], chosen: selection.chosen, tab: selection.tab, viewpoint});
 
-    replace(bar, ...summary(name, p, stats, restored));
+    replace(bar, ...summary(name, p, stats, restored, duplicates));
     main.classList.add('stage');
     let tuned = tuning();
     // the 3D view's own controls, which it puts there as it is built
@@ -127,7 +128,7 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
 
     /** @type {import('../components/heap-controls.js').HeapSettings | null} */
     let last = null;
-    const controls = heapControls(heapSettings(), show);
+    const controls = heapControls(heapSettings(), show, duplicates !== null);
     replace(page.tools, controls.view);
     replace(page.settings, controls.settings, terrain3d, folded('Fine tuning', knobs.element),
             folded('Anonymizing', anonymizeControls(() => page.reopen())));
@@ -145,9 +146,10 @@ export function showHeap(page, name, {profile: p, stats}, restored = false) {
  *
  * @param {string} name of the heap dump
  * @param {HeapProfile} p
+ * @param {import('../hprof/dump.js').HeapDuplicates | null} duplicates kept in the file, so that it opens as it did
  */
-function download(name, p) {
-  const doc = encode(p);
+function download(name, p, duplicates) {
+  const doc = {...encode(p), ...duplicates ? {duplicates} : {}};
   const blob = new Blob([JSON.stringify(doc)], {type: 'application/json'});
   const url = URL.createObjectURL(blob);
   const a = h('a', {href: url, download: `${name.replace(/(\.jheap|\.flamepack)?\.(hprof|json)(\.gz)?$/i, '')}.flamepack.json`});
@@ -162,24 +164,37 @@ function download(name, p) {
  * @param {HeapProfile} p
  * @param {HeapStats} stats
  * @param {boolean} restored
+ * @param {import('../hprof/dump.js').HeapDuplicates | null} duplicates
  * @returns {HTMLElement[]} its name and what it holds, for the header; its menu, with its export and the
  *          parse's report
  */
-function summary(name, p, stats, restored) {
+function summary(name, p, stats, restored, duplicates) {
   const unreachable = stats.totalSize > 0 ? Math.round(100 * stats.unreachableSize / stats.totalSize) : 0;
   // a profile saved without its parse's report has none to show
   const report = stats.report;
-  return fileMenu(name, `${stats.objectCount.toLocaleString()} objects, ${bytes(stats.totalSize)}`,
-    h('p', null,
+  // the weights of duplicates are what keeping one copy would save, not the heap's bytes: the heap's
+  // totals would be wrong for them
+  const holds = duplicates
+    ? h('p', null,
+      `${duplicates.count.toLocaleString()} duplicated values, held in ${duplicates.copies.toLocaleString()} `
+      + `copies that take ${bytes(duplicates.bytes)}: keeping one copy of each would save `
+      + `${bytes(duplicates.saving)}. A peak is a value, as high as what its copies waste; its slopes are `
+      + 'the objects that hold them.')
+    : h('p', null,
       `${stats.objectCount.toLocaleString()} objects, ${stats.classCount.toLocaleString()} classes, `
       + `${bytes(stats.totalSize)} total`
       + (stats.unreachableSize > 0 ? ` (${bytes(stats.unreachableSize)} unreachable, ${unreachable}%)` : '')
-      + '.'),
+      + '.');
+  const brief = duplicates
+    ? `${duplicates.count.toLocaleString()} duplicated values, ${bytes(duplicates.saving)} to save`
+    : `${stats.objectCount.toLocaleString()} objects, ${bytes(stats.totalSize)}`;
+  return fileMenu(name, brief,
+    holds,
     restored ? h('p', {class: 'muted'}, 'Its parse is kept in the browser: open the dump again to parse it again.') : null,
     h('div', {class: 'actions'},
       h('button', {type: 'button', class: 'button',
         title: 'Download every path as a Flamepack (.flamepack.json), which jfr-web reads too',
-        onclick: () => download(name, p)}, 'Export JSON'),
+        onclick: () => download(name, p, duplicates)}, 'Export JSON'),
       restored ? h('button', {type: 'button', class: 'button',
         title: 'Drops the parse kept in the browser: the page starts empty next time',
         onclick: () => forgetFile().then(() => location.reload())}, 'Forget the parse') : null),

@@ -49,6 +49,12 @@ And the memory of a JVM:
   to roughly 100 million objects. Beyond, or for a gzipped dump, the `jheap` command parses it
   and keeps its parse beside it, `<name>.jheap.json`, a Flamepack the page opens as it opens the
   dump. So does a heap the page exported, `<name>.flamepack.json`.
+- **Duplicate Strings**, from `jheap <dump> dups --save <name>.flamepack.json`: a peak is a value
+  held in several copies, as high as what keeping one copy would save, and its slopes are the
+  objects that hold the copies, out to the root. The page recognises the file by its `duplicates`
+  member and draws it as *Own size* with the class alone, so the settings that choose how peaks are
+  ranked and gathered are not shown. The file holds the Strings' text, the application's data, as a
+  heap dump does: it is no more shareable than the dump.
 
 A heap's peaks are ranked by what they hold, as the deepest chain of holders that still retains
 most of the weight. Clicking one opens a panel with what it **holds** and who it is **held by**:
