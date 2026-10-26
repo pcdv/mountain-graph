@@ -667,6 +667,19 @@ main {
   }
 }
 
+/* a landscape of the page's own making behind the landing, dimmed to the page's colour and blurred; the scale hides the blur's soft edge */
+body:has(.landing)::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(color-mix(in srgb, var(--bg) 55%, transparent), color-mix(in srgb, var(--bg) 55%, transparent)),
+    url('../img/landing.png') center / cover;
+  filter: saturate(1.2);
+  pointer-events: none;
+}
+
 .landing {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -679,6 +692,12 @@ main {
 .landing > p {
   grid-column: 1 / -1;
   margin: 0;
+  /* a halo of the page's colour, to read over the picture */
+  text-shadow: 0 0 2px var(--bg), 0 0 6px var(--bg);
+}
+
+.landing > p.muted {
+  color: var(--fg);
 }
 
 /* each kind of file has its tint: the time in blue, the memory in orange, Flamepack, which holds either, in violet */
@@ -737,7 +756,8 @@ main {
   border: 1px solid var(--line);
   border-left: 3px solid var(--tint, var(--accent));
   border-radius: 10px;
-  background: color-mix(in srgb, var(--tint, var(--accent)) 5%, transparent);
+  /* opaque, so the text does not compete with the picture behind */
+  background: color-mix(in srgb, var(--tint, var(--accent)) 5%, var(--surface));
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
