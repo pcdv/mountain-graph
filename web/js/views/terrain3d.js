@@ -40,6 +40,9 @@ const HIGHEST_SEA = 0.12;
 
 /** How much the distance changes per pixel of wheel: e^(100 ZOOM), about 15%, per notch of a mouse. */
 const ZOOM = 0.0014;
+/** Chrome and its kin: a full screen uses up the key press that asked for it, so the mouse is taken first. */
+const CHROMIUM = typeof navigator !== 'undefined'
+  && !!(/** @type {any} */ (navigator).userAgentData?.brands?.some((/** @type {{brand: string}} */ b) => /Chromium/.test(b.brand)));
 
 /**
  * Where the camera is, and the point it turns around, in units of the
@@ -755,10 +758,15 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
           document.exitPointerLock();
         else {
           // a game's screen: the whole display, the page's own bars and popups hidden (body.playing)
-          // the mouse is taken once the screen is: asked for in the middle of the switch, it is refused
-          const lock = () => canvas.requestPointerLock?.();
-          if (document.documentElement.requestFullscreen)
-            document.documentElement.requestFullscreen().then(lock, lock);
+          // Firefox takes the mouse once the screen is: asked for in the middle of the switch, it is refused.
+          // Chrome's full screen uses up the key press, and the mouse then needs another: it is taken first
+          const lock = () => canvas.requestPointerLock?.()?.catch?.(() => {});
+          const screen = () => document.documentElement.requestFullscreen?.();
+          if (CHROMIUM) {
+            lock();
+            screen()?.catch(() => {});
+          } else if (/** @type {any} */ (document.documentElement).requestFullscreen)
+            screen()?.then(lock, lock);
           else
             lock();
         }
