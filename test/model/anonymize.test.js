@@ -47,6 +47,27 @@ test('the strings the user lists are replaced, and left alone by the aliases', (
   assert.deepEqual(p.strings, ['com.x.bart.Bill.total', 'com.lisa.Bill.total']);
 });
 
+test('a string is replaced whatever its case, and the replacement keeps it', () => {
+  const p = anonymizer(rules({packages: false, replace: [{from: 'foo', to: 'bar'}]}))(
+    profile(['foo', 'Foo', 'FOO', 'foostuff', 'FooStuff', 'myFoo', 'FOOSTUFF', 'fOo.x']));
+  assert.deepEqual(p.strings, ['bar', 'Bar', 'BAR', 'barstuff', 'BarStuff', 'myBar', 'BARSTUFF', 'bar.x']);
+});
+
+test('the case of a replacement is followed from the text found, not from how the rule was written', () => {
+  const p = anonymizer(rules({packages: false, replace: [{from: 'HSoft', to: 'beta'}, {from: 'x', to: 'yz'}]}))(
+    profile(['HSoftPlugin', 'hsoftPlugin', 'HSOFT_VERSION', 'X', 'x']));
+  assert.deepEqual(p.strings, ['BetaPlugin', 'betaPlugin', 'BETA_VERSION', 'Yz', 'yz']);
+});
+
+test('what is found in the threads is replaced the same way', () => {
+  const p = anonymizer(rules({packages: false, replace: [{from: 'lib-core', to: 'project'}]}))({
+    strings: ['Cache worker for checksums (D:\\dev\\Lib-Core\\.gradle)'],
+    threads: [{name: 'Cache worker for checksums (D:\\dev\\Lib-Core\\.gradle)', id: 1}, {name: 'LIB-CORE worker', id: 2}],
+  });
+  assert.deepEqual(p.strings, ['Cache worker for checksums (D:\\dev\\Project\\.gradle)']);
+  assert.deepEqual(p.threads.map(t => t.name), ['Cache worker for checksums (D:\\dev\\Project\\.gradle)', 'PROJECT worker']);
+});
+
 test('only the strings to replace, no aliases', () => {
   const p = anonymizer(rules({packages: false, replace: [{from: 'secret', to: 'plain'}]}))(
     profile(['com.secret.Run.go', 'secret-op']));

@@ -2,8 +2,9 @@
 /**
  * Anonymizing a profile as it is imported, to share a screenshot or a recording's look without the names of
  * the code: the packages of qualified names (com.acme.billing.Invoice.total) are replaced, each by the same
- * alias wherever it stands (com.bart.lisa.Invoice.total), and the strings the user lists are replaced too.
- * Classes and methods keep their names: list them to replace them.
+ * alias wherever it stands (com.bart.lisa.Invoice.total), and the strings the user lists are replaced too, in
+ * the names and in the threads', whatever their case, which the replacement keeps: foo => bar makes Foo Bar and
+ * foostuff barstuff. Classes and methods keep their names: list them to replace them.
  *
  * No DOM: tested with Node.
  */
@@ -28,7 +29,8 @@ const DOMAINS = new Set(['com', 'org', 'net', 'io', 'edu', 'gov', 'dev', 'app', 
  * @property {number} depth how many package segments get aliases, after the domain: 2 for com.x.y, the
  *           sub-packages under keep their names
  * @property {string[]} keep packages that keep their name, with those under them (org.apache)
- * @property {{from: string, to: string}[]} replace strings to replace by others, wherever they are
+ * @property {{from: string, to: string}[]} replace strings to replace by others, wherever they are, whatever their
+ *           case, which the replacement keeps
  */
 
 /** A qualified name as a frame or a class has: nothing else gets aliases (not "GET /api/v1.2", not a thread's name). */
@@ -67,9 +69,9 @@ export function anonymizer(rules) {
     return p => p;
   const keep = new Set(rules.keep);
   const literals = rules.replace.filter(r => r.from !== '').sort((a, b) => b.from.length - a.from.length);
-  const found = literals.length > 0 ? new RegExp(literals.map(r => escape(r.from)).join('|'), 'g') : null;
-  /** @type {Map<string, string>} */
-  const to = new Map(literals.map(r => [r.from, r.to]));
+  const found = literals.length > 0 ? new RegExp(literals.map(r => escape(r.from)).join('|'), 'gi') : null;
+  /** @type {Map<string, string>} by the text in lower case: it is found whatever its case */
+  const to = new Map(literals.map(r => [r.from.toLowerCase(), r.to]));
   /** @type {Map<string, string>} the alias of each package segment */
   const aliases = new Map();
   /** @type {Set<string>} the segments the profiles have: an alias is none of them, or two packages would merge */
@@ -97,7 +99,7 @@ export function anonymizer(rules) {
     const list = [];
     if (found)
       for (const m of s.matchAll(found))
-        list.push({start: m.index, end: m.index + m[0].length, text: /** @type {string} */ (to.get(m[0]))});
+        list.push({start: m.index, end: m.index + m[0].length, text: withCase(m[0], to.get(m[0].toLowerCase()) ?? m[0])});
     if (rules.packages && QUALIFIED.test(s)) {
       const parts = s.split('.');
       let at = 0, kept = false, position = 0;
@@ -137,6 +139,24 @@ export function anonymizer(rules) {
             taken.add(part);
     return {...p, strings: p.strings.map(rename), threads: p.threads.map(t => ({...t, name: rename(t.name)}))};
   };
+}
+
+/**
+ * What replaces a text found in a name, in the case the text had: foo => bar gives bar for foo, BAR for FOO, and
+ * Bar for Foo or any text starting with a capital that is not all capitals (HSoft). A text of one letter is
+ * capitalized, not shouted.
+ *
+ * @param {string} found the text as the name has it
+ * @param {string} replacement as the user wrote it
+ * @returns {string}
+ */
+function withCase(found, replacement) {
+  const letters = found.replace(/[^\p{L}]/gu, '');
+  if (letters.length > 1 && letters === letters.toUpperCase() && letters !== letters.toLowerCase())
+    return replacement.toUpperCase();
+  if (letters !== '' && letters[0] !== letters[0].toLowerCase())
+    return replacement.charAt(0).toUpperCase() + replacement.slice(1);
+  return replacement;
 }
 
 /**

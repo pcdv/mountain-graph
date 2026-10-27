@@ -302,7 +302,10 @@
       (<code>com.acme.billing.Invoice</code> becomes <code>com.bart.lisa.Invoice</code>).</li>
     <li><b>Depth</b>: how many segments after the domain get aliases; 2 is <code>com.x.y</code>, what is under keeps its name.</li>
     <li><b>Packages kept</b>: these keep their names, with what is under them (<code>java</code>, <code>org.apache</code>).</li>
-    <li><b>Replace</b>: one per line, <code>text =&gt; replacement</code>, wherever the text is found in a name.</li>
+    <li><b>Replace</b>: one per line, <code>text =&gt; replacement</code>, wherever the text is found in a name or a
+      thread's name, whatever its case. The replacement follows the case found: <code>foo =&gt; bar</code> makes
+      <code>foo</code> <code>bar</code>, <code>Foo</code> <code>Bar</code>, <code>FOO</code> <code>BAR</code> and
+      <code>foostuff</code> <code>barstuff</code>.</li>
   </ul>
 </section>
 

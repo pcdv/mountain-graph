@@ -71,7 +71,7 @@ export function anonymizeControls(apply) {
     save();
   }}, rules.keep.join(' '));
   const replace = h('textarea', {rows: 4, spellcheck: false, placeholder: 'secret-project => project',
-                                 title: 'One per line: the text, =>, what replaces it, wherever it is found in a name',
+                                 title: 'One per line: the text, =>, what replaces it, wherever it is found in a name, whatever its case (foo => bar makes Foo Bar)',
                                  onchange: () => {
     rules.replace = replace.value.split('\n').flatMap(line => {
       const [from, ...to] = line.split('=>');
