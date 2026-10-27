@@ -76,7 +76,9 @@ document.addEventListener('visibilitychange', () => document.visibilityState ===
 let resizing;
 addEventListener('resize', () => {
   clearTimeout(resizing);
-  resizing = setTimeout(() => page.relayout(), 300);
+  // not in full screen, where one flies over the 3D view (F): built again, its canvas would go, and the
+  // mouse with it, which leaves the full screen; laid out again once it is left
+  resizing = setTimeout(() => document.fullscreenElement || page.relayout(), 300);
 });
 
 /**
