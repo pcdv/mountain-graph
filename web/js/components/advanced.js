@@ -8,7 +8,7 @@ import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {TUNING} from '../model/terrain.js';
 import {helpTip} from './help.js';
-import {VIEW_TUNING} from '../views/terrain3d.js';
+import {VIEW_TUNING, invertedMouse, invertMouse} from '../views/terrain3d.js';
 
 const KEY = 'mountaingraph.tuning';
 
@@ -115,9 +115,18 @@ export function advanced(changed) {
       input.value = out.textContent = String(defaults[knob.key]);
     }
     save();
+    inverting.checked = false;
+    invertMouse(false);
   }}, 'Reset the tuning');
+  // not a slider: read as the mouse moves, nothing to build again
+  const inverting = h('input', {type: 'checkbox', checked: invertedMouse(), onchange: () => invertMouse(inverting.checked)});
+  const invert = h('label', {class: 'invert', title: 'Looking around in 3D (key F): moving the mouse up looks down, as in a flight simulator'},
+                   inverting, ' Invert the mouse');
   return {element: h('div', {class: 'knobs'}, helpTip(h('div', {class: 'muted'}, 'The values the terrain is raised with'), 'tuning',
                              'Hover a slider for what it does; the help says it for all of them'),
-                     rows.map(r => r.row), reset),
-          fit: shown => rows.forEach(({knob, row}) => row.hidden = !knob.when(shown))};
+                     rows.map(r => r.row), invert, reset),
+          fit: shown => {
+            rows.forEach(({knob, row}) => row.hidden = !knob.when(shown));
+            invert.hidden = !inRelief(shown);
+          }};
 }

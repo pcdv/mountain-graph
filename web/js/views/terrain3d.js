@@ -13,6 +13,7 @@
  * view is first shown: the rest of the page does without it.
  */
 import {h, replace} from '../lib/dom.js';
+import {readSetting, writeSetting} from '../lib/settings.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
 import {FADE} from '../components/crossfade.js';
 import {field} from '../components/form.js';
@@ -69,6 +70,18 @@ const ZOOM = 0.0014;
 
 /** @type {ViewTuning} */
 export const VIEW_TUNING = {curve: 0.65, ...SEA_TUNING};
+
+const INVERT_KEY = 'mountaingraph.invertMouse';
+let inverted = readSetting(INVERT_KEY) === '1';
+
+/** @returns {boolean} whether the mouse moving up looks down when the mouse is locked to the view (key F) */
+export const invertedMouse = () => inverted;
+
+/** @param {boolean} on remembered */
+export function invertMouse(on) {
+  inverted = on;
+  writeSetting(INVERT_KEY, on ? '1' : '0');
+}
 
 /**
  * How far the flame graph standing behind the terrain leans back from upright, toward the angle the camera
@@ -362,6 +375,8 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     const camera = new T.PerspectiveCamera(40, 1, side / 100, side * 14);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    // looking around from where the camera stands, the mouse locked to the view (key F)
+    let looking = false;
     // not into the terrain, nor so close that zooming stops (it scales the distance), nor lost far away
     controls.minDistance = side / 10;
     controls.maxDistance = side * 4;
@@ -370,6 +385,8 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     controls.enableZoom = false;
     renderer.domElement.addEventListener('wheel', (/** @type {WheelEvent} */ e) => {
       e.preventDefault();
+      if (looking)
+        return;
       const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
       const offset = camera.position.clone().sub(controls.target);
       const distance = Math.max(controls.minDistance, Math.min(controls.maxDistance,
@@ -543,6 +560,18 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       // the camera can be moved up and back to its top
       const target = controls.target;
       const span = panel ? panelSpan() : null;
+      if (looking) {
+        // the camera itself is kept over the land, and not too high; the point it looks at follows
+        const p = camera.position;
+        const at = new T.Vector3(Math.max(-W / 2, Math.min(W / 2, p.x)), Math.max(side / 100, Math.min(side * 2, p.y)),
+                                 Math.max(span ? span.back : -H / 2, Math.min(H / 2, p.z)));
+        target.add(at.clone().sub(p));
+        p.copy(at);
+        viewpoint.position = p.toArray().map((/** @type {number} */ v) => v / side);
+        viewpoint.target = target.toArray().map((/** @type {number} */ v) => v / side);
+        render();
+        return;
+      }
       const x = Math.max(-W / 2, Math.min(W / 2, target.x));
       const z = Math.max(span ? span.back : -H / 2, Math.min(H / 2, target.z));
       const y = Math.max(0, Math.min(Math.max(lift(t.top), span?.top ?? 0), target.y));
@@ -665,7 +694,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       frame.hover(box ? named.get(box.frame.name) ?? -1 : at.node);
     };
     canvas.addEventListener('mousemove', (/** @type {MouseEvent} */ e) => {
-      if (e.buttons === 0)
+      if (e.buttons === 0 && !looking)
         hover(e);
     });
     canvas.addEventListener('mouseleave', () => {
@@ -679,10 +708,154 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       render();
     });
 
+    // flying: the arrows slide the view over the land, Q and E lower and raise it, Shift speeds up (W A S D too
+    // while looking around, as S would take a picture);
+    // the camera and the point it looks at move together, the 'change' handler keeping the point in bounds
+    /** @type {Set<string>} */
+    const held = new Set();
+    // by the place of the key, not its letter: W A S D are Z Q S D on an AZERTY keyboard
+    const KEYS = {KeyW: 'forward', ArrowUp: 'forward', KeyS: 'back', ArrowDown: 'back', KeyA: 'left', ArrowLeft: 'left',
+                  KeyD: 'right', ArrowRight: 'right', KeyQ: 'down', KeyE: 'up'};
+    let flying = 0, last = 0;
+    const fly = (/** @type {number} */ now) => {
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      const ahead = new T.Vector3().subVectors(controls.target, camera.position);
+      const right = new T.Vector3(-ahead.z, 0, ahead.x).normalize();
+      // looking around, forward goes where the view points, up or down; otherwise it stays level
+      if (!looking)
+        ahead.setY(0);
+      if (held.size && ahead.lengthSq() > 0) {
+        ahead.normalize();
+        const step = new T.Vector3();
+        if (held.has('forward')) step.add(ahead);
+        if (held.has('back')) step.sub(ahead);
+        if (held.has('right')) step.add(right);
+        if (held.has('left')) step.sub(right);
+        if (held.has('up')) step.y += 1;
+        if (held.has('down')) step.y -= 1;
+        // a crossing of the land in about 4 s, twice as fast with Shift
+        step.multiplyScalar(dt * side / 4 * (held.has('fast') ? 2 : 1));
+        camera.position.add(step);
+        controls.target.add(step);
+        camera.position.y = Math.max(side / 100, camera.position.y);
+        controls.update();
+      }
+      flying = held.size && !gone ? requestAnimationFrame(fly) : 0;
+    };
+    const keyed = (/** @type {KeyboardEvent} */ e) => {
+      const target = /** @type {HTMLElement | null} */ (e.target);
+      if (e.ctrlKey || e.metaKey || e.altKey || !canvas.isConnected
+          || target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)))
+        return;
+      if (e.key.toLowerCase() === 'f' && !e.repeat) {
+        e.preventDefault();
+        if (looking)
+          document.exitPointerLock();
+        else {
+          // a game's screen: the whole display, the page's own bars and popups hidden (body.playing)
+          // the mouse is taken once the screen is: asked for in the middle of the switch, it is refused
+          const lock = () => canvas.requestPointerLock?.();
+          if (document.documentElement.requestFullscreen)
+            document.documentElement.requestFullscreen().then(lock, lock);
+          else
+            lock();
+        }
+        return;
+      }
+      const move = KEYS[/** @type {keyof typeof KEYS} */ (e.code)];
+      // S and C take pictures: the places of W A S D are the keys' only while looking around, and then the
+      // letters are not heard by the page's shortcuts
+      if (!move || !looking && /^Key[WASD]$/.test(e.code))
+        return;
+      e.preventDefault();
+      e.stopPropagation();
+      held.add(move);
+      e.shiftKey ? held.add('fast') : held.delete('fast');
+      if (!flying) {
+        last = performance.now();
+        flying = requestAnimationFrame(fly);
+      }
+    };
+    const unkeyed = (/** @type {KeyboardEvent} */ e) => {
+      const move = KEYS[/** @type {keyof typeof KEYS} */ (e.code)];
+      if (move)
+        held.delete(move);
+      if (!e.shiftKey)
+        held.delete('fast');
+    };
+    addEventListener('keydown', keyed, true);
+    addEventListener('keyup', unkeyed);
+    const dropped = () => held.clear();
+    addEventListener('blur', dropped);
+    // the mouse turns the view where the camera stands; the browser frees the mouse on Escape
+    const LOOK = 0.0022, STRAIGHT = 0.996;
+    const locked = () => {
+      const on = document.pointerLockElement === canvas;
+      if (on === looking)
+        return;
+      looking = on;
+      document.body.classList.toggle('playing', on);
+      if (!on && document.fullscreenElement)
+        document.exitFullscreen().catch(() => {});
+      controls.enabled = !on;
+      tip.hidden = true;
+      frame.hover(-1);
+      if (on) {
+        controls.maxPolarAngle = Math.PI - 0.05;
+        return;
+      }
+      controls.maxPolarAngle = Math.PI / 2 - 0.05;
+      // back to turning around a point: one on the ground ahead, the view not left looking up
+      const d = new T.Vector3().subVectors(controls.target, camera.position);
+      const level = Math.hypot(d.x, d.z);
+      const length = d.length();
+      if (d.y > -0.2 * level)
+        d.y = -0.2 * level;
+      controls.target.copy(camera.position).add(d.setLength(length));
+      controls.update();
+    };
+    const looked = (/** @type {MouseEvent} */ e) => {
+      if (!looking)
+        return;
+      const d = new T.Vector3().subVectors(controls.target, camera.position);
+      d.applyAxisAngle(new T.Vector3(0, 1, 0), -e.movementX * LOOK);
+      const right = new T.Vector3(-d.z, 0, d.x).normalize();
+      const up = d.clone().applyAxisAngle(right, (inverted ? e.movementY : -e.movementY) * LOOK);
+      if (Math.abs(up.y) / up.length() < STRAIGHT)
+        d.copy(up);
+      controls.target.copy(camera.position).add(d);
+      controls.update();
+    };
+    // the mouse refused: no full screen to be left in
+    const refused = () => {
+      if (document.fullscreenElement)
+        document.exitFullscreen().catch(() => {});
+    };
+    document.addEventListener('pointerlockchange', locked);
+    document.addEventListener('pointerlockerror', refused);
+    // the full screen left by the browser's own key: the mouse goes with it
+    const unscreened = () => {
+      if (!document.fullscreenElement && looking)
+        document.exitPointerLock();
+    };
+    document.addEventListener('fullscreenchange', unscreened);
+    document.addEventListener('mousemove', looked);
+
     release = () => {
       if (disposed)
         return;
       disposed = gone = true;
+      removeEventListener('keydown', keyed, true);
+      removeEventListener('keyup', unkeyed);
+      removeEventListener('blur', dropped);
+      document.removeEventListener('pointerlockchange', locked);
+      document.removeEventListener('pointerlockerror', refused);
+      document.removeEventListener('fullscreenchange', unscreened);
+      document.body.classList.remove('playing');
+      document.removeEventListener('mousemove', looked);
+      if (document.pointerLockElement === canvas)
+        document.exitPointerLock();
       before();
       observer.disconnect();
       controls.dispose();

@@ -308,6 +308,18 @@ body:has(main.stage) #workspace {
   min-height: 0;
 }
 
+/* looking around in 3D (terrain3d.js): nothing but the view, and none of the popups */
+body.playing header,
+body.playing #timeline,
+body.playing #settings,
+body.playing .map-info,
+body.playing .map-dock,
+body.playing .flame-tip,
+body.playing .tip-bubble,
+body.playing .toast {
+  display: none !important;
+}
+
 main.stage {
   position: relative;
   flex: 1;
@@ -1219,6 +1231,11 @@ canvas.flame-canvas {
   grid-column: 1 / -1;
   margin-top: 6px;
   color: var(--muted);
+}
+
+.knobs .invert {
+  grid-column: 1 / -1;
+  margin-top: 8px;
 }
 
 .knobs input[type=range] {
