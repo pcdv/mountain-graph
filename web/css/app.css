@@ -693,7 +693,7 @@ body:has(.landing)::before {
   z-index: -1;
   background:
     linear-gradient(color-mix(in srgb, var(--bg) 55%, transparent), color-mix(in srgb, var(--bg) 55%, transparent)),
-    url('../img/landing.png') center / cover;
+    url('../img/landing.jpg') center / cover;
   filter: saturate(1.2);
   pointer-events: none;
 }
@@ -752,7 +752,7 @@ body:has(.landing)::before {
   padding: 0 7px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--tint) 14%, transparent);
-  color: var(--tint);
+  color: color-mix(in srgb, var(--tint) 55%, var(--fg));
   font-size: 11px;
   font-weight: 600;
   vertical-align: 2px;
@@ -769,7 +769,7 @@ body:has(.landing)::before {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--tint, var(--accent));
+  color: color-mix(in srgb, var(--tint, var(--accent)) 55%, var(--fg));
 }
 
 .landing a {
