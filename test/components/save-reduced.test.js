@@ -5,6 +5,9 @@ import {gunzipSync} from 'node:zlib';
 import {installFakeDom} from '../lib/fake-dom.js';
 import {stacksToProfile, decodeHeap} from '../../web/js/profile/heap.js';
 import {LEVELS, LEVEL_TEXT, DEFAULT_LEVEL} from '../../web/js/model/reduce.js';
+import * as thinning from '../../web/js/model/thin.js';
+import {readCollapsed} from '../../web/js/profile/collapsed.js';
+import {decode, tree} from '../../web/js/profile/profile.js';
 
 /** A heap with enough paths for a reduction to have something to fold. */
 function profile() {
@@ -113,6 +116,29 @@ describe('Save with loss', () => {
     const q = decodeHeap(doc);
     assert.ok(q.parent.length < p.parent.length);
     assert.equal(q.weight?.reduce((x, y) => x + y, 0), p.weight?.reduce((x, y) => x + y, 0));
+  });
+
+  it('reduces samples by their thin stacks, with the levels of that', async () => {
+    const {saveReduced, samplesReduction} = await import('../../web/js/components/save-reduced.js');
+    const lines = ['main;hot 500'];
+    for (let i = 0; i < 300; i++)
+      lines.push(`main;caller${i};cold${i} 1`);
+    const p = readCollapsed(lines.join('\n'));
+    const how = samplesReduction(p, {kind: 'cpu'});
+    const menu = saveReduced('app-cpu.fpk', p, {}, how);
+    assert.deepEqual(all(menu, 'option').map(o => o.text.trim()), thinning.LEVEL_TEXT.map(t => t.name));
+    const save = all(menu, 'button')[0];
+    all(menu, 'select')[0].value = String(thinning.DEFAULT_LEVEL);
+    open(menu);
+    await until(() => save.disabled === false);
+    assert.match(all(menu, 'p')[0].text, /nodes become .* gzipped.*\(thin stacks\)/);
+
+    const doc = /** @type {any} */ (how.reduced(thinning.DEFAULT_LEVEL));
+    assert.deepEqual(doc.reduced, thinning.LEVELS[thinning.DEFAULT_LEVEL]);
+    assert.equal(doc.meta.kind, 'cpu');
+    const q = decode(doc);
+    assert.ok(q.parent.length < p.parent.length);
+    assert.equal(tree(q, {all: true}).root.total, tree(p, {all: true}).root.total);
   });
 
   it('follows the level chosen', async () => {

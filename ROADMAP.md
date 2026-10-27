@@ -235,5 +235,11 @@ its start and its end as far as a view could draw them, the rest folded into a s
   be low, folds show as ridges, an object unfolded in the panel lists a fold
 - [x] Reduced in the page too: "Save with loss…" in a heap's file menu, a level to choose, the
   size said before the file is saved (not for a profile of duplicate Strings)
-- [ ] Profiles of samples: a reduction of their own, as the timeline and the filters read every
-  sample
+- [x] Profiles of samples: a reduction of their own, as the timeline and the filters read every
+  sample (`model/thin.js`). Keeping both ends of a path, as for a heap, saves nothing on a V8
+  profile of 6k samples: one sample is a ridge a few pixels wide. What is kept instead is what
+  takes time: a stack whose innermost node and whose top method (its class, its package) each hold
+  under 0.1, 0.3 or 1% of the samples is cut at its deepest caller wide enough, `(thin stacks)` on
+  top. tsc's 74 KB become 51, 37 or 26 KB, its peaks the same down to that share
+- [x] Any profile of samples saved as a Flamepack ("Export .fpk"), a JFR recording's too
+  (`profile/encode.js`)

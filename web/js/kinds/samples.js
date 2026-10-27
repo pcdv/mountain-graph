@@ -30,6 +30,9 @@ import {fileMenu} from '../components/file-menu.js';
 import {folded, section} from '../components/form.js';
 import {floating, keepView, remembered} from './page.js';
 import {helpTip} from '../components/help.js';
+import {saveReduced, samplesReduction} from '../components/save-reduced.js';
+import {encodeSamples} from '../profile/encode.js';
+import {saveFile, savedName} from '../save-file.js';
 
 /** @typedef {import('../profile/profile.js').Profile} Profile */
 /** @typedef {import('../load.js').Sampling} Sampling */
@@ -116,7 +119,7 @@ function display(page, name, samplings, which, saved) {
       strip.hidden = false;
     }
     // the view fills the window under the bar: there first, to take its shape from
-    replace(bar, ...summary(name, p), samplingChoice(samplings, which, to => {
+    replace(bar, ...summary(name, samplings[which]), samplingChoice(samplings, which, to => {
       writeSetting(SAMPLING, samplings[to].key);
       page.remember();
       display(page, name, samplings, to, focus);
@@ -226,11 +229,23 @@ function samplingChoice(samplings, which, choose) {
 }
 
 /**
+ * Downloads the samples shown as a Flamepack, whatever file they were read from.
+ *
  * @param {string} name of the file
- * @param {Profile} p
- * @returns {HTMLElement[]} its name and what it holds, for the header
+ * @param {Sampling} sampling
  */
-function summary(name, p) {
+function download(name, {profile, meta}) {
+  const doc = encodeSamples(profile, meta);
+  saveFile(savedName(name, '.fpk'), new Blob([JSON.stringify(doc)], {type: 'application/json'}));
+}
+
+/**
+ * @param {string} name of the file
+ * @param {Sampling} sampling the one shown
+ * @returns {HTMLElement[]} its name and what it holds, for the header; its menu, with its export
+ */
+function summary(name, sampling) {
+  const p = sampling.profile;
   let ms = 0;
   for (let i = 0; i < p.kind.length; i++)
     if (p.stack[i] >= 0)
@@ -245,5 +260,10 @@ function summary(name, p) {
         + `${p.operations.count.toLocaleString()} operations, recorded from ${p.start} `
         + `for ${(p.end / 1e9).toFixed(1)} s.`
       : `Collapsed stacks: ${p.kind.length.toLocaleString()} distinct, ${amount(ms, p.unit)}, `
-        + `${p.parent.length.toLocaleString()} stack nodes.`));
+        + `${p.parent.length.toLocaleString()} stack nodes.`),
+    h('div', {class: 'actions'},
+      h('button', {type: 'button', class: 'button',
+        title: 'Download these samples as a Flamepack (.fpk), which jfr-web reads too',
+        onclick: () => download(name, sampling)}, 'Export .fpk')),
+    saveReduced(name, p, {}, samplesReduction(p, sampling.meta)));
 }

@@ -40,6 +40,12 @@ allocations:
   `stackcollapse` scripts (`a;b;c 12` per line), which any profiler can produce. Their counts
   are samples, with no time, thread or operation.
 
+Whatever file samples were read from, the file's menu saves those shown as a Flamepack,
+**Export .fpk**, and has **Save with loss…**: the stacks of the methods hardly run, where the flame
+graph is as thin, cut at their deepest caller wide enough and ended in `(thin stacks)`, for a file
+half or a third the size. Every sample keeps its time, thread and weight, and the methods that take
+time their peaks; a method's total misses the thin stacks it is on.
+
 And the memory of a JVM:
 
 - **Heap dumps** (`.hprof`, as jmap and jcmd write them), parsed in the page by

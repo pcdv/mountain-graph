@@ -16,6 +16,7 @@
  * No DOM: tested with Node.
  */
 import {COMPILED, SYNTHETIC, decode, weightOf} from './profile.js';
+import {packStacks} from './encode.js';
 
 /** The version of the document `encode` writes. */
 const VERSION = 5;
@@ -54,75 +55,15 @@ export function decodeHeap(doc) {
  * @returns {object} the document, ready for JSON.stringify
  */
 export function encode(p) {
-  // names sorted, for their front coding: each renumbered by its rank
-  /** @type {Set<string>} */
-  const names = new Set();
-  for (let i = 0; i < p.frame.length; i++)
-    names.add(p.strings[p.frame[i] >>> 3]);
-  const sorted = [...names].sort();
-  /** @type {Map<string, number>} */
-  const rank = new Map(sorted.map((s, i) => [s, i]));
-
-  /** @type {string[]} */
-  const strings = [];
-  let previous = '';
-  for (const name of sorted) {
-    // 95 at most: the character stays printable ASCII
-    const max = Math.min(previous.length, name.length, 95);
-    let shared = 0;
-    while (shared < max && previous[shared] === name[shared])
-      shared++;
-    strings.push(String.fromCharCode(shared + 32) + name.substring(shared));
-    previous = name;
-  }
-
-  // nodes depth first, each renumbered by its position
-  const n = p.parent.length;
-  /** @type {number[][]} */
-  const children = Array.from({length: n}, () => []);
-  /** @type {number[]} */
-  const roots = [];
-  for (let i = 0; i < n; i++) {
-    if (p.parent[i] < 0)
-      roots.push(i);
-    else
-      children[p.parent[i]].push(i);
-  }
-  const position = new Int32Array(n);
-  const depth = new Int32Array(n);
-  /** @type {number[]} */
-  const order = [];
-  /** @type {number[]} */
-  const stack = [];
-  // pushed in reverse, to come out in order
-  for (let i = roots.length - 1; i >= 0; i--)
-    stack.push(roots[i]);
-  while (stack.length > 0) {
-    const node = /** @type {number} */ (stack.pop());
-    const parent = p.parent[node];
-    depth[node] = parent < 0 ? 0 : depth[parent] + 1;
-    position[node] = order.length;
-    order.push(node);
-    const cs = children[node];
-    for (let i = cs.length - 1; i >= 0; i--)
-      stack.push(cs[i]);
-  }
-
-  /** @type {number[]} */
-  const stackDepth = [], stackName = [], stackType = [];
-  for (const node of order) {
-    const frame = p.frame[node];
-    stackDepth.push(depth[node]);
-    stackName.push(/** @type {number} */ (rank.get(p.strings[frame >>> 3])));
-    stackType.push(frame & 7);
-  }
+  const {strings, stacks, position} = packStacks(p);
 
   // by stack, the samples with none first: the node plus 1 as the difference with the last
-  const sample = Array.from(p.stack, (node, i) => i)
-    .sort((a, b) => (p.stack[a] < 0 ? 0 : position[p.stack[a]] + 1) - (p.stack[b] < 0 ? 0 : position[p.stack[b]] + 1));
+  /** @param {number} i */
+  const node = i => p.stack[i] < 0 ? 0 : position[p.stack[i]];
+  const sample = Array.from(p.stack, (_, i) => i).sort((a, b) => node(a) - node(b));
   let last = 0;
   const differences = sample.map(i => {
-    const next = p.stack[i] < 0 ? 0 : position[p.stack[i]] + 1;
+    const next = node(i);
     const d = next - last;
     last = next;
     return d;
@@ -137,7 +78,7 @@ export function encode(p) {
     // what a version 5 document says only when it differs from what a reader assumes
     ...weight ? {} : weights,
     strings,
-    stacks: {depth: stackDepth, name: stackName, ...stackType.some(t => t !== 0) ? {type: stackType} : {}},
+    stacks,
     samples: {
       stack: differences,
       ...kind.some(k => k !== 0) ? {kind} : {},

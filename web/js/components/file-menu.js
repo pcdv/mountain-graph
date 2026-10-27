@@ -2,7 +2,7 @@
 /**
  * The file open, in the header: its name and a line of what it holds; a click
  * on the name drops a menu with all that is known of it and what can be done
- * with it (for a heap, its export and its parse's report).
+ * with it (its export, saved with loss or not; for a heap, its parse's report).
  */
 import {h} from '../lib/dom.js';
 

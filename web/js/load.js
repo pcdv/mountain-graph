@@ -30,6 +30,7 @@ import {heapOf, keptName, parseInWorker} from './hprof/dump.js';
  * @property {string} key stable, to remember the choice
  * @property {string} label for the user
  * @property {Profile} profile
+ * @property {object} [meta] what a Flamepack says of itself (its kind, what wrote it), kept when it is saved
  */
 
 /**
@@ -144,9 +145,9 @@ function fromRecording(name, bytes) {
   /** @type {Sampling[]} */
   const list = [];
   if (recording.wall)
-    list.push({key: 'wall', label: 'Wall clock', profile: recording.wall});
+    list.push({key: 'wall', label: 'Wall clock', profile: recording.wall, meta: {kind: 'wall'}});
   if (recording.alloc)
-    list.push({key: 'alloc', label: 'Allocations', profile: recording.alloc});
+    list.push({key: 'alloc', label: 'Allocations', profile: recording.alloc, meta: {kind: 'alloc'}});
   if (list.length === 0)
     throw new Error(`${name} is a recording with no execution, native or allocation samples.`);
   return list;
@@ -186,15 +187,16 @@ function fromText(name, text) {
   // a heap's: the report of jheap's parse, or the objects of each path, which no profile of samples has
   if (doc.heap || Array.isArray(doc.samples?.objects))
     return {kind: 'heap', heap: heapOf(doc, doc.heap?.report ?? null), parse: null};
-  return samples(decode(doc));
+  return samples(decode(doc), doc.meta);
 }
 
 /**
  * @param {Profile} profile
+ * @param {object} [meta] what the document says of itself
  * @returns {Loaded} the samples of a file that holds one kind
  */
-function samples(profile) {
-  return {kind: 'samples', samplings: [{key: 'samples', label: 'Samples', profile}]};
+function samples(profile, meta) {
+  return {kind: 'samples', samplings: [{key: 'samples', label: 'Samples', profile, ...meta ? {meta} : {}}]};
 }
 
 /**
