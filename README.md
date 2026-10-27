@@ -43,6 +43,12 @@ The same daemon in time, with the waits left out, which would otherwise be the h
 mesa is the compile, and the island labelled `1005078208.test` is jgitver's tag filter again, 2.3
 seconds of the worker's time.
 
+<img src="docs/mobile-3d.jpg" width="320" alt="The page on a phone: the TypeScript compiler's profile in 3D, the
+land in blocks, the flame graph standing behind it">
+
+The page works on a phone. Here is the TypeScript compiler again, the land in blocks: one finger
+turns it, and two fingers pinch to zoom.
+
 ## Trying it
 
 The page is published at https://pcdv.github.io/mountain-graph/, with a few profiles to open from
