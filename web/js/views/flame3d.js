@@ -18,7 +18,7 @@ import {ROW, paintFlame} from './flame-draw.js';
 const WIDTH = 1400, SCALE = 2;
 
 /** How opaque the panel is: the land and the sky show through a little, from either side. */
-const OPACITY = 0.85;
+const OPACITY = 0.65;
 
 /** The most levels shown: the texture's height has a limit; deeper frames are cut. */
 const LEVELS = Math.floor(4096 / SCALE / ROW);
