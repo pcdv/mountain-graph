@@ -45,7 +45,10 @@ seconds of the worker's time.
 
 ## Trying it
 
-Node 21 or later, with nothing to install:
+The page is published at https://pcdv.github.io/mountain-graph/, with a few profiles to open from
+its landing page. A file is read in the browser and goes nowhere else.
+
+To run it locally, Node 21 or later, with nothing to install:
 
 ```sh
 npm run serve   # http://localhost:8091/ (browsers refuse modules opened from file://)
