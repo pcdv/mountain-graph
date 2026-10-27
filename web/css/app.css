@@ -628,6 +628,12 @@ main {
   padding: 0;
 }
 
+/* a filled mark, GitHub's, not a stroked outline like the others */
+.button.solid svg {
+  fill: currentColor;
+  stroke: none;
+}
+
 .button svg {
   width: 16px;
   height: 16px;
