@@ -34,7 +34,7 @@ function document(duplicates = true) {
 }
 
 /** @param {object} doc */
-const file = doc => new File([JSON.stringify(doc)], 'dups.flamepack.json');
+const file = doc => new File([JSON.stringify(doc)], 'dups.fpk');
 
 describe('a profile of duplicate Strings', () => {
   it('opens as a heap that says it holds duplicates', async () => {

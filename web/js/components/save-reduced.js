@@ -63,7 +63,7 @@ export function saveReduced(name, p, beside = {}) {
   select.addEventListener('input', show);
   save.addEventListener('click', () => {
     if (chosen)
-      saveFile(savedName(name, '-reduced.flamepack.json.gz'), new Blob([chosen.file], {type: 'application/gzip'}));
+      saveFile(savedName(name, '-reduced.fpk.gz'), new Blob([chosen.file], {type: 'application/gzip'}));
   });
 
   const details = h('details', {class: 'save-reduced'},

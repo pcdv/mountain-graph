@@ -106,7 +106,7 @@ describe('Save with loss', () => {
       URL.createObjectURL = created;
     }
 
-    assert.equal(anchors[0].attributes.download, 'heap-reduced.flamepack.json.gz');
+    assert.equal(anchors[0].attributes.download, 'heap-reduced.fpk.gz');
     const doc = JSON.parse(gunzipSync(Buffer.from(await /** @type {Blob} */ (blob).arrayBuffer())).toString('utf8'));
     assert.equal(doc.version, 5);
     assert.deepEqual(doc.reduced, LEVELS[DEFAULT_LEVEL]);

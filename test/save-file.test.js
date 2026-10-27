@@ -7,14 +7,15 @@ import {gzip} from '../web/js/gzip.js';
 
 describe('savedName', () => {
   it('drops what says what the file was', () => {
-    assert.equal(savedName('heap.hprof', '.flamepack.json'), 'heap.flamepack.json');
-    assert.equal(savedName('heap.jheap.json', '.flamepack.json'), 'heap.flamepack.json');
-    assert.equal(savedName('heap.flamepack.json.gz', '-reduced.flamepack.json.gz'), 'heap-reduced.flamepack.json.gz');
-    assert.equal(savedName('Heap.HPROF', '.flamepack.json'), 'Heap.flamepack.json');
+    assert.equal(savedName('heap.hprof', '.fpk'), 'heap.fpk');
+    assert.equal(savedName('heap.jheap.json', '.fpk'), 'heap.fpk');
+    assert.equal(savedName('heap.fpk.gz', '-reduced.fpk.gz'), 'heap-reduced.fpk.gz');
+    assert.equal(savedName('heap.flamepack.json.gz', '-reduced.fpk.gz'), 'heap-reduced.fpk.gz');
+    assert.equal(savedName('Heap.HPROF', '.fpk'), 'Heap.fpk');
   });
 
   it('leaves another name as it is', () => {
-    assert.equal(savedName('dump', '.flamepack.json'), 'dump.flamepack.json');
+    assert.equal(savedName('dump', '.fpk'), 'dump.fpk');
   });
 });
 

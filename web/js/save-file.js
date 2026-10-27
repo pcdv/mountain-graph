@@ -10,7 +10,7 @@ import {h} from './lib/dom.js';
  * @returns {string} the name without what says what it was: `heap.jheap.json.gz` is `heap`
  */
 export function savedName(name, suffix) {
-  return `${name.replace(/(\.jheap|\.flamepack)?\.(hprof|json)(\.gz)?$/i, '')}${suffix}`;
+  return `${name.replace(/(\.jheap|\.flamepack)?\.(hprof|json|fpk)(\.gz)?$/i, '')}${suffix}`;
 }
 
 /**

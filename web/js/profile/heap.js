@@ -133,6 +133,7 @@ export function encode(p) {
   return {
     version: VERSION,
     unit: p.unit,
+    meta: {kind: 'heap'},
     // what a version 5 document says only when it differs from what a reader assumes
     ...weight ? {} : weights,
     strings,

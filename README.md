@@ -30,7 +30,7 @@ allocations:
   which weigh different things, so both are read and a *Samples* choice in the top bar switches
   between the wall clock (Java and native samples, weighing time) and the allocations (weighing
   bytes). There are no operations in a recording read this way.
-- **[Flamepack](https://github.com/pcdv/flamepack)** (`.flamepack.json`, version 5, 4 or 3):
+- **[Flamepack](https://github.com/pcdv/flamepack)** (`.fpk`, version 5, 4 or 3):
   collapsed stacks packed with a string dictionary and enriched with each sample's time, thread and
   operation. [jfr-web](https://github.com/pcdv/jfr-web) writes it from its recordings, time or
   allocations (`GET /api/sessions/:id/profile`; a static export, `jfr-web export <file.jfr> -o <dir>`,
@@ -48,12 +48,12 @@ And the memory of a JVM:
   seconds, the page responsive throughout. WebAssembly addresses 4 GiB, so the page reads heaps up
   to roughly 100 million objects. Beyond, or for a gzipped dump, the `jheap` command parses it
   and keeps its parse beside it, `<name>.jheap.json`, a Flamepack the page opens as it opens the
-  dump. So does a heap the page exported, `<name>.flamepack.json`. The file's menu also has
+  dump. So does a heap the page exported, `<name>.fpk`. The file's menu also has
   **Save with loss…**: the heap reduced to what the page draws, for a gallery or a report, in a
-  `<name>-reduced.flamepack.json.gz` a few percent of the dump's profile, at a level of loss that
+  `<name>-reduced.fpk.gz` a few percent of the dump's profile, at a level of loss that
   is chosen and its size said before the file is saved (`tools/reduce.js` does the same from a
   terminal).
-- **Duplicate Strings**, from `jheap <dump> dups --save <name>.flamepack.json`: a peak is a value
+- **Duplicate Strings**, from `jheap <dump> dups --save <name>.fpk`: a peak is a value
   held in several copies, as high as what keeping one copy would save, and its slopes are the
   objects that hold the copies, out to the root. The page recognises the file by its `duplicates`
   member and draws it as *Own size* with the class alone, so the settings that choose how peaks are

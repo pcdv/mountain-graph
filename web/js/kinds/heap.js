@@ -165,7 +165,7 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
  */
 function download(name, p, duplicates) {
   const doc = {...encode(p), ...duplicates ? {duplicates} : {}};
-  saveFile(savedName(name, '.flamepack.json'), new Blob([JSON.stringify(doc)], {type: 'application/json'}));
+  saveFile(savedName(name, '.fpk'), new Blob([JSON.stringify(doc)], {type: 'application/json'}));
 }
 
 /**
@@ -202,7 +202,7 @@ function summary(name, p, stats, restored, duplicates) {
     restored ? h('p', {class: 'muted'}, 'Its parse is kept in the browser: open the dump again to parse it again.') : null,
     h('div', {class: 'actions'},
       h('button', {type: 'button', class: 'button',
-        title: 'Download every path as a Flamepack (.flamepack.json), which jfr-web reads too',
+        title: 'Download every path as a Flamepack (.fpk), which jfr-web reads too',
         onclick: () => download(name, p, duplicates)}, 'Export JSON'),
       restored ? h('button', {type: 'button', class: 'button',
         title: 'Drops the parse kept in the browser: the page starts empty next time',

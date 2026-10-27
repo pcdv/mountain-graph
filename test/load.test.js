@@ -231,7 +231,7 @@ describe('a heap dump', () => {
     const {heap: parsed} = await loadHeap(picked(dump, 'heap.hprof'), {parse: inThread(dump)});
     const saved = JSON.stringify(encode(parsed.profile));
 
-    const {heap: {stats}} = await loadHeap(new File([saved], 'heap.flamepack.json'));
+    const {heap: {stats}} = await loadHeap(new File([saved], 'heap.fpk'));
 
     assert.equal(stats.report, null);
     assert.equal(stats.totalSize, 8);
