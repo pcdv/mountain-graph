@@ -19,7 +19,7 @@ Line endings stay LF.
 
 | What | Command |
 |---|---|
-| Serve the page | `npm run serve` → http://localhost:8091/ (`node serve.js <port>` for another port) |
+| Serve the page | `npm run serve` → http://localhost:8091/ (`node serve.js <port> [host]` for another port, or `0.0.0.0` as the host to open it from a phone) |
 | Tests | `npm test` (`node --test "test/**/*.test.js"`) |
 | Type check | `npx -p typescript tsc -p jsconfig.json` |
 | Update the heap parser | `node crates/jheap-wasm/install.mjs` in a jheap checkout beside this one, then `npm test` |
