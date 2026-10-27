@@ -7,13 +7,13 @@ is the time spent?". A heap dump is drawn the same way: the objects that hold th
 peaks, the references to them the slopes.
 
 Created 2026-10-18 out of jfr-web, and follows jfr-web's rules (which follow flak's). The heap
-dumps came from heap-landscape on 2026-10-24 (its commit `bbda976`, a private repository now
-retired), whose parser had become [jheap](../jheap)'s. The plan and
-the findings so far live in `ROADMAP.md` — keep them there rather than in commit messages.
+dumps came from heap-landscape on 2026-10-24, whose parser had become [jheap](../jheap)'s. The
+plan and the findings so far live in `ROADMAP.md` — keep them there rather than in commit
+messages.
 
-The user's cross-project rules are in `~/.pi/agent/AGENTS.md`; they apply here too. This file adds
-the project specifics. Repository hygiene — what a public repo may not contain, line endings,
-`samples/`, visibility and pushing — is in that personal file as well.
+The repository is public, and the page is published from it (below): nothing internal goes in a
+file, a test, a screenshot or a commit message, and a public history cannot be rewritten after.
+Line endings stay LF.
 
 ## Commands
 
@@ -23,6 +23,7 @@ the project specifics. Repository hygiene — what a public repo may not contain
 | Tests | `npm test` (`node --test "test/**/*.test.js"`) |
 | Type check | `npx -p typescript tsc -p jsconfig.json` |
 | Update the heap parser | `node crates/jheap-wasm/install.mjs` in a jheap checkout beside this one, then `npm test` |
+| Publish | a push to `master` runs `.github/workflows/pages.yml`: the tests, then `web/` as it is to https://pcdv.github.io/mountain-graph/ |
 | Reduce a heap's profile | `node tools/reduce.js [--level 0-2] [--check] <in> <out>` (`.gz` out gzips) |
 
 Node 21 or later, nothing to install. Run the tests and the type check before claiming a change

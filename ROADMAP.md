@@ -181,8 +181,12 @@ checked: exact figures, one path followed precisely.
     browser): the peaks, their places and their scale are those of the whole recording, so that each
     mountain shrinks or grows where it stands, and two intervals compare by eye. A peak that did not
     run in the interval is left out of the map and shown with 0 in the table
+- [x] The format named, Flamepack, and its specification taken out of jfr-web's docs
+  ([flamepack](https://github.com/pcdv/flamepack))
+- [x] A gallery on the landing page (`web/gallery/`, `index.json`): a TypeScript compiler run, a Vite
+  build, and the allocations of IntelliJ IDEA and of a Gradle daemon, names anonymized; and the page
+  published on GitHub Pages by a workflow, after the tests
 - Ranges by package or by pattern
-- The format named, and its specification taken out of jfr-web's docs
 - A view in jfr-web, if it proves itself
 
 ## Heap dumps
@@ -248,3 +252,5 @@ its start and its end as far as a view could draw them, the rest folded into a s
   JDK's frames are half the samples, and the file goes from 91 KB to 40 KB
 - [x] Any profile of samples saved as a Flamepack ("Export .fpk"), a JFR recording's too
   (`profile/encode.js`)
+- [ ] A reduced heap in the gallery (the landing page already has the `memory` kind for it): needs a
+  heap whose names can be published
