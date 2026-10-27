@@ -561,10 +561,11 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       const target = controls.target;
       const span = panel ? panelSpan() : null;
       if (looking) {
-        // the camera itself is kept over the land, and not too high; the point it looks at follows
-        const p = camera.position;
-        const at = new T.Vector3(Math.max(-W / 2, Math.min(W / 2, p.x)), Math.max(side / 100, Math.min(side * 2, p.y)),
-                                 Math.max(span ? span.back : -H / 2, Math.min(H / 2, p.z)));
+        // the camera itself is kept as near the land as the view turning around it can be, above the ground: it
+        // starts flying where it stood, and can go back out; the point it looks at follows
+        const p = camera.position, reach = controls.maxDistance;
+        const level = Math.hypot(p.x, p.z), inside = level > reach ? reach / level : 1;
+        const at = new T.Vector3(p.x * inside, Math.max(side / 100, Math.min(reach, p.y)), p.z * inside);
         target.add(at.clone().sub(p));
         p.copy(at);
         viewpoint.position = p.toArray().map((/** @type {number} */ v) => v / side);
