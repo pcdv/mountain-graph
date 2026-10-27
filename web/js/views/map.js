@@ -14,6 +14,7 @@ import {divides} from '../model/divides.js';
 import {zones} from '../model/zones.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
+import {pinch} from './pinch.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
 /** @typedef {import('../profile/profile.js').Frame} Frame */
@@ -230,28 +231,43 @@ export function mapView(t, trees, selection, viewpoint, hues = null) {
     camera.y = Math.max(0, Math.min(t.height, camera.y));
   };
 
-  canvas.addEventListener('wheel', e => {
-    e.preventDefault();
-    // the cell under the mouse stays under it
-    const x = (e.offsetX - left) / scale, y = (e.offsetY - top) / scale;
-    const k = Math.max(ZOOM[0], Math.min(ZOOM[1], camera.k * Math.exp(-e.deltaY * 0.002)));
+  /** zoomed by a factor about a point of the canvas: the cell under it stays under it */
+  const zoomAt = (/** @type {number} */ factor, /** @type {number} */ px, /** @type {number} */ py) => {
+    const x = (px - left) / scale, y = (py - top) / scale;
+    const k = Math.max(ZOOM[0], Math.min(ZOOM[1], camera.k * factor));
     const next = scale * k / camera.k;
-    camera.x = x - (e.offsetX - canvas.clientWidth / 2) / next;
-    camera.y = y - (e.offsetY - canvas.clientHeight / 2) / next;
+    camera.x = x - (px - canvas.clientWidth / 2) / next;
+    camera.y = y - (py - canvas.clientHeight / 2) / next;
     camera.k = k;
     clamp();
     redraw();
+  };
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    zoomAt(Math.exp(-e.deltaY * 0.002), e.offsetX, e.offsetY);
   }, {passive: false});
+
+  // two fingers zoom about their middle; the press they began as is no click, nor a drag
+  const fingers = pinch(canvas, (ratio, x, y) => {
+    if (drag)
+      drag.moved = true;
+    zoomAt(ratio, x, y);
+  });
 
   // a press moved more than a few px is a drag, not a click
   let drag = /** @type {{x: number, y: number, moved: boolean} | null} */ (null);
   canvas.addEventListener('pointerdown', e => {
-    drag = {x: e.clientX, y: e.clientY, moved: false};
+    drag = {x: e.clientX, y: e.clientY, moved: fingers.touches() > 1};
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', e => {
     if (!drag) {
       frame.hover(nodeAt(e));
+      return;
+    }
+    if (fingers.pinching()) {
+      drag.x = e.clientX;
+      drag.y = e.clientY;
       return;
     }
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;

@@ -24,6 +24,7 @@ import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST} from './blocks3d.js';
 import {sea, sky, shores, bump, landColour, bedColour, LEVEL, DEEP, HAZE, SUN, SEA_TUNING} from './sea3d.js';
 import {flamePanel} from './flame3d.js';
+import {pinch} from './pinch.js';
 import {tipOf, placeTip} from './flame-draw.js';
 
 /** @typedef {import('../model/terrain.js').Terrain} Terrain */
@@ -386,17 +387,21 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     // zoomed here in proportion to the wheel's delta: the controls zoom a whole step per event, and a
     // touchpad sends dozens of small ones per gesture
     controls.enableZoom = false;
+    /** @param {number} factor what the distance to the target is multiplied by */
+    const zoom = factor => {
+      const offset = camera.position.clone().sub(controls.target);
+      const distance = Math.max(controls.minDistance, Math.min(controls.maxDistance, offset.length() * factor));
+      camera.position.copy(controls.target).add(offset.setLength(distance));
+      controls.update();
+    };
     renderer.domElement.addEventListener('wheel', (/** @type {WheelEvent} */ e) => {
       e.preventDefault();
       if (looking)
         return;
-      const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
-      const offset = camera.position.clone().sub(controls.target);
-      const distance = Math.max(controls.minDistance, Math.min(controls.maxDistance,
-                                                               offset.length() * Math.exp(delta * ZOOM)));
-      camera.position.copy(controls.target).add(offset.setLength(distance));
-      controls.update();
+      zoom(Math.exp(e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1) * ZOOM));
     }, {passive: false});
+    // two fingers moving apart come closer: the controls' own pinch went with their zoom
+    pinch(renderer.domElement, ratio => !looking && zoom(1 / ratio));
 
     const labels = h('div', {class: 'peak-labels'});
     // the peaks, then the trails halfway, named after the caller they share

@@ -47,7 +47,7 @@ const KEY = 'mountaingraph.peaks.';
 export const SHAPES = [['massif', 'Massif'], ['ridges', 'Ridges'], ['ranges', 'Ranges']];
 
 /** @type {[string, string, string?][]} */
-export const VIEWS = [['map', '2D', 'A topographic map, zoomed with the wheel and moved by dragging'],
+export const VIEWS = [['map', '2D', 'A topographic map, zoomed with the wheel or a pinch and moved by dragging'],
                       ['3d', '3D', 'A terrain in 3D, turned with the mouse'],
                       ['flame', 'Flame', 'A flame graph: the whole profile, a frame as wide as its time, zoomed by clicking']];
 
