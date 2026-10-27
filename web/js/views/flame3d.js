@@ -70,6 +70,8 @@ export function flamePanel(T, root, width, anisotropy) {
   const geometry = new T.PlaneGeometry(width, full);
   const mesh = new T.Mesh(geometry, material);
   mesh.position.y = full / 2;
+  // after the water, which writes no depth either (sea3d.js): drawn before, the water behind showed over it
+  mesh.renderOrder = 2;
 
   // the rows shown: from the level on the panel's foot, as many as `rows`
   let first = 0, rows = most;
