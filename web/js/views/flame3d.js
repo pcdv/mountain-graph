@@ -17,6 +17,9 @@ import {ROW, paintFlame} from './flame-draw.js';
 /** The width the graph is painted at, px, and how many texture pixels each has: sharp when near. */
 const WIDTH = 1400, SCALE = 2;
 
+/** How opaque the panel is: the land and the sky show through a little, from either side. */
+const OPACITY = 0.85;
+
 /** The most levels shown: the texture's height has a limit; deeper frames are cut. */
 const LEVELS = Math.floor(4096 / SCALE / ROW);
 
@@ -59,8 +62,10 @@ export function flamePanel(T, root, width, anisotropy) {
   const texture = new T.CanvasTexture(canvas);
   texture.colorSpace = T.SRGBColorSpace;
   texture.anisotropy = anisotropy;
-  // unlit and out of the haze: it reads the same from any side and distance
-  const material = new T.MeshBasicMaterial({map: texture, transparent: true, fog: false, toneMapped: false});
+  // unlit and out of the haze: it reads the same from any distance; seen from behind it is mirrored, its text
+  // reversed, but there. What a ray meets there is what is drawn at that place, mirrored too
+  const material = new T.MeshBasicMaterial({map: texture, transparent: true, fog: false, toneMapped: false,
+                                            side: T.DoubleSide, opacity: OPACITY, depthWrite: false});
   const full = width * high / WIDTH;
   const geometry = new T.PlaneGeometry(width, full);
   const mesh = new T.Mesh(geometry, material);
