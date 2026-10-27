@@ -1,0 +1,28 @@
+{
+  "profiles": [
+    {
+      "file": "tsc-20261027-cpu.fpk.gz",
+      "title": "TypeScript compiler",
+      "description": "tsc type-checking a React front end: a deep tree of checker and parser calls, with garbage collection as its widest peak.",
+      "kind": "time"
+    },
+    {
+      "file": "vite-20261027-cpu.fpk.gz",
+      "title": "Vite build",
+      "description": "vite bundling the same front end. Its bundler runs as native code, so only the JavaScript around it shows: a small, shallow profile.",
+      "kind": "time"
+    },
+    {
+      "file": "intellij-20261021-alloc.fpk.gz",
+      "title": "IntelliJ IDEA allocations",
+      "description": "IntelliJ IDEA allocating 200 GiB in 52 seconds, 91% of it under Kotlin coroutines: continuations and flow operators, with one class, CancellableContinuationImpl, at 52 GiB.",
+      "kind": "allocations"
+    },
+    {
+      "file": "gradle-20261027-alloc.fpk.gz",
+      "title": "Gradle daemon allocations",
+      "description": "A Gradle daemon allocating 12.6 GiB in 154 seconds on a Java build, its names anonymized: char[] alone is 5.8 GiB, 97% of it jgitver working out the version from the git tags.",
+      "kind": "allocations"
+    }
+  ]
+}

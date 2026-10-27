@@ -692,6 +692,21 @@ body:has(.landing)::before {
   pointer-events: none;
 }
 
+/* the choice between the page that reads files and the gallery */
+.landing-choice {
+  display: flex;
+  justify-content: center;
+  margin: 24px 16px -16px;
+}
+
+.landing-choice .segmented {
+  width: 260px;
+}
+
+.landing[hidden] {
+  display: none;
+}
+
 .landing {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -783,6 +798,16 @@ body:has(.landing)::before {
 /* the lone heap dump card spans both columns rather than leaving one empty */
 .landing .kind.heap {
   grid-column: 1 / -1;
+}
+
+/* a profile of the gallery is a card that opens it, and does not span the grid whatever its tint */
+.landing button.kind.gallery {
+  grid-column: auto;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .landing .kind h3 {

@@ -36,6 +36,9 @@ on its own line, so reformat only the file being edited.
   the only dependency, loaded when the 3D view is first shown.
 - `web/js/main.js` — wiring only: opening a file, its progress, the view of its kind, the file
   kept for a reload.
+- `web/gallery/` — profiles to try, listed in `index.json` (file, title, description, kind) and shown
+  as cards on the landing page (`web/js/landing.js`), which fetches one and opens it as a file.
+  Public: nothing internal in them (`test/gallery.test.js` checks that each opens, not what it holds).
 - `web/js/load.js` — a picked or dropped file, told by its content, to what it holds: samples
   (Flamepack, version 5, 4 or 3; collapsed stacks; a JFR recording) or a heap (a dump, or the
   Flamepack jheap keeps of one), gzipped or not.

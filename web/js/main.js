@@ -131,6 +131,24 @@ async function open(file, again = false) {
 }
 
 /**
+ * Opens a profile of the gallery, fetched as the file it is.
+ *
+ * @param {import('./landing.js').GalleryEntry} entry
+ */
+async function openGallery(entry) {
+  clear(`Loading ${entry.title}…`);
+  try {
+    const response = await fetch(new URL(`../gallery/${entry.file}`, import.meta.url));
+    if (!response.ok)
+      throw new Error(`${entry.file}: ${response.status} ${response.statusText}`);
+    await open(new File([await response.blob()], entry.file));
+  }
+  catch (e) {
+    replace(page.main, h('p', {class: 'error'}, /** @type {Error} */ (e).message));
+  }
+}
+
+/**
  * Shows the parse kept of a dump, without parsing it.
  *
  * @param {Parse} parse
@@ -176,7 +194,7 @@ function close() {
   picker.value = '';
   progress.hidden = true;
   closeButton.hidden = true;
-  show(landing());
+  show(landing(openGallery));
   forgetFile();
 }
 
@@ -199,7 +217,7 @@ lastFile().catch(() => null).then(kept => {
   if (opening)
     return;
   if (!kept)
-    show(landing());
+    show(landing(openGallery));
   else if (kept instanceof File)
     open(kept, true);
   else
