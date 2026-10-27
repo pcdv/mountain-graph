@@ -49,7 +49,8 @@ on its own line, so reformat only the file being edited.
 - `web/js/profile/` — the format readers (`profile.js`, `collapsed.js`, `jfr.js`; `heap.js` for a
   heap's profile, with its objects). No DOM.
 - `web/js/model/` — the analysis: peaks, callers, terrain, contours, divides, hues, timeline,
-  anonymizing; for a heap, ownership (the chains of holders), context, and the reduction of a
+  anonymizing, the samples a view shows as a profile of their own (`shown.js`, to save only
+  what is shown); for a heap, ownership (the chains of holders), context, and the reduction of a
   profile to what is drawn (`reduce.js`). No DOM, tested with Node.
 - `tools/` — command lines over the modules: `reduce.js`.
 - `web/js/views/` — what draws: the 2D map, the 3D terrain, the flame graph (`flame.js` on the page,

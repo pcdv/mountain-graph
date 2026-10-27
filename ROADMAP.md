@@ -241,5 +241,10 @@ its start and its end as far as a view could draw them, the rest folded into a s
   takes time: a stack whose innermost node and whose top method (its class, its package) each hold
   under 0.1, 0.3 or 1% of the samples is cut at its deepest caller wide enough, `(thin stacks)` on
   top. tsc's 74 KB become 51, 37 or 26 KB, its peaks the same down to that share
+- [x] "Only what is shown" in a profile of samples' "Save with loss…": the waits, the native samples
+  of a Java-only view, the interval and the operation in focus, and the hidden frames taken out of the
+  stacks, so that the file draws as the view did (`model/shown.js`). Off at first: the default hides the
+  JDK's frames. On a Gradle daemon's wall-clock profile (16.7k samples, 96k nodes) the waits and the
+  JDK's frames are half the samples, and the file goes from 91 KB to 40 KB
 - [x] Any profile of samples saved as a Flamepack ("Export .fpk"), a JFR recording's too
   (`profile/encode.js`)

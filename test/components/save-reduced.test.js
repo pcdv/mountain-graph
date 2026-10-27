@@ -6,6 +6,7 @@ import {installFakeDom} from '../lib/fake-dom.js';
 import {stacksToProfile, decodeHeap} from '../../web/js/profile/heap.js';
 import {LEVELS, LEVEL_TEXT, DEFAULT_LEVEL} from '../../web/js/model/reduce.js';
 import * as thinning from '../../web/js/model/thin.js';
+import {WAITS} from '../../web/js/model/samples.js';
 import {readCollapsed} from '../../web/js/profile/collapsed.js';
 import {decode, tree} from '../../web/js/profile/profile.js';
 
@@ -159,5 +160,54 @@ describe('Save with loss', () => {
 
     assert.notEqual(all(menu, 'p')[0].text, first);
     assert.match(all(menu, 'p')[0].text, /Only the ridges 3 pixels wide or more/);
+  });
+
+  it('has no choice of what is shown for a heap, which has no view of samples', async () => {
+    const {saveReduced} = await import('../../web/js/components/save-reduced.js');
+    assert.equal(all(saveReduced('heap.jheap.json', profile()), 'input').length, 0);
+  });
+
+  it('saves only what is shown when asked, with the settings as they are when it is', async () => {
+    const {saveReduced, samplesReduction} = await import('../../web/js/components/save-reduced.js');
+    const lines = ['main;hot 500', 'main;sun.nio.ch.WEPoll.wait 900'];
+    for (let i = 0; i < 300; i++)
+      lines.push(`main;caller${i};cold${i} 1`);
+    const p = readCollapsed(lines.join('\n'));
+    let settings = {waits: WAITS, hide: '', java: false};
+    const how = samplesReduction(p, {kind: 'wall'}, () => settings);
+    const menu = saveReduced('app-wall.fpk', p, {}, how);
+    const save = all(menu, 'button')[0];
+    const [tick] = all(menu, 'input');
+    all(menu, 'select')[0].value = String(thinning.DEFAULT_LEVEL);
+    const said = () => all(menu, 'p')[0].text;
+    /** @param {any} node */
+    const fire = node => {
+      for (const fn of node.listeners.change ?? [])
+        fn();
+    };
+
+    assert.ok(tick, 'a choice of it');
+    assert.ok(!tick.checked, 'off at first: a reduced file is the whole profile, thinned');
+    open(menu);
+    await until(() => save.disabled === false);
+    assert.doesNotMatch(said(), /Without/);
+
+    tick.checked = true;
+    fire(tick);
+    await until(() => /^Without the waits\. .*nodes become/.test(said()));
+
+    // the settings change while the menu is closed: it says what they leave out when it is opened again
+    menu.open = false;
+    settings = {waits: '', hide: '', java: false};
+    open(menu);
+    await until(() => /^The settings leave nothing out\./.test(said()));
+
+    settings = {waits: WAITS, hide: '', java: false};
+    open(menu);
+    await until(() => /^Without the waits\./.test(said()));
+    const level = thinning.DEFAULT_LEVEL;
+    assert.ok(!JSON.stringify(how.reduced(level, true)).includes('WEPoll'), 'the wait is not in what is shown');
+    assert.ok(JSON.stringify(how.reduced(level)).includes('WEPoll'), 'it is in the whole profile');
+    assert.ok(JSON.stringify(how.reduced(level, true)).includes('hot'), 'the rest is');
   });
 });

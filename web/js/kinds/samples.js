@@ -119,7 +119,9 @@ function display(page, name, samplings, which, saved) {
       strip.hidden = false;
     }
     // the view fills the window under the bar: there first, to take its shape from
-    replace(bar, ...summary(name, samplings[which]), samplingChoice(samplings, which, to => {
+    // what the settings of the view keep, as they are when it is asked for: none before the view is drawn
+    const shownNow = () => last && {waits: last.waits, hide: last.hide, java: last.java, ...focus, operation};
+    replace(bar, ...summary(name, samplings[which], shownNow), samplingChoice(samplings, which, to => {
       writeSetting(SAMPLING, samplings[to].key);
       page.remember();
       display(page, name, samplings, to, focus);
@@ -242,9 +244,11 @@ function download(name, {profile, meta}) {
 /**
  * @param {string} name of the file
  * @param {Sampling} sampling the one shown
+ * @param {() => import('../model/shown.js').View | null} view what the settings of the view keep, which a
+ *        reduced file can be limited to
  * @returns {HTMLElement[]} its name and what it holds, for the header; its menu, with its export
  */
-function summary(name, sampling) {
+function summary(name, sampling, view) {
   const p = sampling.profile;
   let ms = 0;
   for (let i = 0; i < p.kind.length; i++)
@@ -265,5 +269,5 @@ function summary(name, sampling) {
       h('button', {type: 'button', class: 'button',
         title: 'Download these samples as a Flamepack (.fpk), which jfr-web reads too',
         onclick: () => download(name, sampling)}, 'Export .fpk')),
-    saveReduced(name, p, {}, samplesReduction(p, sampling.meta)));
+    saveReduced(name, p, {}, samplesReduction(p, sampling.meta, view)));
 }

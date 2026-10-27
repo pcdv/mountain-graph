@@ -78,6 +78,13 @@ run, where the flame graph is thin, cutting each at its deepest caller wide enou
 and weight, and the methods that take time keep their peaks; the total of a method is short by the
 thin stacks it is on.
 
+Neither export applies the view's settings: the file keeps the waits, the native samples and the
+hidden frames, and the settings apply again when it is opened. **Only what is shown**, beside the
+loss, saves what the view shows instead: the samples left out as waits, the native ones when only
+Java's are shown, and those outside the interval or the operation in focus are not in the file, and
+the frames hidden are out of its stacks, their time with their callers. The file is smaller, and
+draws as the view drew it.
+
 Then the memory of a JVM:
 
 - **Heap dumps** (`.hprof`, as jmap and jcmd write them), parsed in the page by
