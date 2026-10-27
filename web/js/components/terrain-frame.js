@@ -319,11 +319,19 @@ function describe(t, children, n, unit, holds) {
 }
 
 /**
+ * The hidden class of a lambda, as the JVM names it, before the method: Outer$$Lambda$1313+0x0000023d038370f8.1005078208
+ * (JDK 21), Outer$$Lambda.0x12 (older) or Outer$$Lambda$14/0x0000000800b3c840 (11 to 15). Its address has dots and
+ * digits of its own, which a name cut at its dots would take for the class and the method.
+ */
+const LAMBDA = /\$\$Lambda[$\w]*(?:[+./]0x[0-9a-f]+)?(?:\.\d+)?(?=\.[^.]+$)/i;
+
+/**
  * @param {string} name of a method, class or package
- * @returns {string} its last two parts: "Class.method", "package.Class", "a.b"
+ * @returns {string} its last two parts: "Class.method", "package.Class", "a.b"; a lambda's class
+ *          without its address: "Outer$$Lambda.test"
  */
 export function short(name) {
   const paren = name.indexOf('(');
-  const parts = (paren > 0 ? name.substring(0, paren) : name).split('.');
+  const parts = (paren > 0 ? name.substring(0, paren) : name).replace(LAMBDA, () => '$$Lambda').split('.');
   return parts.slice(-2).join('.');
 }
