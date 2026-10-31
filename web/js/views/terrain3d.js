@@ -397,17 +397,52 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
     // looking around from where the camera stands, the mouse locked to the view (key F)
     let looking = false;
-    // not into the terrain, nor so close that zooming stops (it scales the distance), nor lost far away
-    controls.minDistance = side / 10;
+    // the camera turns about a point at least this far, and is not lost far away
+    controls.minDistance = side / 25;
     controls.maxDistance = side * 4;
-    // zoomed here in proportion to the wheel's delta: the controls zoom a whole step per event, and a
+    // moved here in proportion to the wheel's delta: the controls zoom a whole step per event, and a
     // touchpad sends dozens of small ones per gesture
     controls.enableZoom = false;
-    /** @param {number} factor what the distance to the target is multiplied by */
+    /** where the view turns, moves and zooms about is set to what it looks at (below, once the ground is known) */
+    let aim = () => {};
+    /**
+     * The height of the ground under a point, 0 off the terrain.
+     *
+     * @param {any} at a Vector3
+     * @returns {number}
+     */
+    const groundUnder = at => {
+      const x = Math.round(at.x + (W - 1) / 2), z = Math.round(at.z + (H - 1) / 2);
+      return x >= 0 && z >= 0 && x < W && z < H ? position.getY(z * W + x) : 0;
+    };
+    /**
+     * Moves the camera along the line of sight, through the middle of the window: toward what it looks at when the
+     * factor is under 1, away from it above. Nearer than it can turn about, it goes on over the ground, the point it
+     * turns about moving with it, so the wheel is not stopped by the place looked at.
+     *
+     * @param {number} factor what the distance to the point looked at is multiplied by
+     */
     const zoom = factor => {
+      aim();
       const offset = camera.position.clone().sub(controls.target);
-      const distance = Math.max(controls.minDistance, Math.min(controls.maxDistance, offset.length() * factor));
-      camera.position.copy(controls.target).add(offset.setLength(distance));
+      const here = offset.length();
+      const distance = Math.min(controls.maxDistance, here * factor);
+      // each notch goes as far as one at a distance of a fiftieth of the terrain would, however near it is
+      const step = Math.max(here, side / 20) * (1 - factor);
+      const close = Math.max(controls.minDistance, factor < 1 ? here - step : distance);
+      camera.position.copy(controls.target).add(offset.setLength(close));
+      const left = factor < 1 ? step - (here - close) : 0;
+      if (left > 0) {
+        const ahead = offset.negate().setLength(left);
+        camera.position.add(ahead);
+        controls.target.add(ahead);
+        // over the ground, not into it
+        const clear = groundUnder(camera.position) + side / 80;
+        if (camera.position.y < clear) {
+          controls.target.y += clear - camera.position.y;
+          camera.position.y = clear;
+        }
+      }
       controls.update();
     };
     renderer.domElement.addEventListener('wheel', (/** @type {WheelEvent} */ e) => {
@@ -609,11 +644,21 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       }
       render();
     };
-    controls.addEventListener('change', () => {
-      // turning around a point of the terrain, however far it was moved, or of the flame graph standing behind it:
-      // the camera can be moved up and back to its top
-      const target = controls.target;
+    /**
+     * The view turns around a point of the terrain, or of the flame graph standing behind it: the camera can be
+     * moved up and back to its top, not beyond.
+     *
+     * @param {any} p a Vector3
+     * @returns {number[]} the nearest point it may turn around
+     */
+    const confine = p => {
       const span = panel ? panelSpan() : null;
+      return [Math.max(-W / 2, Math.min(W / 2, p.x)),
+              Math.max(0, Math.min(Math.max(lift(t.top), span?.top ?? 0), p.y)),
+              Math.max(span ? span.back : -H / 2, Math.min(H / 2, p.z))];
+    };
+    controls.addEventListener('change', () => {
+      const target = controls.target;
       if (looking) {
         // the camera itself is kept as near the land as the view turning around it can be, above the ground: it
         // starts flying where it stood, and can go back out; the point it looks at follows
@@ -627,9 +672,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
         render();
         return;
       }
-      const x = Math.max(-W / 2, Math.min(W / 2, target.x));
-      const z = Math.max(span ? span.back : -H / 2, Math.min(H / 2, target.z));
-      const y = Math.max(0, Math.min(Math.max(lift(t.top), span?.top ?? 0), target.y));
+      const [x, y, z] = confine(target);
       if (x !== target.x || y !== target.y || z !== target.z) {
         camera.position.add(new T.Vector3(x - target.x, y - target.y, z - target.z));
         target.set(x, y, z);
@@ -684,11 +727,18 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
      *          along the ray the ground is, Infinity if it misses the terrain
      */
     const groundAt = e => {
-      const top = lift(t.top);
       const box = renderer.domElement.getBoundingClientRect();
       raycaster.setFromCamera(new T.Vector2((e.clientX - box.left) / box.width * 2 - 1,
                                             1 - (e.clientY - box.top) / box.height * 2), camera);
-      const {origin, direction} = raycaster.ray;
+      return march(raycaster.ray);
+    };
+    /**
+     * @param {{origin: any, direction: any}} ray
+     * @returns {{node: number, distance: number}} the node the ray reaches, -1 on the plain, and how far along
+     *          it the ground is, Infinity if it misses the terrain
+     */
+    const march = ({origin, direction}) => {
+      const top = lift(t.top);
       if (direction.y >= 0)
         return {node: -1, distance: Infinity};
       const from = Math.max(0, (origin.y - top) / -direction.y), to = origin.y / -direction.y;
@@ -702,6 +752,28 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       }
       return {node: -1, distance: Infinity};
     };
+    // the view turns, moves and zooms around what is in the middle of the window: the ground there, wherever the
+    // camera was taken (flying, zooming, panning) since the point it turned about was set; where it looks at the
+    // sky it keeps the point it had
+    aim = () => {
+      if (looking)
+        return;
+      raycaster.setFromCamera(new T.Vector2(0, 0), camera);
+      const {origin, direction} = raycaster.ray;
+      let reach = march(raycaster.ray).distance;
+      // off the terrain, the ground it stands on
+      if (!Number.isFinite(reach) && direction.y < 0)
+        reach = origin.y / -direction.y;
+      if (!Number.isFinite(reach))
+        return;
+      const point = origin.clone().addScaledVector(direction, Math.max(controls.minDistance, Math.min(controls.maxDistance, reach)));
+      // a point the view could not turn about would be pulled in, and the camera with it: a jump. Where the middle
+      // of the window is on ground beyond the terrain, the point it had stays
+      if (confine(point).some((v, i) => Math.abs(v - point.getComponent(i)) > 1e-6))
+        return;
+      controls.target.copy(point);
+    };
+    controls.addEventListener('start', aim);
     /** @type {Map<string, number>} the first node of each name, for a frame of the panel to light the terrain */
     const named = new Map();
     t.nodes.forEach((n, i) => named.has(n.name) || named.set(n.name, i));
