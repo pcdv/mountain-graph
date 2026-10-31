@@ -271,8 +271,33 @@ describe('Save', () => {
   it('has no choice of what is shown for a heap, which has no view of samples', async () => {
     const {saveSection, heapReduction} = await import('../../web/js/components/save-section.js');
     const p = profile();
-    // the boxes are the settings of the view and the gzip
-    assert.equal(boxes(saveSection('heap.jheap.json', p, heapReduction(p), noSettings)).length, 2);
+    // the boxes are the settings of the view, the tour (hidden while there is none) and the gzip
+    assert.equal(boxes(saveSection('heap.jheap.json', p, heapReduction(p), noSettings)).length, 3);
+  });
+
+  it('keeps the tour in the page\'s member, beside the settings of the view, unless unchecked', async () => {
+    const {saveSection, heapReduction} = await import('../../web/js/components/save-section.js');
+    const {openTour, closeTour} = await import('../../web/js/components/tour.js');
+    const slide = {caption: 'The cache', settings: {'mountaingraph.peaks.view': '3d'}, moment: {hover: ['Cache']}};
+    const tour = {slides: [slide], stay: 8, fly: 1};
+    openTour('heap.fpk', tour);
+    try {
+      const p = profile();
+      const menu = saveSection('heap.fpk', p, heapReduction(p), () => ({'mountaingraph.peaks.view': 'map'}));
+      const [view, toured] = boxes(menu);
+      assert.ok(toured.checked, 'on at first');
+      view.checked = true;
+      const save = all(menu, 'button')[0];
+      assert.deepEqual((await read((await saved(save)).blob)).mountaingraph,
+                       {'mountaingraph.peaks.view': 'map', tour});
+      view.checked = false;
+      assert.deepEqual((await read((await saved(save)).blob)).mountaingraph, {tour});
+      toured.checked = false;
+      assert.equal((await read((await saved(save)).blob)).mountaingraph, undefined);
+    }
+    finally {
+      closeTour();
+    }
   });
 
   it('saves only what is shown when asked, with the settings as they are when it is', async () => {

@@ -39,6 +39,7 @@ const clock = ms => ms >= 10_000 ? fmt.duration(ms) : `${(ms / 1000).toFixed(2)}
  * @property {boolean} holding whether the peaks of the whole recording are kept in focus
  * @property {(on: boolean) => void} hold given whether they are, when it is changed
  * @property {Interval | null} [initial] the interval selected at first
+ * @property {string | null} [alone] the operation shown alone at first, none for all of them
  * @property {(name: string | null) => void} [operation] given the operation clicked in the legend, null
  *           when it was the one shown alone already: back to all of them
  */
@@ -48,7 +49,7 @@ const clock = ms => ms >= 10_000 ? fmt.duration(ms) : `${(ms / 1000).toFixed(2)}
  * @returns {{element: HTMLElement, update: (p: Profile, filter: Filter) => void}} the strip, and what
  *          draws it again for the samples kept (filter: no interval, the whole recording shows)
  */
-export function timeline({changed, holding, hold, initial = null, operation = () => {}}) {
+export function timeline({changed, holding, hold, initial = null, alone: first = null, operation = () => {}}) {
   const canvas = h('canvas', {class: 'timeline-plot'});
   const label = h('span', {class: 'timeline-label muted'});
   const clear = h('button', {type: 'button', class: 'button', hidden: true, title: 'Back to the whole recording'},
@@ -67,7 +68,7 @@ export function timeline({changed, holding, hold, initial = null, operation = ()
   /** @type {{span: number, ms: Float64Array, ops: Operations | null}} */
   let data = {span: 0, ms: new Float64Array(0), ops: null};
   /** @type {string | null} the operation the landscape is on */
-  let alone = null;
+  let alone = first;
   /** @type {[number, number] | null} the selection, as shares of the width */
   let chosen = null;
 

@@ -2,7 +2,7 @@
 /**
  * "Save" in a file menu: the profile as a Flamepack, whole or reduced to what matters (a file small enough
  * for a gallery or a report), with or without how the view is set, gzipped or not, under a name that can be
- * changed. A heap keeps what the page draws (model/reduce.js), samples the stacks of the methods that take
+ * changed, and with the tour of the file when it has one (tour.js). A heap keeps what the page draws (model/reduce.js), samples the stacks of the methods that take
  * time (model/thin.js). The level of loss is chosen, and the size it gives said before the file is saved.
  */
 import {h} from '../lib/dom.js';
@@ -16,6 +16,7 @@ import {shown, leavesOut} from '../model/shown.js';
 import {gzip} from '../gzip.js';
 import {saveFile, savedName} from '../save-file.js';
 import {withView} from './with-view.js';
+import {withTour} from './tour.js';
 import {MEMBER} from '../view-state.js';
 
 /** @typedef {import('../profile/heap.js').HeapProfile} HeapProfile */
@@ -94,6 +95,12 @@ export function samplesReduction(p, meta = {}, view) {
  */
 export function saveSection(name, p, how, settings) {
   const kept = withView(settings);
+  const tour = withTour();
+  /** @returns {object} what to add to the document: the page's member, with the settings and the tour asked for */
+  const members = () => {
+    const member = {.../** @type {any} */ (kept.members())[MEMBER], ...tour.members()};
+    return Object.keys(member).length ? {[MEMBER]: member} : {};
+  };
   // a reduction that can save only what is shown has a choice of it, off at first: the settings of the view are
   // read each time, as they may have changed since the menu was last open
   const only = how.view ? h('input', {type: 'checkbox'}) : null;
@@ -182,18 +189,18 @@ export function saveSection(name, p, how, settings) {
     const at = level();
     if (at !== null && !chosen)
       return;
-    const members = kept.members();
-    if (at !== null && Object.keys(members).length > 0 && view() !== null) {
+    const added = members();
+    if (at !== null && Object.keys(added).length > 0 && view() !== null) {
       // what the view leaves out is already out of the profile: its settings would only say what was
-      const set = /** @type {Record<string, string>} */ (/** @type {any} */ (members)[MEMBER]);
+      const set = /** @type {Record<string, string>} */ (/** @type {any} */ (added)[MEMBER]);
       for (const key of ALREADY_APPLIED)
         delete set[key];
     }
     rename();
     const named = file.value;
     // a reduced profile is gzipped already, when nothing is added to it
-    const ready = at !== null && chosen && Object.keys(members).length === 0 && gzipped.checked ? chosen.file : null;
-    const json = ready ? '' : JSON.stringify({...at === null ? how.whole() : chosen?.doc, ...members});
+    const ready = at !== null && chosen && Object.keys(added).length === 0 && gzipped.checked ? chosen.file : null;
+    const json = ready ? '' : JSON.stringify({...at === null ? how.whole() : chosen?.doc, ...added});
     const body = ready ?? (gzipped.checked ? await gzip(json) : json);
     saveFile(named, new Blob([body], {type: gzipped.checked ? 'application/gzip' : 'application/json'}));
   });
@@ -209,11 +216,13 @@ export function saveSection(name, p, how, settings) {
                                + 'the operation in focus'},
                    only, 'Only what is shown')] : [],
       kept.element,
+      tour.element,
       h('label', {class: 'check', title: 'Compresses the file: much smaller, and opened as it is'},
         gzipped, 'Gzipped')),
     result);
   // the menu is opened again: the settings may have changed since, and what is shown is worked out again
   section.addEventListener('menuopen', () => {
+    tour.fit();
     if (level() === null || !chosen || view() !== null)
       show();
   });

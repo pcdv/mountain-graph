@@ -29,6 +29,7 @@
   <a href="#tuning">Fine tuning</a>
   <a href="#anonymizing">Anonymizing</a>
   <a href="#saving">Saving</a>
+  <a href="#tour">Tour</a>
   <a href="#screenshot">Pictures</a>
 </nav>
 
@@ -345,7 +346,30 @@
       counted, the camera. Whoever opens the file sees what was shown. The anonymizing settings are never kept.
       With only what is shown, the waits, hidden frames and Java-only settings are not kept either: the
       profile has them applied.</dd>
+    <dt>With the tour</dt><dd>Shown when the file has a <a href="#tour">tour</a>, and on unless unchecked. Whoever
+      opens the file is shown its views, with their captions.</dd>
   </dl>
+</section>
+
+<section id="tour">
+  <h2>Tour</h2>
+  <p>A tour walks someone through a profile: views of it, each with a caption, shown one after the other. It is made
+    in the <b>Tour</b> section of the settings, and saved with the file.</p>
+  <p><kbd>T</kbd>, or <b>Add this view</b>, adds the view as the page shows it: 2D, 3D or Flame, the settings of the
+    view, the camera, the peak chosen, the interval and the operation in focus on the timeline, the frame under
+    the mouse with the box telling its path, and the Peaks pane open or folded. Each view has a caption, typed
+    beside its number; a web address in it (<code>https://…</code>) is a link on the bar, which opens in another tab
+    and pauses the tour. The arrows beside it move it up or down, take the view shown in its place, or remove it.
+    Its number shows it.</p>
+  <p><kbd>P</kbd>, or <b>Play</b>, plays the tour. A bar at the foot of the window gives the caption and steps
+    through the views: <kbd>←</kbd> and <kbd>→</kbd> go back and on, <kbd>Space</kbd> pauses, <kbd>Esc</kbd> ends
+    the tour. A line along the foot of the bar runs down until the next view. Where two views differ only by the 3D
+    camera and the frame hovered, the camera flies from one to the other; otherwise the view is drawn again. A click
+    on the view pauses the tour.</p>
+  <p><b>Each view</b> sets how long a view stays once the camera is there, 5 seconds at first, and <b>Flight</b> how
+    long the camera takes to fly to the next, 2 seconds. They are kept with the tour.</p>
+  <p>A file saved with its tour plays it when opened. The land is laid out to the window's shape: in a window of
+    another shape, the views are the same, the land a little different.</p>
 </section>
 
 <section id="screenshot">

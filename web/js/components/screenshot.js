@@ -6,24 +6,7 @@
  */
 import {h} from '../lib/dom.js';
 import {paintElements} from './paint-dom.js';
-
-/** How long the message stays, ms. */
-const TOAST = 2000;
-
-/** @type {HTMLElement | null} */
-let toast = null;
-/** @type {number | undefined} */
-let hiding;
-
-/** @param {string} text */
-function say(text) {
-  toast ??= h('div', {class: 'toast', role: 'status'});
-  toast.textContent = text;
-  toast.hidden = false;
-  document.body.append(toast);
-  clearTimeout(hiding);
-  hiding = setTimeout(() => toast && (toast.hidden = true), TOAST);
-}
+import {say} from './toast.js';
 
 /**
  * @param {ParentNode} root

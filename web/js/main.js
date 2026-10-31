@@ -16,6 +16,8 @@ import {anonymizing} from './components/anonymizing.js';
 import {screenshotKeys} from './components/screenshot.js';
 import {installHelp} from './components/help.js';
 import {settingsPane} from './components/settings-pane.js';
+import {installTour, openTour, closeTour} from './components/tour.js';
+import {TOUR} from './tour-state.js';
 import {showSamples} from './kinds/samples.js';
 import {showHeap} from './kinds/heap.js';
 
@@ -36,6 +38,8 @@ const page = {
   strip: $('timeline', HTMLElement),
   relayout: () => {},
   remember: () => {},
+  moment: () => ({}),
+  redisplay: () => {},
   // what is shown is kept first, as the page does when closed: the new view comes back as the old one was left
   // (the 3D camera, the blocks, the peak chosen), not as it was when last kept
   reopen: () => {
@@ -124,6 +128,8 @@ async function open(file, again = false) {
         keepFile(file);
       showSamples(page, file.name, loaded.samplings, focus);
     }
+    // the tour the file holds plays; reloaded, the page has the one kept, as it was last changed
+    openTour(file.name, again ? undefined : /** @type {any} */ (loaded.view)?.[TOUR]);
   }
   catch (e) {
     // a parse stopped for another file: that one is shown
@@ -163,6 +169,7 @@ function openParse(parse, restored = false) {
   clear(`Reading ${parse.name}…`);
   try {
     showHeap(page, parse.name, loadParse(parse, anonymizing()), restored);
+    openTour(parse.name);
   }
   catch (e) {
     // a parse kept by an earlier page that this one cannot read: forgotten, not shown broken at each reload
@@ -180,8 +187,11 @@ function clear(message) {
 
 /** @param {Node} content what the page shows in place of a view */
 function show(content) {
+  closeTour();
   page.relayout = () => {};
   page.remember = () => {};
+  page.moment = () => ({});
+  page.redisplay = () => {};
   page.main.classList.remove('stage');
   replace(page.bar);
   replace(page.tools);
@@ -212,8 +222,9 @@ function showProgress(phase, percent) {
   progressFill.style.width = `${percent}%`;
 }
 
-// S saves a picture of the view, C copies it
+// S saves a picture of the view, C copies it; T adds it to the tour, P plays the tour
 installHelp($('help', HTMLElement));
+installTour(page);
 screenshotKeys(() => (current?.name ?? 'mountain-graph').replace(/(\.\w+)?(\.gz)?$/, ''));
 
 // installed as an app, the page is one the system opens files with (manifest.webmanifest)

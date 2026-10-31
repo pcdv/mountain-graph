@@ -28,7 +28,8 @@ import {timeline} from '../components/timeline.js';
 import {span, checked} from '../model/timeline.js';
 import {fileMenu} from '../components/file-menu.js';
 import {folded} from '../components/form.js';
-import {floating, keepView, remembered} from './page.js';
+import {floating, keepView, remembered, stageView, PEAKS} from './page.js';
+import {tourSection} from '../components/tour.js';
 import {helpTip} from '../components/help.js';
 import {saveSection, samplesReduction} from '../components/save-section.js';
 import {captureView} from '../view-state.js';
@@ -49,10 +50,11 @@ const SAMPLING = 'mountaingraph.sampling';
  * @param {string} name of the file
  * @param {Sampling[]} samplings
  * @param {any} [saved] an interval of the recording to focus on, as kept: checked here
+ * @param {import('./page.js').Moment} [moment] the operation and the frame hovered, a tour's view
  */
-export function showSamples(page, name, samplings, saved = null) {
+export function showSamples(page, name, samplings, saved = null, moment = {}) {
   const wanted = samplings.findIndex(s => s.key === readSetting(SAMPLING));
-  display(page, name, samplings, Math.max(0, wanted), saved);
+  display(page, name, samplings, Math.max(0, wanted), saved, moment);
 }
 
 /**
@@ -63,8 +65,9 @@ export function showSamples(page, name, samplings, saved = null) {
  * @param {Sampling[]} samplings
  * @param {number} which the one shown
  * @param {any} saved an interval of the recording to focus on, as kept: checked here
+ * @param {import('./page.js').Moment} [moment] the operation and the frame hovered, a tour's view
  */
-function display(page, name, samplings, which, saved) {
+function display(page, name, samplings, which, saved, moment = {}) {
   const {main, bar, strip} = page;
   page.relayout = () => {};
   main.classList.remove('stage');
@@ -72,16 +75,22 @@ function display(page, name, samplings, which, saved) {
   strip.hidden = true;
   try {
     const p = samplings[which].profile;
-    const map = h('div', {class: 'stage-view'}), table = h('div', {class: 'table-body'});
+    const map = stageView(main), table = h('div', {class: 'table-body'});
     // as left when the page was last closed: the rows unfolded, the peak chosen, the 3D camera
     const kept0 = remembered();
     /** @type {Set<string>} */
     const unfolded = new Set(kept0.open);
     /** @type {import('../components/terrain-frame.js').Selection} */
-    const selection = {chosen: kept0.chosen, tab: kept0.tab, unit: p.unit};
+    const selection = {chosen: kept0.chosen, tab: kept0.tab, unit: p.unit, hovered: moment.hover ?? null};
     /** @type {import('../views/terrain3d.js').Viewpoint} the 3D view's camera, kept as settings change */
     const viewpoint = kept0.viewpoint;
     page.remember = () => keepView({open: [...unfolded], chosen: selection.chosen, tab: selection.tab, viewpoint});
+    page.moment = () => ({interval: focus, operation, hover: selection.hovered ?? null});
+    // the sampling too, as the settings say; the interval kept as if chosen, for the page reloaded
+    page.redisplay = m => {
+      keepInterval(m.interval ?? null);
+      showSamples(page, name, samplings, m.interval ?? null, m);
+    };
     /** @type {{waits: string, kept: Profile, left: number} | null} the samples kept, while waits is the same */
     let kept = null;
     /** @type {import('../model/timeline.js').Interval | null} the part of the recording in focus, none for all */
@@ -92,7 +101,7 @@ function display(page, name, samplings, which, saved) {
     let whole = null;
     // only a recording with a time has a timeline
     /** @type {string | null} the one operation the landscape is on, none for all of them */
-    let operation = null;
+    let operation = typeof moment.operation === 'string' ? moment.operation : null;
     const stripped = span(p) > 0 ? timeline({
       changed: i => {
         if (JSON.stringify(i) === JSON.stringify(focus))
@@ -108,6 +117,7 @@ function display(page, name, samplings, which, saved) {
         page.relayout();
       },
       initial: focus,
+      alone: operation,
       operation: name => {
         operation = name;
         page.relayout();
@@ -139,7 +149,7 @@ function display(page, name, samplings, which, saved) {
       page.relayout();
     });
     const fine = folded('Fine tuning', knobs.element);
-    const peaked = floating('Peaks', 'table', table);
+    const peaked = floating('Peaks', PEAKS, table);
     replace(main, map, h('div', {class: 'floats'}, peaked));
     /** @param {import('../components/peak-controls.js').PeakSettings} settings */
     const show = settings => {
@@ -204,7 +214,7 @@ function display(page, name, samplings, which, saved) {
     let last = null;
     const controls = peakControls(peakSettings(), show, relief);
     replace(page.tools, controls.view);
-    replace(page.settings, controls.settings, fine, controls.filters,
+    replace(page.settings, controls.settings, fine, controls.filters, tourSection(),
             folded('Anonymizing', anonymizeControls(() => page.reopen())));
     // laid out again in the window's shape, the bar in place, and as it is resized
     page.relayout = () => last && show(last);

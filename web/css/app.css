@@ -1505,6 +1505,201 @@ canvas.flame-canvas {
   z-index: 10;
 }
 
+/* over the tour's bar while it shows: the message, and the box telling the frame hovered at the foot of the view */
+body:has(.tour-player:not([hidden])) .toast {
+  bottom: calc(28px + var(--tour-bar, 96px));
+}
+
+body:has(.tour-player:not([hidden])) .map-info:not(.top) {
+  bottom: calc(32px + var(--tour-bar, 96px));
+  max-height: calc(100% - 56px - var(--tour-bar, 96px));
+}
+
+/* the tour's section of the settings: its views in order, a number that shows the view, its caption, and what
+   moves, takes again or removes it */
+.tour-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tour-empty {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* a long tour scrolls in its own box, so that the settings under it stay within reach */
+.tour-list {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  max-height: min(40vh, 360px);
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.tour-list:empty {
+  display: none;
+}
+
+.tour-slide {
+  display: grid;
+  grid-template-columns: var(--control) minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 6px;
+}
+
+.tour-number {
+  height: var(--control);
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.tour-number:hover {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.tour-slide[aria-current] .tour-number {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.tour-slide textarea {
+  width: 100%;
+  min-height: var(--control);
+  padding: 4px 8px;
+  resize: vertical;
+  field-sizing: content;
+  line-height: 1.4;
+}
+
+.tour-tools {
+  display: flex;
+}
+
+.tour-tools .button.icon,
+.tour-steps .button.icon {
+  border-color: transparent;
+  background: none;
+}
+
+.tour-tools .button.icon {
+  width: 22px;
+  color: var(--muted);
+}
+
+.tour-tools .button.icon:hover:not(:disabled) {
+  color: var(--fg);
+}
+
+.tour-tools .button.icon:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.tour-times {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tour-times + .reset {
+  margin-top: 4px;
+}
+
+/* the tour shown: the caption of the view, read first, the steps under it, and the time left before the next view
+   run down along its foot */
+.tour-player {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  display: grid;
+  gap: 4px;
+  box-sizing: border-box;
+  width: min(36rem, calc(100vw - 32px));
+  padding: 12px 8px 6px 16px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--float);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+  color: var(--fg);
+}
+
+.tour-caption {
+  margin: 0;
+  padding-right: 8px;
+  max-height: 55vh;
+  overflow-y: auto;
+  font-size: 15px;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.tour-caption:empty {
+  display: none;
+}
+
+.tour-caption a {
+  color: var(--accent);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.tour-steps {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: -8px;
+}
+
+.tour-count {
+  flex: 1;
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tour-time {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  background: var(--accent);
+}
+
+@keyframes tour-time {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-time {
+    display: none;
+  }
+}
+
+body.playing .tour-player {
+  display: none;
+}
+
 .anonymizing {
   display: grid;
   gap: 16px;

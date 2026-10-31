@@ -74,27 +74,56 @@ export function captureView(storage = localStorage) {
 }
 
 /**
- * Sets the page as a file says. What the file holds is not trusted: only the settings of the view,
- * as strings of a sane size, are taken.
+ * What a file holds is not trusted: only the settings of the view, as strings of a sane size, are taken.
+ *
+ * @param {unknown} settings the member of a document, or what a tour keeps of a view
+ * @returns {Record<string, string>} the settings of the view in it, as the page keeps them
+ */
+export function checkedView(settings) {
+  /** @type {Record<string, string>} */
+  const checked = {};
+  if (settings && typeof settings === 'object' && !Array.isArray(settings))
+    for (const [key, value] of Object.entries(settings))
+      if (isKept(key) && typeof value === 'string' && value.length <= MAX_VALUE)
+        checked[key] = kept(key, value);
+  return checked;
+}
+
+/**
+ * Sets the page as a file says.
  *
  * @param {unknown} settings the member of a document
  * @param {Storage} [storage]
  * @returns {number} how many settings were taken
  */
 export function applyView(settings, storage = localStorage) {
-  if (!settings || typeof settings !== 'object' || Array.isArray(settings))
-    return 0;
-  let taken = 0;
+  const checked = Object.entries(checkedView(settings));
   try {
-    for (const [key, value] of Object.entries(settings)) {
-      if (isKept(key) && typeof value === 'string' && value.length <= MAX_VALUE) {
-        storage.setItem(key, kept(key, value));
-        taken++;
-      }
-    }
+    for (const [key, value] of checked)
+      storage.setItem(key, value);
   }
   catch {
     // storage unavailable or full: the file opens as the page is set
+    return 0;
   }
-  return taken;
+  return checked.length;
+}
+
+/**
+ * Sets the page as it was when a view was taken: a setting of the view it does not hold was at its default then,
+ * and is again.
+ *
+ * @param {Record<string, string>} settings as captureView() gave them
+ * @param {Storage} [storage]
+ */
+export function setView(settings, storage = localStorage) {
+  try {
+    for (const key of Object.keys(captureView(storage)))
+      if (!(key in settings))
+        storage.removeItem(key);
+  }
+  catch {
+    // storage unavailable: set over what is there
+  }
+  applyView(settings, storage);
 }

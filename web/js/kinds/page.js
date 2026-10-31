@@ -17,7 +17,33 @@ import {readSetting, writeSetting} from '../lib/settings.js';
  * @property {() => void} relayout set by the view shown: lays it out again in the window's shape
  * @property {() => void} remember set by the view shown: keeps what it shows
  * @property {() => void} reopen shows the file again, its names anonymized as the settings now say
+ * @property {() => Moment} moment set by the view shown: what it shows that is not a setting, for a tour's view
+ * @property {(moment: Moment) => void} redisplay set by the view shown: shows the file again as the settings of the
+ *           view now say, and at a moment (a tour's next view), without reading it again
  */
+
+/**
+ * What a view shows beyond its settings, which a tour's view keeps.
+ *
+ * @typedef {object} Moment
+ * @property {import('../model/timeline.js').Interval | null} [interval] of the recording in focus, none for all
+ * @property {string | null} [operation] the one operation the landscape is on, none for all of them
+ * @property {string[] | null} [hover] the names from a peak down to the frame hovered, its path told in the box
+ *           over the view
+ * @property {boolean} [peaks] whether the pane of the peaks is open
+ */
+
+/** The key of the pane of the peaks (`floating`). */
+export const PEAKS = 'table';
+
+/**
+ * @param {HTMLElement} main
+ * @returns {HTMLElement} where the view is drawn: the one of the view shown, kept, so that a 3D view drawn again
+ *          fades in over it rather than over an empty page
+ */
+export function stageView(main) {
+  return /** @type {HTMLElement | null} */ (main.querySelector(':scope > .stage-view')) ?? h('div', {class: 'stage-view'});
+}
 
 /** Where what is shown is kept, for the page opened again. */
 const VIEW = 'mountaingraph.view';
@@ -63,4 +89,26 @@ export function floating(title, key, body) {
   pane.open = readSetting(setting) === 'open';
   pane.addEventListener('toggle', () => writeSetting(setting, pane.open ? 'open' : 'closed'));
   return pane;
+}
+
+/**
+ * @param {string} key
+ * @returns {boolean | undefined} whether the floating pane of that key is open, nothing when none is shown
+ */
+export function paneOpen(key) {
+  const pane = document.querySelector(`details.floating.${key}`);
+  return pane instanceof HTMLDetailsElement ? pane.open : undefined;
+}
+
+/**
+ * Opens or folds a floating pane, the one shown and the one of a view drawn next.
+ *
+ * @param {string} key
+ * @param {boolean} open
+ */
+export function openPane(key, open) {
+  writeSetting(`mountaingraph.float.${key}`, open ? 'open' : 'closed');
+  const pane = document.querySelector(`details.floating.${key}`);
+  if (pane instanceof HTMLDetailsElement)
+    pane.open = open;
 }

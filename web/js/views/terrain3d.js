@@ -118,6 +118,21 @@ let release = () => {};
 /** Stops the view being built, if it has not shown yet: another takes its place. */
 let pending = () => {};
 
+/** Takes the camera of the 3D view shown to a viewpoint, in so many ms: set by the view once it has drawn. */
+let flight = /** @type {((to: Viewpoint, ms: number) => boolean) | null} */ (null);
+
+/**
+ * Flies the camera of the 3D view shown to a viewpoint, turning around what it looks at on the way: a tour's
+ * next view, when only the camera moves.
+ *
+ * @param {Viewpoint} to with its position and target
+ * @param {number} ms how long the flight takes
+ * @returns {boolean} whether there was a view to fly in; if not, one is to be built there
+ */
+export function flyTo(to, ms) {
+  return flight?.(to, ms) ?? false;
+}
+
 /** Frees the 3D view shown, if any: when another view takes its place. */
 export function closeTerrainView() {
   pending();
@@ -735,6 +750,44 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     const observer = new ResizeObserver(resize);
     observer.observe(frame.holder);
 
+    // a tour's flight: the point looked at goes straight, the camera turns around it, its distance changing by
+    // the same factor each moment; a hand on the view stops it where it is
+    let touring = 0;
+    const land = () => {
+      cancelAnimationFrame(touring);
+      touring = 0;
+    };
+    controls.addEventListener('start', land);
+    const voyage = (/** @type {Viewpoint} */ to, /** @type {number} */ ms) => {
+      // not one taken off the page, as a file opened takes the last one's: it stays until the new one has drawn
+      if (gone || looking || !framed || !frame.section.isConnected || !to.position || !to.target)
+        return false;
+      land();
+      const fromTarget = controls.target.clone();
+      const toTarget = new T.Vector3().fromArray(to.target.map(v => v * side));
+      const from = new T.Spherical().setFromVector3(camera.position.clone().sub(fromTarget));
+      const end = new T.Spherical().setFromVector3(new T.Vector3().fromArray(to.position.map(v => v * side)).sub(toTarget));
+      // the shorter way round
+      const turn = ((end.theta - from.theta + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;
+      const ratio = from.radius > 0 && end.radius > 0 ? end.radius / from.radius : 1;
+      const start = performance.now();
+      const step = (/** @type {number} */ now) => {
+        if (gone)
+          return;
+        const k = Math.min(1, (now - start) / Math.max(1, ms));
+        // slow at both ends
+        const e = k < 0.5 ? 4 * k ** 3 : 1 - (2 - 2 * k) ** 3 / 2;
+        const at = new T.Spherical(from.radius * ratio ** e, from.phi + (end.phi - from.phi) * e, from.theta + turn * e);
+        controls.target.copy(fromTarget).lerp(toTarget, e);
+        camera.position.copy(controls.target).add(new T.Vector3().setFromSpherical(at));
+        controls.update();
+        touring = k < 1 ? requestAnimationFrame(step) : 0;
+      };
+      touring = requestAnimationFrame(step);
+      return true;
+    };
+    flight = voyage;
+
     // picking: the mouse's ray marched over the heights, the first cell it goes under
     const raycaster = new T.Raycaster();
     /**
@@ -1033,6 +1086,9 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       if (disposed)
         return;
       disposed = gone = true;
+      land();
+      if (flight === voyage)
+        flight = null;
       removeEventListener('keydown', keyed, true);
       removeEventListener('keyup', unkeyed);
       removeEventListener('blur', dropped);

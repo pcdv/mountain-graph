@@ -29,7 +29,8 @@ import {fileMenu} from '../components/file-menu.js';
 import {folded} from '../components/form.js';
 import {saveSection, heapReduction} from '../components/save-section.js';
 import {captureView} from '../view-state.js';
-import {floating, keepView, remembered} from './page.js';
+import {floating, keepView, remembered, stageView, PEAKS} from './page.js';
+import {tourSection} from '../components/tour.js';
 
 /** @typedef {import('../profile/heap.js').HeapProfile} HeapProfile */
 /** @typedef {import('../hprof/dump.js').HeapStats} HeapStats */
@@ -42,25 +43,30 @@ import {floating, keepView, remembered} from './page.js';
  * @param {import('../hprof/dump.js').Heap} heap when `duplicates` is set, the profile is of duplicate
  *        Strings (jheap's `dups`): each peak is a value, held by the slopes, and what ranks them is fixed
  * @param {boolean} [restored] its parse was kept from the last time the page was open, not made now
+ * @param {import('./page.js').Moment} [moment] the frame hovered, a tour's view
  */
-export function showHeap(page, name, {profile: p, stats, duplicates}, restored = false) {
+export function showHeap(page, name, heap, restored = false, moment = {}) {
+  const {profile: p, stats, duplicates} = heap;
   const {main, bar, strip} = page;
   page.relayout = () => {};
+  page.redisplay = m => showHeap(page, name, heap, restored, m);
   main.classList.remove('stage');
   replace(strip);
   strip.hidden = true;
   try {
     // path → bytes, root first, object last: what the context setting gathers
     const stacks = stacksOf(p);
-    const map = h('div', {class: 'stage-view'}), table = h('div', {class: 'table-body'});
+    const map = stageView(main), table = h('div', {class: 'table-body'});
     const kept0 = remembered();
     /** @type {Set<string>} */
     const unfolded = new Set(kept0.open);
     /** @type {import('../components/terrain-frame.js').Selection} */
-    const selection = {chosen: kept0.chosen, tab: kept0.tab, unit: /** @type {const} */ ('bytes')};
+    const selection = {chosen: kept0.chosen, tab: kept0.tab, unit: /** @type {const} */ ('bytes'),
+                       hovered: moment.hover ?? null};
     /** @type {import('../views/terrain3d.js').Viewpoint} */
     const viewpoint = kept0.viewpoint;
     page.remember = () => keepView({open: [...unfolded], chosen: selection.chosen, tab: selection.tab, viewpoint});
+    page.moment = () => ({hover: selection.hovered ?? null});
 
     // what is shown is kept first, so that the camera and the peak chosen are those of now
     const settings = () => {
@@ -77,7 +83,7 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
       page.relayout();
     });
     const fine = folded('Fine tuning', knobs.element);
-    const peaked = floating('Peaks', 'table', table);
+    const peaked = floating('Peaks', PEAKS, table);
     replace(main, map, h('div', {class: 'floats'}, peaked));
 
     // the profiles of the context setting, made once each, not on each setting
@@ -148,7 +154,7 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
     let last = null;
     const controls = heapControls(heapSettings(), show, relief, duplicates !== null);
     replace(page.tools, controls.view);
-    replace(page.settings, controls.settings, fine,
+    replace(page.settings, controls.settings, fine, tourSection(),
             folded('Anonymizing', anonymizeControls(() => page.reopen())));
     page.relayout = () => last && show(last);
     page.relayout();

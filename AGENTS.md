@@ -49,6 +49,11 @@ on its own line, so reformat only the file being edited.
 - `web/js/load.js` — a picked or dropped file, told by its content, to what it holds: samples
   (Flamepack, version 5, 4 or 3; collapsed stacks; a JFR recording) or a heap (a dump, or the
   Flamepack jheap keeps of one), gzipped or not.
+- `web/js/tour-state.js` — a tour: views of the file (what view-state.js keeps) with their captions, kept in the
+  browser for the file of that name and in a saved Flamepack under the member's `tour`, with what each view showed beyond its
+  settings (`page.moment()`: the interval, the operation, the frame hovered; and the Peaks pane, open or not). Its section of the settings,
+  its keys (T, P) and the bar that plays it are `components/tour.js`; a view that differs only by the camera is
+  flown to (`flyTo` in `views/terrain3d.js`), any other drawn again (`page.redisplay`).
 - `web/js/kinds/` — the view of each kind of file: `samples.js`, `heap.js`, and `page.js` for what
   they share. A new kind of file is a reader, a case in `load.js` and a module here.
 - `web/js/hprof/` — a heap dump to a profile: `jheap.wasm` (jheap's parser, built in jheap),
@@ -78,7 +83,7 @@ on its own line, so reformat only the file being edited.
 Settings are kept in `localStorage` under `mountaingraph.*` (`view`, `sampling`, `tuning`,
 `anonymize`, `peaks.*` for samples, `heap.*` for a heap, `float.*` for the panes, the settings
 pane included, `fold.*` for the sections of the settings pane, open or folded, `timeline.hold`,
-`panel.width`); give a new one the same prefix.
+`panel.width`, `tour`); give a new one the same prefix.
 
 ## Rules
 

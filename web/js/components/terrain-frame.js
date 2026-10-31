@@ -50,7 +50,21 @@ export function panelWidth() {
  *           can be walked: clicking a frame then shows that object instead of the peak
  * @property {(node: number) => Frame | undefined} [heldByAt] who holds an object
  * @property {number} [subject] the object the panel shows, kept up to date
+ * @property {string[] | null} [hovered] the names from a peak down to the frame hovered, kept up to date: a view
+ *           drawn again shows it hovered, the box over it telling its path (a tour's view)
  */
+
+/** Hovers the frame at a path in the view made last, the one shown: set by each as it is made. */
+let hoverShown = (/** @type {string[] | null} */ path) => {};
+
+/**
+ * Hovers a frame of the view shown, as a tour's view asks, where the mouse is not.
+ *
+ * @param {string[] | null} path the names from a peak down to the frame, none to hover nothing
+ */
+export function hoverPath(path) {
+  hoverShown(path);
+}
 
 /**
  * @typedef {object} TerrainFrame
@@ -221,20 +235,50 @@ export function terrainFrame(t, trees, selection, redraw) {
   };
   choose(chosen);
 
+  /** @param {number} n @returns {string[]} the names from its peak down to it */
+  const pathOf = n => {
+    /** @type {string[]} */
+    const names = [];
+    for (let i = n; i >= 0; i = t.nodes[i].parent)
+      names.unshift(t.nodes[i].name);
+    return names;
+  };
+  /** @param {string[]} path @returns {number} the node there, -1 if the terrain has none */
+  const nodeAt = path => {
+    let n = t.nodes.findIndex(node => node.parent < 0 && node.name === path[0]);
+    for (const name of path.slice(1)) {
+      if (n < 0)
+        break;
+      n = children[n].find(c => t.nodes[c].name === name) ?? -1;
+    }
+    return n;
+  };
+  /** @param {number} n */
+  const hover = n => {
+    if (n === lit)
+      return;
+    lit = n;
+    selection.hovered = n < 0 ? null : pathOf(n);
+    info.hidden = n < 0;
+    info.replaceChildren(...(n < 0 ? [] : describe(t, children, n, unit, selection.holds === true)));
+    redraw();
+  };
+  // as hovered when the view was drawn before, or as a tour's view has it: lit before the view first draws
+  if (selection.hovered?.length) {
+    lit = nodeAt(selection.hovered);
+    info.hidden = lit < 0;
+    if (lit >= 0)
+      info.replaceChildren(...describe(t, children, lit, unit, selection.holds === true));
+  }
+  hoverShown = path => hover(path?.length ? nodeAt(path) : -1);
+
   return {
     section,
     holder,
     lit: () => lit,
     chosen: () => chosen,
     isLit: n => lit >= 0 && n >= 0 && nameOf[n] === nameOf[lit],
-    hover: n => {
-      if (n === lit)
-        return;
-      lit = n;
-      info.hidden = n < 0;
-      info.replaceChildren(...(n < 0 ? [] : describe(t, children, n, unit, selection.holds === true)));
-      redraw();
-    },
+    hover,
     click: n => {
       // its mountain's, kept as it is when it shows already; on the plain, none
       const m = n < 0 ? -1 : t.nodes[n].mountain;

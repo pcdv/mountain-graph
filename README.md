@@ -110,6 +110,13 @@ their time with their callers. The file is smaller, and draws as the view drew i
 land, the peaks counted, the camera. Whoever opens the file sees what was shown. The anonymizing
 rules and personal habits (the mouse, the width of the panels) are never in it.
 
+A **tour** walks someone through a profile: views of it, each with a caption, shown one after the
+other. `T` adds the view shown, as it is set, with the camera, the interval and the operation in focus,
+the frame hovered with the box telling its path, and the Peaks pane open or folded. The Tour section
+of the settings puts the views in order, gives them their captions and sets how long each stays, and
+`P` plays them, on their own or step by step. Between two 3D views that differ only by the camera, it flies. **With the tour**, on when
+there is one, keeps it in the file, which plays it when opened.
+
 Then the memory of a JVM:
 
 - **Heap dumps** (`.hprof`, as jmap and jcmd write them), parsed in the page by
