@@ -216,6 +216,30 @@ function showProgress(phase, percent) {
 installHelp($('help', HTMLElement));
 screenshotKeys(() => (current?.name ?? 'mountain-graph').replace(/(\.\w+)?(\.gz)?$/, ''));
 
+// installed as an app, the page is one the system opens files with (manifest.webmanifest)
+/** @type {any} */ (window).launchQueue?.setConsumer(async (/** @type {any} */ launched) => {
+  const [handle] = launched.files ?? [];
+  if (!handle)
+    return;
+  // before the file is read, so that the one kept last does not come up in its place
+  opening = true;
+  try {
+    await open(await handle.getFile());
+  }
+  catch (e) {
+    replace(page.main, h('p', {class: 'error'}, `${handle.name}: ${/** @type {Error} */ (e).message}`));
+  }
+});
+
+// what the page loaded is kept, to open with no network (sw.js); what it loaded before the worker was there is
+// sent to it. Not where the page is not a secure context, which has no worker
+if ('serviceWorker' in navigator)
+  navigator.serviceWorker.register('sw.js')
+    .then(() => navigator.serviceWorker.ready)
+    .then(ready => ready.active?.postMessage({
+      keep: [location.href, ...performance.getEntriesByType('resource').map(e => e.name)]}))
+    .catch(() => {});
+
 // the file opened last, shown again: a dump as its parse, a reload then being about the view, not the file
 lastFile().catch(() => null).then(kept => {
   if (opening)

@@ -8,5 +8,5 @@
     "lib": ["es2020", "dom", "dom.iterable"],
     "noEmit": true
   },
-  "include": ["web/js/**/*.js"]
+  "include": ["web/js/**/*.js", "web/sw.js"]
 }

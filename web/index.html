@@ -6,6 +6,10 @@
   <title>MountainGraph</title>
   <meta name="description" content="A profile drawn as a landscape: the methods where the time goes are peaks, the call paths into them the slopes. Opens JFR recordings, Flamepack, collapsed stacks and heap dumps, in the browser.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <!-- installed as an app: its name, icon and the files it opens (manifest), kept to open offline (sw.js) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#3d6b4f">
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/help.css">
   <!-- three.js, pinned: the only dependency, loaded when the 3D view is first shown -->

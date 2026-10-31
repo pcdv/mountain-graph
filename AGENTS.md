@@ -35,6 +35,9 @@ on its own line, so reformat only the file being edited.
 
 - `web/index.html`, `web/css/app.css` — the page. three.js 0.160.0 is pinned in its import map:
   the only dependency, loaded when the 3D view is first shown.
+- `web/manifest.webmanifest`, `web/sw.js`, `web/icon*` — the page as an installed app: its name, icon and the
+  files the system opens with it, and the service worker that keeps what the page loads, to open with no
+  network (the network first, so that a push is seen at once). `icon-*.png` are `icon.svg` rendered.
 - `web/js/main.js` — wiring only: opening a file, its progress, the view of its kind, the file
   kept for a reload.
 - `web/js/view-state.js` — the settings of the view a saved Flamepack may keep (member `mountaingraph`,

@@ -54,6 +54,11 @@ turns it, and two fingers pinch to zoom.
 The page is published at https://pcdv.github.io/mountain-graph/, with a few profiles to open from
 its landing page. A file is read in the browser and goes nowhere else.
 
+The page installs as an app, from the browser's menu ("Install" or "Add to Home screen"). Installed,
+it opens with no network, as it was when last seen online. On a desktop, the system then offers it to
+open `.jfr`, `.fpk`, `.hprof` and the other files it reads. An installed page still updates itself:
+it is fetched from the network first whenever there is one.
+
 To run it locally, Node 21 or later, with nothing to install:
 
 ```sh
