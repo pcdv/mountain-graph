@@ -102,12 +102,15 @@ export function terrainFrame(t, trees, selection, redraw) {
     const s = section.getBoundingClientRect();
     // the panel, when it shows, takes the right of the view
     const edge = dock.hidden ? s.right : dock.getBoundingClientRect().left;
-    let best = {right: false, top: false, far: -1};
+    // nor the panes floating over the view (the peaks): a corner under one only when all are
+    const panes = [...document.querySelectorAll('.floating')].map(f => f.getBoundingClientRect()).filter(f => f.width > 0);
+    let best = {right: false, top: false, far: -Infinity};
     for (const right of [false, true])
       for (const top of [false, true]) {
         const left = right ? edge - gap - r.width : s.left + gap, above = top ? s.top + gap : s.bottom - gap - r.height;
+        const covered = panes.some(f => left < f.right && left + r.width > f.left && above < f.bottom && above + r.height > f.top);
         const far = Math.hypot(Math.max(left - e.clientX, 0, e.clientX - (left + r.width)),
-                               Math.max(above - e.clientY, 0, e.clientY - (above + r.height)));
+                               Math.max(above - e.clientY, 0, e.clientY - (above + r.height))) - (covered ? 1e6 : 0);
         if (far > best.far)
           best = {right, top, far};
       }
