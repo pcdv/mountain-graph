@@ -1,23 +1,28 @@
 /* the help: a page of its own, or the content of the dialog that shows it (components/help.js) */
 
+/* the text in a column of 42rem, about 80 characters a line: wider reads badly */
 body.help {
   display: grid;
-  grid-template-columns: 11rem minmax(0, 1fr);
-  gap: 24px;
-  max-width: 62rem;
+  grid-template-columns: 11rem minmax(0, 42rem);
+  justify-content: center;
+  gap: 40px;
   margin: 0 auto;
-  padding: 16px 20px 64px;
-  line-height: 1.55;
+  padding: 28px 32px 72px;
+  line-height: 1.6;
 }
 
 body.help .contents {
   position: sticky;
-  top: 16px;
+  top: 28px;
   align-self: start;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   font-size: 13px;
+}
+
+body.help .contents b {
+  margin-bottom: 4px;
 }
 
 body.help .contents a {
@@ -36,20 +41,29 @@ body.help main {
 
 body.help h1 {
   display: block;
-  margin: 0 0 8px;
+  /* clear of the dialog's close button */
+  margin: 0 40px 12px 0;
   font-size: 20px;
 }
 
 body.help h2 {
-  margin: 32px 0 8px;
-  padding-top: 8px;
+  margin: 40px 0 10px;
+  padding-top: 16px;
   border-top: 1px solid var(--line);
   font-size: 17px;
 }
 
 body.help h3 {
-  margin: 20px 0 4px;
+  margin: 24px 0 4px;
   font-size: 14px;
+}
+
+body.help p, body.help ul {
+  margin: 0 0 12px;
+}
+
+body.help li {
+  margin-bottom: 4px;
 }
 
 body.help section {
@@ -60,10 +74,14 @@ body.help [id] {
   scroll-margin-top: 12px;
 }
 
-/* the feature asked for, when the page was opened at it */
+/* the feature asked for, when the page was opened at it: shaded, the text kept off the edge of the shade by
+   padding that the margin takes back, so that the text stays in line */
 body.help :target {
+  padding-inline: 14px;
+  margin-inline: -14px;
+  padding-bottom: 6px;
   background: var(--accent-soft);
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 body.help a {
@@ -87,7 +105,7 @@ body.help dt {
 }
 
 body.help dd {
-  margin: 2px 0 0 16px;
+  margin: 2px 0 0 18px;
   color: var(--fg);
 }
 
@@ -103,6 +121,8 @@ body.help .muted {
 @media (max-width: 700px) {
   body.help {
     grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 20px 20px 56px;
   }
 
   body.help .contents {

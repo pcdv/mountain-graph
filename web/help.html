@@ -27,6 +27,7 @@
   <a href="#timeline">Timeline</a>
   <a href="#tuning">Fine tuning</a>
   <a href="#anonymizing">Anonymizing</a>
+  <a href="#saving">Saving</a>
   <a href="#screenshot">Pictures</a>
 </nav>
 
@@ -308,6 +309,24 @@
       <code>foo</code> <code>bar</code>, <code>Foo</code> <code>Bar</code>, <code>FOO</code> <code>BAR</code> and
       <code>foostuff</code> <code>barstuff</code>.</li>
   </ul>
+</section>
+
+<section id="saving">
+  <h2>Saving</h2>
+  <p>The file's menu, under its name in the header, saves what is shown as a Flamepack (<code>.fpk</code>), which
+    jfr-web reads too.</p>
+  <dl>
+    <dt>Loss</dt><dd>None writes the whole profile. A level of loss writes a much smaller
+      <code>-reduced.fpk.gz</code>, for a gallery or a report: for samples it drops the stacks of the methods that
+      hardly run, for a heap what the page does not draw. The size is said before the file is saved.</dd>
+    <dt>Only what is shown</dt><dd>With a loss, samples only. Leaves out what the settings leave out: the waits, the
+      hidden frames, the native samples when only Java is shown, and what is outside the interval or the operation
+      in focus. The file draws as the view drew it.</dd>
+    <dt>With the settings of the view</dt><dd>Keeps how the page is set: the view, the shape of the land, the peaks
+      counted, the camera. Whoever opens the file sees what was shown. The anonymizing settings are never kept.
+      With only what is shown, the waits, hidden frames and Java-only settings are not kept either: the
+      profile has them applied.</dd>
+  </dl>
 </section>
 
 <section id="screenshot">
