@@ -77,9 +77,9 @@ export const LEVELS = [
  * @type {{name: string, about: string}[]}
  */
 export const LEVEL_TEXT = [
-  {name: 'Little', about: "every ridge down to a pixel wide, and the table's totals"},
-  {name: 'Some', about: 'the same drawings; a total may miss a class held in a fold'},
-  {name: 'Much', about: 'only the ridges 3 pixels wide or more'},
+  {name: 'Small loss', about: "every ridge down to a pixel wide, and the table's totals"},
+  {name: 'Medium loss', about: 'the same drawings; a total may miss a class held in a fold'},
+  {name: 'Large loss', about: 'only the ridges 3 pixels wide or more'},
 ];
 
 /** The level proposed: what most of a gallery wants. */

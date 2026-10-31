@@ -44,6 +44,21 @@ async function until(done) {
 const all = (menu, tag) => menu.all().filter((/** @type {any} */ e) => e.tagName === tag.toUpperCase());
 
 /**
+ * @param {any} menu
+ * @returns {any[]} its checkboxes: only what is shown when there is the choice, the settings of the view, gzipped
+ */
+const boxes = menu => all(menu, 'input').filter(i => i.attributes.type === 'checkbox');
+
+/**
+ * @param {Blob} blob a document saved, gzipped or not
+ * @returns {Promise<any>}
+ */
+async function read(blob) {
+  const b = Buffer.from(await blob.arrayBuffer());
+  return JSON.parse((b[0] === 0x1f && b[1] === 0x8b ? gunzipSync(b) : b).toString('utf8'));
+}
+
+/**
  * @param {any} node
  * @param {string} type
  */
@@ -114,13 +129,13 @@ describe('Save', () => {
     const menu = saveSection('heap.jheap.json', p, heapReduction(p), noSettings);
     const options = all(menu, 'option');
 
-    assert.deepEqual(options.map(o => o.text.trim()), ['None', ...LEVEL_TEXT.map(t => t.name)]);
+    assert.deepEqual(options.map(o => o.text.trim()), ['All data', ...LEVEL_TEXT.map(t => t.name)]);
     assert.equal(options.findIndex(o => 'selected' in o.attributes), 0);
     assert.equal(all(menu, 'button').length, 1, 'one button');
     assert.equal(all(menu, 'button')[0].text.trim(), 'Save');
   });
 
-  it('saves the whole profile as a plain .fpk when nothing is lost', async () => {
+  it('saves the whole profile, gzipped, when nothing is lost', async () => {
     const {saveSection, heapReduction} = await import('../../web/js/components/save-section.js');
     const p = profile();
     const menu = saveSection('heap.jheap.json.gz', p, heapReduction(p), noSettings);
@@ -129,12 +144,39 @@ describe('Save', () => {
     assert.match(all(menu, 'p')[0].text, /^The whole profile/);
 
     const {name, blob} = await saved(save);
-    assert.equal(name, 'heap.fpk');
-    const doc = JSON.parse(await blob.text());
+    assert.equal(name, 'heap.fpk.gz');
+    const doc = await read(blob);
     assert.equal(doc.version, 5);
     assert.equal(doc.reduced, undefined);
     assert.equal(doc.mountaingraph, undefined);
     assert.equal(decodeHeap(doc).parent.length, p.parent.length);
+  });
+
+  it('saves a plain .fpk when gzip is unchecked, under the name typed, its ending following the choices', async () => {
+    const {saveSection, heapReduction} = await import('../../web/js/components/save-section.js');
+    const p = profile();
+    const menu = saveSection('heap.jheap.json', p, heapReduction(p), noSettings);
+    const save = all(menu, 'button')[0];
+    const [name] = all(menu, 'input').filter(i => i.attributes.type === 'text');
+    const gzipped = boxes(menu).at(-1);
+    assert.equal(name.value, 'heap.fpk.gz');
+    name.value = 'mine.fpk.gz';
+    gzipped.checked = false;
+    fire(gzipped, 'change');
+    assert.equal(name.value, 'mine.fpk');
+
+    const plain = await saved(save);
+    assert.equal(plain.name, 'mine.fpk');
+    assert.equal(JSON.parse(await plain.blob.text()).version, 5);
+
+    choose(menu, '0');
+    assert.equal(name.value, 'mine-reduced.fpk');
+    await until(() => save.disabled === false);
+    const reduced = await saved(save);
+    assert.equal(reduced.name, 'mine-reduced.fpk');
+    assert.deepEqual(JSON.parse(await reduced.blob.text()).reduced, LEVELS[0]);
+    gzipped.checked = true;
+    fire(gzipped, 'change');
   });
 
   it('keeps the settings of the view in the file when asked, whole or reduced', async () => {
@@ -143,10 +185,10 @@ describe('Save', () => {
     const settings = () => ({'mountaingraph.peaks.view': '3d', 'mountaingraph.peaks.hide': 'jdk'});
     const menu = saveSection('heap.jheap.json', p, heapReduction(p), settings);
     const save = all(menu, 'button')[0];
-    const [keep] = all(menu, 'input');
+    const [keep] = boxes(menu);
     keep.checked = true;
 
-    const whole = JSON.parse(await (await saved(save)).blob.text());
+    const whole = await read((await saved(save)).blob);
     assert.deepEqual(whole.mountaingraph, settings());
 
     choose(menu, '0');
@@ -186,7 +228,7 @@ describe('Save', () => {
     const p = readCollapsed(lines.join('\n'));
     const how = samplesReduction(p, {kind: 'cpu'});
     const menu = saveSection('app-cpu.fpk', p, how, noSettings);
-    assert.deepEqual(all(menu, 'option').map(o => o.text.trim()), ['None', ...thinning.LEVEL_TEXT.map(t => t.name)]);
+    assert.deepEqual(all(menu, 'option').map(o => o.text.trim()), ['All data', ...thinning.LEVEL_TEXT.map(t => t.name)]);
     const save = all(menu, 'button')[0];
     choose(menu, String(thinning.DEFAULT_LEVEL));
     await until(() => save.disabled === false);
@@ -221,16 +263,16 @@ describe('Save', () => {
     const {saveSection, heapReduction} = await import('../../web/js/components/save-section.js');
     const p = profile();
     const menu = saveSection('dups.fpk', p, {...heapReduction(p, {duplicates: {count: 1}}), levels: []}, noSettings);
-    assert.deepEqual(all(menu, 'option').map(o => o.text.trim()), ['None']);
-    const doc = JSON.parse(await (await saved(all(menu, 'button')[0])).blob.text());
+    assert.deepEqual(all(menu, 'option').map(o => o.text.trim()), ['All data']);
+    const doc = await read((await saved(all(menu, 'button')[0])).blob);
     assert.deepEqual(doc.duplicates, {count: 1});
   });
 
   it('has no choice of what is shown for a heap, which has no view of samples', async () => {
     const {saveSection, heapReduction} = await import('../../web/js/components/save-section.js');
     const p = profile();
-    // the one box is the settings of the view
-    assert.equal(all(saveSection('heap.jheap.json', p, heapReduction(p), noSettings), 'input').length, 1);
+    // the boxes are the settings of the view and the gzip
+    assert.equal(boxes(saveSection('heap.jheap.json', p, heapReduction(p), noSettings)).length, 2);
   });
 
   it('saves only what is shown when asked, with the settings as they are when it is', async () => {
@@ -243,7 +285,7 @@ describe('Save', () => {
     const how = samplesReduction(p, {kind: 'wall'}, () => settings);
     const menu = saveSection('app-wall.fpk', p, how, noSettings);
     const save = all(menu, 'button')[0];
-    const [tick] = all(menu, 'input');
+    const [tick] = boxes(menu);
     const said = () => all(menu, 'p')[0].text;
 
     assert.ok(tick, 'a choice of it');
@@ -283,7 +325,7 @@ describe('Save', () => {
                              'mountaingraph.peaks.waits': WAITS, 'mountaingraph.peaks.java': 'false'});
     const menu = saveSection('app-wall.fpk', p, how, settings);
     const save = all(menu, 'button')[0];
-    const [tick, keep] = all(menu, 'input');
+    const [tick, keep] = boxes(menu);
     keep.checked = true;
     choose(menu, String(thinning.DEFAULT_LEVEL));
     await until(() => save.disabled === false);

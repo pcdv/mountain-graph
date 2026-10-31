@@ -207,8 +207,7 @@ h1 .mark {
   gap: 8px;
 }
 
-/* what saves the file: the loss, what else to keep, what it comes to, and one button; the options line up with
-   the choice of loss */
+/* what saves the file: the loss and the button on one line, the file's name, what else to keep, what it comes to */
 .file-menu .save-section {
   display: grid;
   gap: 8px;
@@ -218,8 +217,20 @@ h1 .mark {
   margin-bottom: 0;
 }
 
-.file-menu .save-section .check {
-  margin-left: 96px;
+.file-menu .save-row {
+  display: flex;
+  gap: 8px;
+}
+
+.file-menu .save-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-menu .save-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
 }
 
 .file-menu .save-section .check:has(input:disabled) {

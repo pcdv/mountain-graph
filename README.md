@@ -88,7 +88,8 @@ bytes. First, samples, of time or of allocations:
   samples, with no time, thread or operation.
 
 Whatever the samples were read from, the file's menu saves those shown as a Flamepack, with **Save**.
-The **Loss** it asks for is none at first, which writes the whole profile as a `.fpk`. A loss drops the
+It saves **All data** at first, the whole profile as a `.fpk`, gzipped unless that is unchecked, under
+a name that can be changed. A loss drops the
 stacks of the methods that hardly run, where the flame graph is thin, cutting each at its deepest
 caller wide enough and ending it in `(thin stacks)`. The file comes out half or a third the size.
 Every sample keeps its time, thread and weight, and the methods that take time keep their peaks; the

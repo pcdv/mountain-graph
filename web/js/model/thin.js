@@ -38,7 +38,7 @@ export const LEVELS = [{least: 1e-3}, {least: 3e-3}, {least: 1e-2}];
 
 /** What each level is called and says, for whoever chooses one. */
 export const LEVEL_TEXT = [0.1, 0.3, 1].map((share, i) => ({
-  name: ['Little', 'Some', 'Much'][i],
+  name: ['Small loss', 'Medium loss', 'Large loss'][i],
   about: `the paths to the methods under ${share}% of the time, where the flame graph is as thin, end in ${THIN}; `
     + `a method's total misses those it is on${i === 2 ? ', and the lightest peaks may lose time' : ''}`,
 }));

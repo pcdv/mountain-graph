@@ -1,11 +1,12 @@
 // @ts-check
 /**
  * "Save" in a file menu: the profile as a Flamepack, whole or reduced to what matters (a file small enough
- * for a gallery or a report), with or without how the view is set. A heap keeps what the page draws
- * (model/reduce.js), samples the stacks of the methods that take time (model/thin.js). The level of loss is
- * chosen, and the size it gives said before the file is saved.
+ * for a gallery or a report), with or without how the view is set, gzipped or not, under a name that can be
+ * changed. A heap keeps what the page draws (model/reduce.js), samples the stacks of the methods that take
+ * time (model/thin.js). The level of loss is chosen, and the size it gives said before the file is saved.
  */
 import {h} from '../lib/dom.js';
+import {readSetting, writeSetting} from '../lib/settings.js';
 import {bytes} from '../lib/format.js';
 import {encode} from '../profile/heap.js';
 import {encodeSamples} from '../profile/encode.js';
@@ -34,6 +35,9 @@ const ALREADY_APPLIED = ['mountaingraph.peaks.waits', 'mountaingraph.peaks.hide'
 
 /** What the choice of loss is when nothing is lost. */
 const NONE = 'none';
+
+/** Whether the file is gzipped, kept: it is unless unchecked. */
+const GZIP = 'mountaingraph.export.gzip';
 
 /**
  * How a kind of profile is reduced.
@@ -114,22 +118,39 @@ export function saveSection(name, p, how, settings) {
   /** @type {Promise<number> | undefined} */
   let whole;
 
-  const select = h('select', {title: 'A file much smaller, for a gallery or a report, loses the detail that matters least'},
-    h('option', {value: NONE, selected: true}, 'None'),
+  const select = h('select', {'aria-label': 'What to save',
+                              title: 'A file much smaller, for a gallery or a report, loses the detail that matters least'},
+    h('option', {value: NONE, selected: true}, 'All data'),
     how.levels.map((l, i) => h('option', {value: i}, l.name)));
   select.value = NONE;
   const result = h('p', {class: 'muted'}, '');
   const save = h('button', {type: 'button', class: 'button primary'}, 'Save');
+  const gzipped = h('input', {type: 'checkbox'});
+  gzipped.checked = readSetting(GZIP) !== 'false';
+  const file = h('input', {type: 'text', class: 'save-name', spellcheck: 'false', 'aria-label': 'File name',
+                           title: 'The name of the file saved: its ending follows the loss and the gzip chosen'});
+  file.value = savedName(name, '');
+  // the ending follows the loss and the gzip; the rest of the name is as typed
+  const rename = () => {
+    const stem = file.value.trim().replace(/(-reduced)?\.fpk(\.gz)?$/i, '') || savedName(name, '');
+    file.value = `${stem}${level() === null ? '' : '-reduced'}.fpk${gzipped.checked ? '.gz' : ''}`;
+  };
+  rename();
+  gzipped.addEventListener('change', () => {
+    writeSetting(GZIP, String(gzipped.checked));
+    rename();
+  });
   /** @type {Made | null} */
   let chosen = null;
 
   const show = async () => {
     const at = level();
     chosen = null;
+    rename();
     if (only)
       only.disabled = at === null;
     if (at === null) {
-      result.textContent = 'The whole profile, as a Flamepack (.fpk) that jfr-web reads too.';
+      result.textContent = 'The whole profile, as a Flamepack.';
       save.disabled = false;
       return;
     }
@@ -159,37 +180,38 @@ export function saveSection(name, p, how, settings) {
   only?.addEventListener('change', show);
   save.addEventListener('click', async () => {
     const at = level();
+    if (at !== null && !chosen)
+      return;
     const members = kept.members();
-    if (at === null) {
-      saveFile(savedName(name, '.fpk'),
-               new Blob([JSON.stringify({...how.whole(), ...members})], {type: 'application/json'}));
-      return;
-    }
-    if (!chosen)
-      return;
-    let file = chosen.file;
-    if (Object.keys(members).length > 0) {
+    if (at !== null && Object.keys(members).length > 0 && view() !== null) {
       // what the view leaves out is already out of the profile: its settings would only say what was
       const set = /** @type {Record<string, string>} */ (/** @type {any} */ (members)[MEMBER]);
-      if (view() !== null)
-        for (const key of ALREADY_APPLIED)
-          delete set[key];
-      file = await gzip(JSON.stringify({...chosen.doc, ...members}));
+      for (const key of ALREADY_APPLIED)
+        delete set[key];
     }
-    saveFile(savedName(name, '-reduced.fpk.gz'), new Blob([file], {type: 'application/gzip'}));
+    rename();
+    const named = file.value;
+    // a reduced profile is gzipped already, when nothing is added to it
+    const ready = at !== null && chosen && Object.keys(members).length === 0 && gzipped.checked ? chosen.file : null;
+    const json = ready ? '' : JSON.stringify({...at === null ? how.whole() : chosen?.doc, ...members});
+    const body = ready ?? (gzipped.checked ? await gzip(json) : json);
+    saveFile(named, new Blob([body], {type: gzipped.checked ? 'application/gzip' : 'application/json'}));
   });
 
   const section = h('section', {class: 'save-section'},
     h('h3', null, 'Save'),
-    h('label', {class: 'field'}, h('span', {class: 'field-label'}, 'Loss'), select),
-    ...only ? [h('label', {class: 'check',
-                           title: 'Leaves out what the settings of the view leave out: the waits, the hidden frames, '
-                             + 'the native samples when only Java is shown, and what is outside the interval or the '
-                             + 'operation in focus'},
-                 only, 'Only what is shown')] : [],
-    kept.element,
-    result,
-    h('div', {class: 'actions'}, save));
+    h('div', {class: 'save-row'}, select, save),
+    file,
+    h('div', {class: 'save-checks'},
+      ...only ? [h('label', {class: 'check',
+                             title: 'Leaves out what the settings of the view leave out: the waits, the hidden frames, '
+                               + 'the native samples when only Java is shown, and what is outside the interval or '
+                               + 'the operation in focus'},
+                   only, 'Only what is shown')] : [],
+      kept.element,
+      h('label', {class: 'check', title: 'Compresses the file: much smaller, and opened as it is'},
+        gzipped, 'Gzipped')),
+    result);
   // the menu is opened again: the settings may have changed since, and what is shown is worked out again
   section.addEventListener('menuopen', () => {
     if (level() === null || !chosen || view() !== null)
