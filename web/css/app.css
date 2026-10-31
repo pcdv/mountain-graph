@@ -708,6 +708,11 @@ main {
     display: none;
   }
 
+  /* a file open: Close is enough, a new file is opened once it is closed */
+  header:has(#close:not([hidden])) .button.primary {
+    display: none;
+  }
+
   #settings {
     position: absolute;
     top: 0;
