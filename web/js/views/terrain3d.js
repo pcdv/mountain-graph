@@ -597,6 +597,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       const width = renderer.domElement.clientWidth, height = renderer.domElement.clientHeight;
       /** @type {number[][]} */
       const taken = [];
+      const forward = camera.getWorldDirection(new T.Vector3());
       spots.forEach((s, k) => {
         const sign = k < t.mountains.length;
         const at = new T.Vector3(s.x - 0.5 - (W - 1) / 2, s.h(), s.y - 0.5 - (H - 1) / 2);
@@ -608,9 +609,21 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
         const w = (names[k].offsetWidth || 8 * s.label.length) * scale, ht = sign ? (names[k].offsetHeight || 32) * scale : 16;
         // a sign stands over its point, a line of text is centred on it
         const box = sign ? [x - w / 2, y - ht, x + w / 2, y] : [x - w / 2, y - ht / 2, x + w / 2, y + ht / 2];
+        // where a corner of the sign would stand if it were in the world, as far from the camera as the peak is
+        const depth = at.clone().sub(camera.position).dot(forward);
+        const corner = (/** @type {number} */ cx, /** @type {number} */ cy) => {
+          const ray = new T.Vector3(cx / width * 2 - 1, 1 - cy / height * 2, 0.5).unproject(camera)
+            .sub(camera.position).normalize();
+          return camera.position.clone().addScaledVector(ray, depth / ray.dot(forward));
+        };
+        // a sign is wide and stands over its peak: it is hidden as soon as a nearer ridge reaches any of it,
+        // not once the peak itself is covered, which left it drawn over that ridge
+        const clear = () => !behind(at)
+                            && (!sign || [[box[0], box[1]], [box[2], box[1]], [box[0], box[3]], [box[2], box[3]]]
+                              .every(([cx, cy]) => !behind(corner(cx, cy))));
         const shown = p.z < 1 && x > 0 && x < width && y > 0 && y < height
                       && !taken.some(b => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3])
-                      && !behind(at);
+                      && clear();
         names[k].hidden = !shown;
         if (shown) {
           taken.push(box);
