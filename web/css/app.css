@@ -708,8 +708,9 @@ main {
     display: none;
   }
 
-  /* a file open: Close is enough, a new file is opened once it is closed */
-  header:has(#close:not([hidden])) .button.primary {
+  /* a file open: Close is enough, a new file is opened once it is closed (the header's own button: the file menu,
+     inside it, has a primary button too) */
+  header:has(#close:not([hidden])) > .button.primary {
     display: none;
   }
 
