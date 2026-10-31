@@ -36,11 +36,22 @@ test('the settings of the view are kept, and nothing else', () => {
 });
 
 test('the signs of the peaks, kept with the camera, are in a saved file and come back from it', () => {
-  const view = JSON.stringify({open: [], chosen: '', viewpoint: {position: [0, 1, 2], signColour: 'blue', signSize: 0.7}});
+  const view = JSON.stringify({chosen: '', viewpoint: {position: [0, 1, 2], signColour: 'blue', signSize: 0.7}});
   assert.deepEqual(captureView(storage({'mountaingraph.view': view})), {'mountaingraph.view': view});
   const s = storage();
   assert.equal(applyView({'mountaingraph.view': view}, s), 1);
   assert.equal(JSON.parse(s.getItem('mountaingraph.view') ?? '{}').viewpoint.signColour, 'blue');
+});
+
+test('the rows of the peaks table the person unfolded are not in a file, nor taken from one', () => {
+  const rows = ['a.b.C.run', 'a.b.D.get'];
+  const shown = {open: rows, chosen: 'a.b.C.run', viewpoint: {signSize: 0.7}};
+  const view = JSON.stringify(shown);
+  const saved = captureView(storage({'mountaingraph.view': view}));
+  assert.deepEqual(JSON.parse(saved['mountaingraph.view']), {chosen: 'a.b.C.run', viewpoint: {signSize: 0.7}});
+  const s = storage();
+  applyView({'mountaingraph.view': view}, s);
+  assert.deepEqual(JSON.parse(s.getItem('mountaingraph.view') ?? '{}'), {chosen: 'a.b.C.run', viewpoint: {signSize: 0.7}});
 });
 
 test('a file sets the settings of the view only', () => {
