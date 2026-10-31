@@ -27,7 +27,7 @@ import {anonymizeControls} from '../components/anonymizing.js';
 import {timeline} from '../components/timeline.js';
 import {span, checked} from '../model/timeline.js';
 import {fileMenu} from '../components/file-menu.js';
-import {folded, section} from '../components/form.js';
+import {folded} from '../components/form.js';
 import {floating, keepView, remembered} from './page.js';
 import {helpTip} from '../components/help.js';
 import {saveSection, samplesReduction} from '../components/save-section.js';
@@ -132,9 +132,8 @@ function display(page, name, samplings, which, saved) {
     }));
     main.classList.add('stage');
     let tuned = tuning();
-    // the 3D view's own controls, which it puts there as it is built
+    // the 3D view's own controls, which it puts there as it is built: in the landscape, shown in 3D only
     const relief = h('div', {class: 'settings-rows'});
-    const terrain3d = section('3D view', relief);
     const knobs = advanced(t => {
       tuned = t;
       page.relayout();
@@ -147,7 +146,6 @@ function display(page, name, samplings, which, saved) {
       last = settings;
       const {grain, count, coverage, waits, hide, java, shape, view, colour} = settings;
       knobs.fit({shape, view});
-      terrain3d.hidden = view !== '3d';
       // the flame graph has no peaks, and no terrain to tune
       fine.hidden = peaked.hidden = view === 'flame';
       if (kept?.waits !== waits) {
@@ -204,9 +202,9 @@ function display(page, name, samplings, which, saved) {
     };
     /** @type {import('../components/peak-controls.js').PeakSettings | null} */
     let last = null;
-    const controls = peakControls(peakSettings(), show);
+    const controls = peakControls(peakSettings(), show, relief);
     replace(page.tools, controls.view);
-    replace(page.settings, controls.settings, terrain3d, fine,
+    replace(page.settings, controls.settings, fine, controls.filters,
             folded('Anonymizing', anonymizeControls(() => page.reopen())));
     // laid out again in the window's shape, the bar in place, and as it is resized
     page.relayout = () => last && show(last);

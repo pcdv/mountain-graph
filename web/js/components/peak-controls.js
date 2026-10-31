@@ -8,7 +8,7 @@
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {WAITS} from '../model/samples.js';
-import {segmented, field, section} from './form.js';
+import {segmented, field, section, folded, resetButton} from './form.js';
 import {helpTip} from './help.js';
 
 /** @typedef {import('../model/peaks.js').Grain} Grain */
@@ -92,15 +92,17 @@ export function peakSettings() {
 /**
  * @typedef {object} Controls
  * @property {HTMLElement} view the choice of a map or 3D, for the header
- * @property {HTMLElement} settings the rest, in sections, for the settings pane
+ * @property {HTMLElement} settings the rest, in sections, each with a reset of its own, for the settings pane
  */
 
 /**
  * @param {PeakSettings} settings the current ones
  * @param {(settings: PeakSettings) => void} changed given the new ones, each time one changes
- * @returns {Controls}
+ * @param {HTMLElement} relief where the 3D view puts its own controls: in the landscape, shown in 3D only
+ * @returns {Controls & {filters: HTMLElement}} with what is left out of the samples as a section of its own,
+ *          which the pane puts low
  */
-export function peakControls(settings, changed) {
+export function peakControls(settings, changed, relief) {
   const grain = segmented([['method', 'Method'], ['class', 'Class'], ['package', 'Package']], settings.grain);
   const count = h('input', {type: 'number', min: 1, max: 100, value: settings.count});
   const coverage = h('input', {type: 'number', min: 1, max: 100, value: Math.round(settings.coverage * 100)});
@@ -117,13 +119,21 @@ export function peakControls(settings, changed) {
     field('One per', grain, 'What a peak gathers: a method, a class or a package', 'method'),
     field('At most', h('span', {class: 'unit'}, count, ' peaks'), 'The most peaks, the heaviest first', 'count'),
     field('Until', h('span', {class: 'unit'}, coverage, ' % covered'),
-          'No more peaks once those taken hold this share of the samples', 'coverage'));
+          'No more peaks once those taken hold this share of the samples', 'coverage'),
+    resetButton('the peaks', () => {
+      grain.value = DEFAULTS.grain;
+      count.value = String(DEFAULTS.count);
+      coverage.value = String(DEFAULTS.coverage * 100);
+      update();
+    }));
   const landscape = section('Landscape',
     field('Mountains', shape, SHAPE_TITLE.samples, 'shapes'),
-    field('Colour', colour, COLOUR_TITLE, 'colour'));
+    field('Colour', colour, COLOUR_TITLE, 'colour'),
+    relief);
 
   const update = () => {
     peaked.hidden = landscape.hidden = view.value === 'flame';
+    relief.hidden = view.value !== '3d';
     for (const input of [waits, hide]) {
       const valid = isPattern(input.value);
       input.classList.toggle('invalid', !valid);
@@ -144,26 +154,21 @@ export function peakControls(settings, changed) {
     input.addEventListener('input', update);
   update();
 
-  return {view, settings: h('div', null,
-    section('Samples',
-      field('Leave out waits', waits, 'The samples whose top frame this finds are left out: threads waiting', 'waits'),
-      field('Hide frames', hide, 'The frames this finds are left out of the stacks, their time given to their callers',
-            'hide'),
-      helpTip(h('label', {class: 'check'}, java, ' Java samples only (CPU)'), 'java',
-              'Leaves out the native samples: threads blocked in native code, waiting')),
-    peaked,
-    landscape,
-    h('button', {type: 'button', class: 'button', onclick: () => {
-      grain.value = DEFAULTS.grain;
-      count.value = String(DEFAULTS.count);
-      coverage.value = String(DEFAULTS.coverage * 100);
+  // what is left out of the samples: rarely changed, so folded, and low in the pane
+  const filters = folded('Filters',
+    field('Leave out waits', waits, 'The samples whose top frame this finds are left out: threads waiting', 'waits'),
+    field('Hide frames', hide, 'The frames this finds are left out of the stacks, their time given to their callers',
+          'hide'),
+    helpTip(h('label', {class: 'check'}, java, ' Java samples only (CPU)'), 'java',
+            'Leaves out the native samples: threads blocked in native code, waiting'),
+    resetButton('the filters', () => {
       waits.value = DEFAULTS.waits;
       hide.value = DEFAULTS.hide;
       java.checked = DEFAULTS.java;
-      shape.value = DEFAULTS.shape;
-      colour.value = DEFAULTS.colour;
       update();
-    }}, 'Reset to defaults'))};
+    }));
+
+  return {view, filters, settings: h('div', null, peaked, landscape)};
 }
 
 /**

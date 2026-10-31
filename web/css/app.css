@@ -11,6 +11,7 @@
   --on-accent: #ffffff;
   --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
   --error: #b42318;
+  --reset: #9a5a12;
   --drop: #e8f0ea;
   --float: rgba(255, 255, 255, 0.92);
   --shadow: 0 1px 2px rgba(31, 35, 40, 0.06), 0 8px 24px rgba(31, 35, 40, 0.08);
@@ -42,6 +43,7 @@
     --accent: #8fc4a1;
     --on-accent: #10261a;
     --error: #ff8a7a;
+    --reset: #e0a85c;
     --drop: #1f2a23;
     --float: rgba(30, 33, 37, 0.92);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
@@ -360,8 +362,9 @@ body:not(:has(main.stage)) #settings {
   background: var(--accent-soft);
 }
 
+/* wider with the window, within reason; the overlay of a narrow window keeps its own width, below */
 #settings {
-  flex: 0 0 320px;
+  flex: 0 0 clamp(320px, 28vw, 400px);
   box-sizing: border-box;
   overflow-y: auto;
   border-left: 1px solid var(--line);
@@ -443,6 +446,33 @@ details.settings-section[open] > summary::before {
 
 details.settings-section[open] > summary {
   margin-bottom: 8px;
+}
+
+/* what a section holds: its rows, a gap apart; one that is hidden leaves no gap */
+.settings-body {
+  display: grid;
+  gap: 8px;
+}
+
+/* the end of a section: its own settings back to their defaults. Its own colour, neither the green of the
+   controls nor the grey of the labels, and a plain underline, which the labels with a tip do not have */
+.settings-section .reset {
+  display: block;
+  justify-self: start;
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--reset);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.settings-section .reset:hover {
+  text-decoration-thickness: 2px;
 }
 
 /* a setting: its label at the left, the control filling the rest */
@@ -547,7 +577,7 @@ input[type=number] {
 input.pattern {
   width: 100%;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 input.invalid {
@@ -1264,6 +1294,11 @@ canvas.flame-canvas {
   font-size: 12px;
 }
 
+/* the line above the sliders, across the whole row, not in the narrow column of a button */
+.knobs > :first-child {
+  grid-column: 1 / -1;
+}
+
 .knobs .knob {
   display: contents;
 }
@@ -1306,10 +1341,9 @@ canvas.flame-canvas {
   color: var(--muted);
 }
 
-.knobs .button {
+/* its Reset, as in the other sections, across the row of the grid */
+.knobs .reset {
   grid-column: 1 / -1;
-  justify-self: start;
-  margin-top: 12px;
 }
 
 .toast {
@@ -1363,7 +1397,7 @@ canvas.flame-canvas {
 .anonymizing textarea {
   width: 100%;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 11px;
   resize: vertical;
 }
 
@@ -1466,6 +1500,14 @@ canvas.flame-canvas {
 .settings-rows {
   display: grid;
   gap: 8px;
+}
+
+/* a few checkboxes on one line, wrapping when the pane is narrow */
+.toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
 }
 
 .field input[type=range] {

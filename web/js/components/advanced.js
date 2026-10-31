@@ -8,6 +8,7 @@ import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {TUNING} from '../model/terrain.js';
 import {helpTip} from './help.js';
+import {resetButton} from './form.js';
 import {VIEW_TUNING, invertedMouse, invertMouse} from '../views/terrain3d.js';
 
 const KEY = 'mountaingraph.tuning';
@@ -104,10 +105,11 @@ export function advanced(changed) {
       if (input.value !== was)
         set();
     }}, by < 0 ? '−' : '+');
-    return {knob, input, out, row: h('div', {class: 'knob', title: knob.title}, h('span', null, knob.label), nudge(-1), input,
-                                     nudge(1), out)};
+    // its label tells what it does, as the other sections' do, and opens the help at it
+    const label = helpTip(h('span', null, knob.label), `tuning-${knob.key}`, knob.title);
+    return {knob, input, out, row: h('div', {class: 'knob'}, label, nudge(-1), input, nudge(1), out)};
   });
-  const reset = h('button', {type: 'button', class: 'button', onclick: () => {
+  const reset = resetButton('the tuning and the mouse', () => {
     /** @type {any} */
     const defaults = {...TUNING, ...VIEW_TUNING};
     for (const {knob, input, out} of rows) {
@@ -117,11 +119,11 @@ export function advanced(changed) {
     save();
     inverting.checked = false;
     invertMouse(false);
-  }}, 'Reset the tuning');
+  });
   // not a slider: read as the mouse moves, nothing to build again
   const inverting = h('input', {type: 'checkbox', checked: invertedMouse(), onchange: () => invertMouse(inverting.checked)});
-  const invert = h('label', {class: 'invert', title: 'Looking around in 3D (key F): moving the mouse up looks down, as in a flight simulator'},
-                   inverting, ' Invert the mouse');
+  const invert = helpTip(h('label', {class: 'invert'}, inverting, ' Invert the mouse'), 'tuning-invert',
+                         'Looking around in 3D (key F): moving the mouse up looks down, as in a flight simulator');
   return {element: h('div', {class: 'knobs'}, helpTip(h('div', {class: 'muted'}, 'The values the terrain is raised with'), 'tuning',
                              'Hover a slider for what it does; the help says it for all of them'),
                      rows.map(r => r.row), invert, reset),

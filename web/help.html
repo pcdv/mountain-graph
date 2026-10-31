@@ -85,8 +85,8 @@
     move forward, back and sideways with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> (the keys in their places: <kbd>Z</kbd> <kbd>Q</kbd>
     <kbd>S</kbd> <kbd>D</kbd> on an AZERTY keyboard) or the arrows (which then
     take over <kbd>S</kbd>, a picture's key; <kbd>Q</kbd> and <kbd>E</kbd> still lower and raise it); <kbd>F</kbd> or
-    <kbd>Esc</kbd> gives the mouse back. The camera is kept like the 2D map's. The relief, the islands and the blocks have their own section in
-    the settings, <a href="#view3d">shown in 3D only</a>.</p>
+    <kbd>Esc</kbd> gives the mouse back. The camera is kept like the 2D map's. The relief, the islands, the blocks and the flame graph are at the end of
+    the Landscape settings, <a href="#view3d">shown in 3D only</a>.</p>
 </section>
 
 <section id="peaks">
@@ -146,7 +146,9 @@
 <section id="samples">
   <h2>Samples settings</h2>
   <p>For a recording of samples (JFR, Flamepack, collapsed stacks). A file may hold several kinds of
-    samples (CPU time, wall clock, allocation): the choice in the header says which counts.</p>
+    samples (CPU time, wall clock, allocation): the choice in the header says which counts. What is left out of
+    the samples (the waits, the hidden frames, the native samples) is in the <b>Filters</b> section of the
+    settings, folded at first. Every section of the settings folds, and stays open or folded as it was left.</p>
   <h3 id="sampling">What the samples count</h3>
   <p>The weight of a sample: time (the wall clock: Java and native samples, waiting included) or bytes allocated. A
     JFR recording holds both, and the choice in the header switches between <b>Wall clock</b> and
@@ -240,7 +242,7 @@
 
 <section id="view3d">
   <h2>3D view</h2>
-  <p>The settings of the 3D view are in their own section of the settings, shown in 3D only.</p>
+  <p>The settings of the 3D view are at the end of the Landscape section of the settings, shown in 3D only.</p>
   <h3 id="relief">Relief</h3>
   <p>The height of the highest peak, as a share of the terrain's size. Heights are the weight to a power (the
     <a href="#tuning">height curve</a>), so that small peaks show.</p>
@@ -278,18 +280,20 @@
   <p>The values the terrain is raised with, as sliders (− and + move one step), remembered. Only those that change
     what is shown are listed.</p>
   <dl>
-    <dt>Foot height</dt><dd>Ridges and ranges: a low dome under each mountain, as high as this share of its peak, so
+    <dt id="tuning-foot">Foot height</dt><dd>Ridges and ranges: a low dome under each mountain, as high as this share of its peak, so
       that its bulk shows its weight.</dd>
-    <dt>Ridge width</dt><dd>The peak's ridge, as a share of the mountain's radius. It is also the radius of the
+    <dt id="tuning-ridge">Ridge width</dt><dd>The peak's ridge, as a share of the mountain's radius. It is also the radius of the
       summit's disc of <a href="#zones">zones</a>.</dd>
-    <dt>Saddle reach</dt><dd>Ranges: how far apart two mountains may stand, in the sum of their radii, for a frame
+    <dt id="tuning-near">Saddle reach</dt><dd>Ranges: how far apart two mountains may stand, in the sum of their radii, for a frame
       they share to make a saddle.</dd>
-    <dt>Trail threshold</dt><dd>The least share of the smaller mountain's weight through a shared frame, for a trail.</dd>
-    <dt>Trails per mountain</dt><dd>The most trails from a mountain, the strongest first.</dd>
-    <dt>3D height curve</dt><dd>Heights as the weight to this power: 0.5 lets small peaks show, 1 makes them as high
+    <dt id="tuning-trail">Trail threshold</dt><dd>The least share of the smaller mountain's weight through a shared frame, for a trail.</dd>
+    <dt id="tuning-trails">Trails per mountain</dt><dd>The most trails from a mountain, the strongest first.</dd>
+    <dt id="tuning-curve">3D height curve</dt><dd>Heights as the weight to this power: 0.5 lets small peaks show, 1 makes them as high
       as their weight.</dd>
-    <dt>Island bumps</dt><dd>How rough the islands are.</dd>
-    <dt>Island rock slope</dt><dd>How steep a slope turns to rock: lower, more rock.</dd>
+    <dt id="tuning-bump">Island bumps</dt><dd>How rough the islands are.</dd>
+    <dt id="tuning-rock">Island rock slope</dt><dd>How steep a slope turns to rock: lower, more rock.</dd>
+    <dt id="tuning-invert">Invert the mouse</dt><dd>Looking around in 3D (<kbd>F</kbd>): moving the mouse up looks
+      down, as in a flight simulator.</dd>
   </dl>
 </section>
 

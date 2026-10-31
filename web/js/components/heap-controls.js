@@ -8,7 +8,7 @@
  */
 import {h} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
-import {segmented, field, section} from './form.js';
+import {segmented, field, section, resetButton} from './form.js';
 import {SHAPES, VIEWS, COLOURS, SHAPE_TITLE, COLOUR_TITLE, viewOf} from './peak-controls.js';
 
 /** @typedef {import('../model/peaks.js').Grain} Grain */
@@ -75,11 +75,12 @@ export function asDuplicates(settings) {
 /**
  * @param {HeapSettings} settings the current ones
  * @param {(settings: HeapSettings) => void} changed given the new ones, each time one changes
+ * @param {HTMLElement} relief where the 3D view puts its own controls: in the landscape, shown in 3D only
  * @param {boolean} [duplicates] the profile is of duplicate Strings: what ranks and gathers its peaks
  *        is fixed, and not shown
  * @returns {import('./peak-controls.js').Controls} those that do not apply to the ranking chosen hidden
  */
-export function heapControls(settings, changed, duplicates = false) {
+export function heapControls(settings, changed, relief, duplicates = false) {
   const basis = segmented([['owned', 'What they hold', 'Which objects keep the memory alive. A chain of holders is one '
                                                         + 'peak, as deep as the object that actually retains the memory; '
                                                         + 'the slopes go down to what it holds'],
@@ -109,25 +110,24 @@ export function heapControls(settings, changed, duplicates = false) {
   const peaked = section('Peaks', ranked, wrapped, gathered, framed,
     field('At most', h('span', {class: 'unit'}, count, ' peaks'), 'The most peaks, the heaviest first', 'count'),
     field('Until', h('span', {class: 'unit'}, coverage, ' % covered'),
-          'No more peaks once those taken hold this share of the memory', 'coverage'));
-  const landscape = section('Landscape', field('Mountains', shape, SHAPE_TITLE.heap, 'shapes'), coloured);
-  const reset = h('button', {type: 'button', class: 'button', onclick: () => {
-    basis.value = DEFAULTS.basis;
-    wrappers.value = DEFAULTS.wrappers;
-    grain.value = DEFAULTS.grain;
-    context.value = String(DEFAULTS.context);
-    count.value = String(DEFAULTS.count);
-    coverage.value = String(DEFAULTS.coverage * 100);
-    shape.value = DEFAULTS.shape;
-    colour.value = DEFAULTS.colour;
-    update();
-  }}, 'Reset to defaults');
+          'No more peaks once those taken hold this share of the memory', 'coverage'),
+    resetButton('the peaks', () => {
+      basis.value = DEFAULTS.basis;
+      wrappers.value = DEFAULTS.wrappers;
+      grain.value = DEFAULTS.grain;
+      context.value = String(DEFAULTS.context);
+      count.value = String(DEFAULTS.count);
+      coverage.value = String(DEFAULTS.coverage * 100);
+      update();
+    }));
+  const landscape = section('Landscape', field('Mountains', shape, SHAPE_TITLE.heap, 'shapes'), coloured, relief);
   const whole = h('p', {class: 'muted'}, 'The flame graph shows every path of the heap, from its roots to the objects. '
                   + 'Nothing here changes it: these settings are for the peaks.');
 
   const update = () => {
     const flame = view.value === 'flame';
-    peaked.hidden = landscape.hidden = reset.hidden = flame;
+    peaked.hidden = landscape.hidden = flame;
+    relief.hidden = view.value !== '3d';
     whole.hidden = !flame;
     const n = count.valueAsNumber, c = coverage.valueAsNumber, k = Number(context.value);
     // what the ranking chosen does not use is not shown: it would change nothing
@@ -152,7 +152,7 @@ export function heapControls(settings, changed, duplicates = false) {
     input.addEventListener('input', update);
   update();
 
-  return {view, settings: h('div', null, whole, peaked, landscape, reset)};
+  return {view, settings: h('div', null, whole, peaked, landscape)};
 }
 
 /**

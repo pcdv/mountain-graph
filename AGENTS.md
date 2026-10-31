@@ -74,7 +74,8 @@ on its own line, so reformat only the file being edited.
 
 Settings are kept in `localStorage` under `mountaingraph.*` (`view`, `sampling`, `tuning`,
 `anonymize`, `peaks.*` for samples, `heap.*` for a heap, `float.*` for the panes, the settings
-pane included, `timeline.hold`, `panel.width`); give a new one the same prefix.
+pane included, `fold.*` for the sections of the settings pane, open or folded, `timeline.hold`,
+`panel.width`); give a new one the same prefix.
 
 ## Rules
 

@@ -469,25 +469,26 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                                }});
     const tide = field('Sea level', rising, 'How high the water is: a higher sea covers more of the land', 'sea');
     tide.hidden = !islands;
-    const knobs = [field('Relief', slider, 'The height of the highest peak, as a share of the terrain\'s size', 'relief'),
-                   helpTip(h('label', {class: 'check'}, isles, ' Islands'), 'islands',
-                           'The plain becomes a sea and the mountains islands: sand, grass, and rock where it is steep'),
-                   tide,
-                   helpTip(h('label', {class: 'check'}, cubed, ' Blocks'), 'blocks', 'The land built of blocks'), size];
+    // the ways to draw the land, and the flame graph beside it, on one line; under it the sliders, Relief first,
+    // then those of the ways that are on
+    const toggles = [helpTip(h('label', {class: 'check'}, isles, ' Islands'), 'islands',
+                             'The plain becomes a sea and the mountains islands: sand, grass, and rock where it is steep'),
+                     helpTip(h('label', {class: 'check'}, cubed, ' Blocks'), 'blocks', 'The land built of blocks')];
     if (flameOf) {
       const flamed = h('input', {type: 'checkbox', checked: flaming, onchange: () => {
         viewpoint.panel = flaming = flamed.checked;
         stand();
-        // framed again, the panel in sight: it stands behind the terrain, out of most views closer in
-        if (flaming)
-          home();
+        // the camera stays where it is: the panel stands behind the terrain, and turning the view shows it
         redraw();
       }});
       // not a way of drawing the land, as islands and blocks are, but a second view beside it, with any of them
-      knobs.push(field('Flame graph', h('label', {class: 'check'}, flamed, ' Behind the terrain'),
-                       'The whole profile as a flame graph, standing behind the terrain: a frame '
-                       + 'hovered on either is lit on both', 'flame-panel'));
+      toggles.push(helpTip(h('label', {class: 'check'}, flamed, ' Flame graph'), 'flame-panel',
+                           'The whole profile as a flame graph, standing behind the terrain: a frame '
+                           + 'hovered on either is lit on both'));
     }
+    const knobs = [h('div', {class: 'toggles'}, toggles),
+                   field('Relief', slider, 'The height of the highest peak, as a share of the terrain\'s size', 'relief'),
+                   tide, size];
     if (knobsIn)
       knobsIn.replaceChildren(...knobs);
     loading.replaceWith(renderer.domElement, labels, tip, ...knobsIn ? [] : [h('div', {class: 'relief'}, knobs)]);
