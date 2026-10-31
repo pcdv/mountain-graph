@@ -1280,6 +1280,97 @@ canvas.flame-canvas {
   text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 2px var(--bg);
 }
 
+/* the colours of a sign, the same in either theme: a plate and the ink of its text and its rule; the signs are
+   of the colour the container says (data-sign), a swatch of the settings is its own (data-colour) */
+.peak-labels[data-sign=white], .swatches [data-colour=white] {
+  --plate: #f7f6f1;
+  --ink: #1d1d1b;
+}
+
+.peak-labels[data-sign=yellow], .swatches [data-colour=yellow] {
+  --plate: #f4c430;
+  --ink: #1d1a0c;
+}
+
+.peak-labels[data-sign=blue], .swatches [data-colour=blue] {
+  --plate: #1f5fae;
+  --ink: #ffffff;
+}
+
+.peak-labels[data-sign=red], .swatches [data-colour=red] {
+  --plate: #c0392b;
+  --ink: #ffffff;
+}
+
+.peak-labels[data-sign=green], .swatches [data-colour=green] {
+  --plate: #1f7a4d;
+  --ink: #ffffff;
+}
+
+/* a peak's name and weight: a road sign with no pole, a rule inside its plate, over the summit and always
+   facing the camera, larger when it is near (--scale, set as it is placed) */
+.peak-labels span.sign {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 9px 5px;
+  border-radius: 6px;
+  background: var(--plate);
+  color: var(--ink);
+  text-shadow: none;
+  outline: 1px solid var(--ink);
+  outline-offset: -3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transform: translate(-50%, calc(-100% - 4px)) scale(var(--scale, 1));
+  transform-origin: 50% 100%;
+}
+
+.peak-labels span.sign b {
+  font-weight: 600;
+}
+
+/* the choice of a sign's colour: a row of small plates, the one chosen ringed */
+.swatches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatches label {
+  display: flex;
+}
+
+.swatches input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.swatches span {
+  width: 24px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--plate);
+  outline: 1px solid var(--ink);
+  outline-offset: -3px;
+  box-shadow: 0 0 0 1px var(--line-strong);
+  cursor: pointer;
+}
+
+.swatches input:checked + span {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+}
+
+.swatches input:focus-visible + span {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--fg);
+}
+
+.peak-labels span.sign small {
+  font-size: 10px;
+  opacity: 0.85;
+}
+
 /* a frame and its ms on one line: the panel scrolls sideways rather than wrap */
 .map-panel .callers li, .map-panel .callers summary, .map-panel .tops li {
   white-space: nowrap;

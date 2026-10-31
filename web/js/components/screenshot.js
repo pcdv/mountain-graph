@@ -1,7 +1,7 @@
 // @ts-check
 /**
  * A picture of the view shown, by hotkey: S saves it as a PNG, C copies it to the clipboard. It holds the
- * canvas of the map or of the 3D view, and the names over the peaks of the 3D view, which are not drawn
+ * canvas of the map or of the 3D view, and the signs over the peaks of the 3D view, which are not drawn
  * in it; the panels floating over it too with Shift (S and C in capitals), drawn again by paint-dom.js.
  */
 import {h} from '../lib/dom.js';
@@ -37,7 +37,7 @@ function viewCanvas(root) {
 /**
  * @param {HTMLCanvasElement} view
  * @param {boolean} [panels] whether the panels floating over the view are in the picture too
- * @returns {HTMLCanvasElement} a copy of it, with the names of the peaks over it
+ * @returns {HTMLCanvasElement} a copy of it, with the signs of the peaks over it, and the names of the trails
  */
 export function compose(view, panels = false) {
   const out = document.createElement('canvas');
@@ -55,6 +55,10 @@ export function compose(view, panels = false) {
   g.lineJoin = 'round';
   const page = getComputedStyle(document.body);
   for (const name of names) {
+    if (name.classList.contains('sign')) {
+      paintSign(g, name, box, k);
+      continue;
+    }
     const r = name.getBoundingClientRect(), style = getComputedStyle(name);
     g.font = `${style.fontStyle} ${parseFloat(style.fontSize) * k}px ${style.fontFamily}`;
     const x = (r.left + r.width / 2 - box.left) * k, y = (r.top + r.height / 2 - box.top) * k;
@@ -71,6 +75,53 @@ export function compose(view, panels = false) {
     paintElements(g, [...shown], box, k);
   }
   return out;
+}
+
+/**
+ * Draws a peak's sign as the page shows it: its plate with the shadow and the rule inside it, the name and
+ * the weight under it. The sign is scaled by the page's transform, which the text does not follow in what is
+ * measured of it: the size of its font is scaled here by how much its box is.
+ *
+ * @param {CanvasRenderingContext2D} g
+ * @param {Element} sign
+ * @param {DOMRect} view where the canvas of the view is on the page, in CSS pixels
+ * @param {number} k canvas pixels to a CSS pixel
+ */
+function paintSign(g, sign, view, k) {
+  const r = sign.getBoundingClientRect(), style = getComputedStyle(sign);
+  // how much the page scaled it, by distance and by the setting
+  const s = sign instanceof HTMLElement && sign.offsetWidth > 0 ? r.width / sign.offsetWidth : 1;
+  const x = (r.left - view.left) * k, y = (r.top - view.top) * k, w = r.width * k, h = r.height * k;
+  const radius = (parseFloat(style.borderTopLeftRadius) || 0) * s * k;
+  g.save();
+  g.fillStyle = style.backgroundColor;
+  g.shadowColor = 'rgba(0, 0, 0, 0.3)';
+  g.shadowBlur = 6 * s * k;
+  g.shadowOffsetY = 2 * s * k;
+  g.beginPath();
+  g.roundRect(x, y, w, h, radius);
+  g.fill();
+  g.restore();
+  // the rule, 3 px inside the edge
+  const inset = 3 * s * k;
+  g.save();
+  g.strokeStyle = style.color;
+  g.lineWidth = s * k;
+  g.beginPath();
+  g.roundRect(x + inset, y + inset, w - 2 * inset, h - 2 * inset, Math.max(0, radius - inset));
+  g.stroke();
+  g.restore();
+  g.save();
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillStyle = style.color;
+  for (const line of sign.children) {
+    const q = line.getBoundingClientRect(), text = getComputedStyle(line);
+    g.globalAlpha = Number(text.opacity);
+    g.font = `${text.fontStyle} ${text.fontWeight} ${parseFloat(text.fontSize) * s * k}px ${text.fontFamily}`;
+    g.fillText(line.textContent ?? '', (q.left + q.width / 2 - view.left) * k, (q.top + q.height / 2 - view.top) * k);
+  }
+  g.restore();
 }
 
 /**

@@ -16,9 +16,10 @@ import {h, replace} from '../lib/dom.js';
 import {readSetting, writeSetting} from '../lib/settings.js';
 import {terrainFrame, short} from '../components/terrain-frame.js';
 import {FADE} from '../components/crossfade.js';
-import {field} from '../components/form.js';
+import {field, swatches} from '../components/form.js';
 import {contour, levels} from '../model/contours.js';
 import {zoneCells} from '../model/zones.js';
+import {amount} from '../model/units.js';
 import {helpTip} from '../components/help.js';
 import {palette, tint, hued, DEPTH, LINES} from './palette.js';
 import {blocks, COLUMNS, FEWEST} from './blocks3d.js';
@@ -62,6 +63,8 @@ const CHROMIUM = typeof navigator !== 'undefined'
  *           the zoom, 1 showing the whole terrain
  * @property {string[]} [flame] the names from the root down to the frame the flame graph is zoomed on
  * @property {boolean} [panel] whether a flame graph stands behind the terrain
+ * @property {string} [signColour] of the peaks' signs, one of SIGN_COLOURS
+ * @property {number} [signSize] of the peaks' signs, as a share of their usual size
  */
 
 /**
@@ -92,6 +95,19 @@ export function invertMouse(on) {
  * looks down at by default (about 37°).
  */
 const PANEL_LEAN = Math.PI / 6;
+
+/**
+ * How small a peak's sign gets far away, and how large near, as a share of its size where the camera is as far
+ * from it as the terrain is wide.
+ */
+const SIGN_FAR = 0.75, SIGN_NEAR = 1.3;
+
+/** The colours a peak's sign can be, by name and label: the CSS has the plate and the ink of each. */
+const SIGN_COLOURS = /** @type {[string, string][]} */ ([['white', 'White'], ['yellow', 'Yellow'], ['blue', 'Blue'],
+                                                         ['red', 'Red'], ['green', 'Green']]);
+
+/** The sign's size at 100%, as a share of the size its CSS gives it, and the least and the most it can be. */
+const SIGN_BASE = 0.8, SIGN_LEAST = 0.5, SIGN_MOST = 1.5;
 
 /** How much of its colour the land keeps along the lines of the zones. */
 const ZONE_LINE = 0.6;
@@ -403,14 +419,23 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     // two fingers moving apart come closer: the controls' own pinch went with their zoom
     pinch(renderer.domElement, ratio => !looking && zoom(1 / ratio));
 
-    const labels = h('div', {class: 'peak-labels'});
+    // as kept in the viewpoint, which a file may carry: a colour or a size out of range is the default
+    let signColour = SIGN_COLOURS.some(([c]) => c === viewpoint.signColour) ? String(viewpoint.signColour) : 'yellow';
+    let signSize = typeof viewpoint.signSize === 'number' && viewpoint.signSize >= SIGN_LEAST && viewpoint.signSize <= SIGN_MOST
+      ? viewpoint.signSize : 1;
+    const labels = h('div', {class: 'peak-labels', 'data-sign': signColour});
     // the peaks, then the trails halfway, named after the caller they share
     const spots = [
       ...t.mountains.map(m => ({label: short(m.name), x: m.x, y: m.y, h: () => lift(t.nodes[m.node].total) + side / 60})),
       ...t.trails.map(({caller, line: [x1, y1, x2, y2]}) =>
         ({label: short(caller), x: (x1 + x2) / 2, y: (y1 + y2) / 2, h: () => side / 200})),
     ];
-    const names = spots.map((s, k) => h('span', {class: k < t.mountains.length ? '' : 'trail'}, s.label));
+    // a peak's is a sign, as a road sign with no pole floating over it: the name, and its weight under it; a
+    // trail's is a line of text
+    const unit = selection.unit ?? 'ms';
+    const names = spots.map((s, k) => k < t.mountains.length
+      ? h('span', {class: 'sign'}, h('b', null, s.label), h('small', null, amount(t.nodes[t.mountains[k].node].total, unit)))
+      : h('span', {class: 'trail'}, s.label));
     labels.append(...names);
     const slider = h('input', {type: 'range', min: FLATTEST, max: HIGHEST, step: 0.01, value: relief,
                                oninput: () => {
@@ -486,9 +511,22 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                            'The whole profile as a flame graph, standing behind the terrain: a frame '
                            + 'hovered on either is lit on both'));
     }
+    // the signs over the peaks: only laid out again, the terrain is not built again
+    const plates = swatches(SIGN_COLOURS, signColour);
+    plates.addEventListener('input', () => {
+      viewpoint.signColour = signColour = plates.value;
+      labels.setAttribute('data-sign', signColour);
+    });
+    const sizing = h('input', {type: 'range', min: SIGN_LEAST, max: SIGN_MOST, step: 0.05, value: signSize,
+                               oninput: () => {
+                                 viewpoint.signSize = signSize = Number(sizing.value);
+                                 render();
+                               }});
     const knobs = [h('div', {class: 'toggles'}, toggles),
                    field('Relief', slider, 'The height of the highest peak, as a share of the terrain\'s size', 'relief'),
-                   tide, size];
+                   tide, size,
+                   field('Signs', plates, 'The colour of the signs over the peaks', 'signs'),
+                   field('Sign size', sizing, 'How large the signs over the peaks are', 'signs')];
     if (knobsIn)
       knobsIn.replaceChildren(...knobs);
     loading.replaceWith(renderer.domElement, labels, tip, ...knobsIn ? [] : [h('div', {class: 'relief'}, knobs)]);
@@ -523,11 +561,16 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       /** @type {number[][]} */
       const taken = [];
       spots.forEach((s, k) => {
+        const sign = k < t.mountains.length;
         const at = new T.Vector3(s.x - 0.5 - (W - 1) / 2, s.h(), s.y - 0.5 - (H - 1) / 2);
         const p = at.clone().project(camera);
         const x = (p.x + 1) / 2 * width, y = (1 - p.y) / 2 * height;
-        const w = names[k].offsetWidth || 8 * s.label.length;
-        const box = [x - w / 2, y - 8, x + w / 2, y + 8];
+        // a sign grows as the camera nears it and shrinks as it goes away, within reason
+        const scale = sign ? SIGN_BASE * signSize
+                             * Math.max(SIGN_FAR, Math.min(SIGN_NEAR, side / camera.position.distanceTo(at))) : 1;
+        const w = (names[k].offsetWidth || 8 * s.label.length) * scale, ht = sign ? (names[k].offsetHeight || 32) * scale : 16;
+        // a sign stands over its point, a line of text is centred on it
+        const box = sign ? [x - w / 2, y - ht, x + w / 2, y] : [x - w / 2, y - ht / 2, x + w / 2, y + ht / 2];
         const shown = p.z < 1 && x > 0 && x < width && y > 0 && y < height
                       && !taken.some(b => box[0] < b[2] && b[0] < box[2] && box[1] < b[3] && b[1] < box[3])
                       && !behind(at);
@@ -536,6 +579,8 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
           taken.push(box);
           names[k].style.left = `${x}px`;
           names[k].style.top = `${y}px`;
+          if (sign)
+            names[k].style.setProperty('--scale', String(scale));
         }
       });
     };

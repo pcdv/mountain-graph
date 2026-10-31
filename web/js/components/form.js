@@ -23,14 +23,37 @@ let groups = 0;
 export function segmented(options, value) {
   const name = `choice-${++groups}`;
   const radios = options.map(([v]) => h('input', {type: 'radio', name, value: v, checked: v === value}));
-  /** @type {any} given a value below */
-  const el = h('div', {class: 'segmented', role: 'radiogroup'},
-    options.map(([, label, title], i) => h('label', {title}, radios[i], h('span', null, label))));
+  return choice(h('div', {class: 'segmented', role: 'radiogroup'},
+    options.map(([, label, title], i) => h('label', {title}, radios[i], h('span', null, label)))), radios);
+}
+
+/**
+ * A choice among colours, each a swatch: radio buttons as a row of small plates. It fires `input` as a
+ * select does. The colour of a swatch is the CSS's, by its `data-colour`.
+ *
+ * @param {[string, string][]} options each its value, which is its colour's name, and its label
+ * @param {string} value the one chosen
+ * @returns {Choice}
+ */
+export function swatches(options, value) {
+  const name = `choice-${++groups}`;
+  const radios = options.map(([v]) => h('input', {type: 'radio', name, value: v, checked: v === value}));
+  return choice(h('div', {class: 'swatches', role: 'radiogroup'},
+    options.map(([v, label], i) => h('label', {title: label}, radios[i],
+                                     h('span', {'data-colour': v, 'aria-label': label})))), radios);
+}
+
+/**
+ * @param {HTMLElement} el the radio buttons' container
+ * @param {HTMLInputElement[]} radios
+ * @returns {Choice} el, read and set by value as a select is
+ */
+function choice(el, radios) {
   Object.defineProperty(el, 'value', {
     get: () => radios.find(r => r.checked)?.value ?? '',
     set: (/** @type {string} */ v) => radios.forEach(r => r.checked = r.value === v),
   });
-  return el;
+  return /** @type {Choice} */ (el);
 }
 
 /**

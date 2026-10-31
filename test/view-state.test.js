@@ -35,6 +35,14 @@ test('the settings of the view are kept, and nothing else', () => {
   });
 });
 
+test('the signs of the peaks, kept with the camera, are in a saved file and come back from it', () => {
+  const view = JSON.stringify({open: [], chosen: '', viewpoint: {position: [0, 1, 2], signColour: 'blue', signSize: 0.7}});
+  assert.deepEqual(captureView(storage({'mountaingraph.view': view})), {'mountaingraph.view': view});
+  const s = storage();
+  assert.equal(applyView({'mountaingraph.view': view}, s), 1);
+  assert.equal(JSON.parse(s.getItem('mountaingraph.view') ?? '{}').viewpoint.signColour, 'blue');
+});
+
 test('a file sets the settings of the view only', () => {
   const s = storage({'mountaingraph.anonymize': '{}'});
   const taken = applyView({
