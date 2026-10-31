@@ -4,6 +4,7 @@
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {extname, join, normalize, sep} from 'node:path';
+import {networkInterfaces} from 'node:os';
 import {fileURLToPath} from 'node:url';
 
 const root = fileURLToPath(new URL('web/', import.meta.url));
@@ -43,4 +44,13 @@ createServer(async (req, res) => {
   catch (e) {
     res.writeHead(404).end('Not found');
   }
-}).listen(port, host, () => console.log(`MountainGraph on http://${host === '0.0.0.0' ? 'localhost' : host}:${port}/`));
+}).listen(port, host, () => {
+  if (host !== '0.0.0.0')
+    return console.log(`MountainGraph on http://${host}:${port}/`);
+  // every interface: the addresses a phone on the same network can use
+  console.log(`MountainGraph on http://localhost:${port}/`);
+  for (const [name, list] of Object.entries(networkInterfaces()))
+    for (const a of list || [])
+      if (a.family === 'IPv4' && !a.internal)
+        console.log(`  from a phone: http://${a.address}:${port}/  (${name})`);
+});

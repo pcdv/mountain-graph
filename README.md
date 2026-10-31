@@ -61,6 +61,13 @@ npm run serve   # http://localhost:8091/ (browsers refuse modules opened from fi
 npm test        # the tests of the modules without DOM
 ```
 
+To open it from a phone on the same network, serve it on every interface. It prints the addresses
+to browse to, for example `http://192.168.1.20:8091/`:
+
+```sh
+npm run serve -- 8091 0.0.0.0   # port, then host
+```
+
 ## Input
 
 Pick a file or drop it on the page, gzipped or not: the page tells what it is from its first
