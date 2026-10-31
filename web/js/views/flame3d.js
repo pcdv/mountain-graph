@@ -7,7 +7,7 @@
  * caller kept on the foot, faded, which a click zooms back out to. A frame
  * lit on the terrain is coloured on the panel wherever it is called.
  */
-import {layout, pick, deepest} from '../model/flame.js';
+import {layout, pick, deepest, range} from '../model/flame.js';
 import {ROW, paintFlame} from './flame-draw.js';
 
 /** @typedef {import('../model/flame.js').Box} Box */
@@ -31,7 +31,8 @@ const LEVELS = Math.floor(4096 / SCALE / ROW);
  * @property {() => Box | null} zoomed
  * @property {(raycaster: any) => {box: Box | null, distance: number} | null} hit where the ray meets the
  *           panel, and the box there; null if it misses the panel
- * @property {(box: Box | null) => boolean} hover outlines the box; whether it changed
+ * @property {(box: Box | null) => boolean} hover outlines the box, with a shape over the panel: the texture is not
+ *           painted again, which is the slow part; whether it changed
  * @property {(box: Box) => void} click zooms on the box, or back out to it: the panel's height changes
  * @property {(name: string | null) => void} light colours the frames of that name, none for null
  * @property {() => void} dispose
@@ -73,6 +74,16 @@ export function flamePanel(T, root, width, anisotropy) {
   // after the water, which writes no depth either (sea3d.js): drawn before, the water behind showed over it
   mesh.renderOrder = 2;
 
+  // the box hovered: a veil in the colour the frames found are, over it, the panel's child so that it follows it,
+  // in the panel's own units before its height is scaled by the rows shown. Painting the box on the texture would
+  // paint all of it again, and send it to the graphics card. Translucent, for the name to be read through it
+  const veil = new T.Mesh(new T.PlaneGeometry(1, 1),
+    new T.MeshBasicMaterial({color: dark ? 0x9a3d9a : 0xd462d4, transparent: true, opacity: 0.6, fog: false,
+                             toneMapped: false, side: T.DoubleSide, depthWrite: false}));
+  veil.renderOrder = 3;
+  veil.visible = false;
+  mesh.add(veil);
+
   // the rows shown: from the level on the panel's foot, as many as `rows`
   let first = 0, rows = most;
   const paint = () => {
@@ -92,27 +103,51 @@ export function flamePanel(T, root, width, anisotropy) {
   };
   paint();
 
+  /** @type {Box | null} the box outlined */
+  let hovered = null;
+  // puts the veil on the box hovered, as the rows shown now are: a row `rows` of them is `full / rows` high
+  // before the panel's own scaling, from its foot
+  const outline = () => {
+    const b = hovered;
+    const {from, span} = range(flame, look.zoomed);
+    const k = WIDTH / span;
+    const x = b ? Math.max((b.left - from) * k, 0) : 0;
+    const w = b ? Math.min(b.frame.total * k, WIDTH - x) : 0;
+    const row = b ? b.level - first : -1;
+    veil.visible = Boolean(b) && w > 0 && row >= 0 && row < rows;
+    if (!veil.visible)
+      return;
+    // in the panel's units: a pixel of the graph is `width / WIDTH` across and `full / rows / ROW` up
+    const px = width / WIDTH, py = full / rows / ROW;
+    veil.position.set((x + w / 2) / WIDTH * width - width / 2, -full / 2 + (row + 0.5) * full / rows, 0);
+    veil.scale.set(Math.max(w - 1, 2) * px, (ROW - 1) * py, 1);
+  };
+
   return {
     mesh,
     flame,
     height: () => full * rows / most,
     zoomed: () => look.zoomed,
     hit(raycaster) {
-      const [at] = raycaster.intersectObject(mesh);
+      // the panel alone: the outline is its child, and a ray meeting it would read a row off its own plate
+      const [at] = raycaster.intersectObject(mesh, false);
       if (!at?.uv)
         return null;
       return {box: pick(flame, look.zoomed, at.uv.x, first + Math.floor(at.uv.y * rows)), distance: at.distance};
     },
     hover(box) {
-      if (box === look.hovered)
+      if (box === hovered)
         return false;
-      look.hovered = box;
-      paint();
+      hovered = box;
+      outline();
       return true;
     },
     click(box) {
       look.zoomed = box !== flame.root ? box : null;
       paint();
+      // the rows are not where they were: hovered again, by the next move
+      hovered = null;
+      outline();
     },
     light(name) {
       if (name === lit)
@@ -122,6 +157,8 @@ export function flamePanel(T, root, width, anisotropy) {
       paint();
     },
     dispose() {
+      veil.geometry.dispose();
+      veil.material.dispose();
       geometry.dispose();
       material.dispose();
       texture.dispose();

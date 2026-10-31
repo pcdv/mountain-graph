@@ -564,7 +564,9 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
                    field('Sign size', sizing, 'How large the signs over the peaks are', 'signs')];
     if (knobsIn)
       knobsIn.replaceChildren(...knobs);
-    loading.replaceWith(renderer.domElement, labels, tip, ...knobsIn ? [] : [h('div', {class: 'relief'}, knobs)]);
+    // what looking around aims with: a cross in the middle of the view, shown while the mouse is locked
+    const cross = h('div', {class: 'crosshair', hidden: true});
+    loading.replaceWith(renderer.domElement, labels, tip, cross, ...knobsIn ? [] : [h('div', {class: 'relief'}, knobs)]);
     stand();
 
     /**
@@ -669,6 +671,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
         p.copy(at);
         viewpoint.position = p.toArray().map((/** @type {number} */ v) => v / side);
         viewpoint.target = target.toArray().map((/** @type {number} */ v) => v / side);
+        aimed();
         render();
         return;
       }
@@ -722,7 +725,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     // picking: the mouse's ray marched over the heights, the first cell it goes under
     const raycaster = new T.Raycaster();
     /**
-     * @param {MouseEvent} e
+     * @param {{clientX: number, clientY: number}} e a point of the page: the mouse, or the middle of the view
      * @returns {{node: number, distance: number}} the node under the mouse, -1 on the plain, and how far
      *          along the ray the ground is, Infinity if it misses the terrain
      */
@@ -778,7 +781,7 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     const named = new Map();
     t.nodes.forEach((n, i) => named.has(n.name) || named.set(n.name, i));
     /**
-     * @param {MouseEvent} e
+     * @param {{clientX: number, clientY: number}} e
      * @returns {{node: number, box?: import('../model/flame.js').Box | null}} what is under the mouse: a node
      *          of the terrain, -1 for none, or the panel in front of it and its box there
      */
@@ -790,11 +793,38 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
     /** @type {number[] | null} where the mouse went down: a drag is no click */
     let down = null;
     const canvas = renderer.domElement;
+    // looking around, the mouse is locked and has no place: what a click or a hover reaches is under the crosshair,
+    // in the middle of the view
+    const middle = () => {
+      const r = canvas.getBoundingClientRect();
+      return {clientX: r.left + r.width / 2, clientY: r.top + r.height / 2};
+    };
+    // looking around, the row of the flame graph under the cross is outlined, and nothing else is lit: lighting the
+    // frames of its name would paint the panel and the terrain again at each row crossed. What is under the cross
+    // is found from where the camera and the panel are now, which are drawn next
+    /** @returns {boolean} whether the row outlined changed */
+    const aimed = () => {
+      camera.updateMatrixWorld();
+      panel?.mesh.updateMatrixWorld();
+      return panel?.hover(pointed(middle()).box ?? null) ?? false;
+    };
+    // and again at each frame while looking around: the camera, the panel and the terrain move for other reasons
+    // than the mouse and the keys, and the outline must stay on the row under the cross
+    let aiming = 0;
+    const keepAim = () => {
+      aiming = 0;
+      if (!looking || gone)
+        return;
+      if (aimed())
+        render();
+      aiming = requestAnimationFrame(keepAim);
+    };
     canvas.addEventListener('pointerdown', (/** @type {PointerEvent} */ e) => down = [e.clientX, e.clientY]);
     canvas.addEventListener('click', (/** @type {MouseEvent} */ e) => {
       if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) >= 4)
         return;
-      const at = pointed(e);
+      const point = looking ? middle() : e;
+      const at = pointed(point);
       if (at.box === undefined)
         frame.click(at.node);
       else if (at.box && panel) {
@@ -802,11 +832,14 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
         panel.click(at.box);
         // lower or higher as it shows fewer rows or more: its foot stays
         placePanel();
-        hover(e);
+        if (looking)
+          aimed();
+        else
+          hover(point);
         render();
       }
     });
-    /** @param {MouseEvent} e */
+    /** @param {{clientX: number, clientY: number}} e */
     const hover = e => {
       const at = pointed(e);
       const box = at.box ?? null;
@@ -825,6 +858,9 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
         hover(e);
     });
     canvas.addEventListener('mouseleave', () => {
+      // the mouse is locked, and is nowhere: what is aimed at stays
+      if (looking)
+        return;
       if (panel?.hover(null))
         render();
       tip.hidden = true;
@@ -931,13 +967,19 @@ export function terrainView(t, trees, selection, viewpoint, hues = null, tuning 
       if (!on && document.fullscreenElement)
         document.exitFullscreen().catch(() => {});
       controls.enabled = !on;
+      cross.hidden = !on;
       tip.hidden = true;
       frame.hover(-1);
       if (on) {
         controls.maxPolarAngle = Math.PI - 0.05;
+        aimed();
+        render();
+        aiming ||= requestAnimationFrame(keepAim);
         return;
       }
       controls.maxPolarAngle = Math.PI / 2 - 0.05;
+      cancelAnimationFrame(aiming);
+      aiming = 0;
       // back to turning around a point: one on the ground ahead, the view not left looking up
       const d = new T.Vector3().subVectors(controls.target, camera.position);
       const level = Math.hypot(d.x, d.z);

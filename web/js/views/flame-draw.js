@@ -112,7 +112,7 @@ export function tipOf(flame, b, zoomed, unit) {
  * Puts a tooltip beside the pointer, on the side of its holder with more room.
  *
  * @param {HTMLElement} tip positioned in its offset parent
- * @param {MouseEvent} e
+ * @param {{clientX: number, clientY: number}} e the mouse, or the middle of the view looking around
  */
 export function placeTip(tip, e) {
   const r = tip.offsetParent?.getBoundingClientRect();
