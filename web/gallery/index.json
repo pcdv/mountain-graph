@@ -1,6 +1,12 @@
 {
   "profiles": [
     {
+      "file": "intellij-20261031-heap.fpk.gz",
+      "title": "IntelliJ IDEA heap, a tour",
+      "description": "The live heap of IntelliJ IDEA, 460 MiB in 8.3 million objects, reduced to what the page draws, with a tour of the views that plays when it opens: the peaks and how they are ranked, the 3D landscape in its shapes, the flame graph.",
+      "kind": "memory"
+    },
+    {
       "file": "tsc-20261027-cpu.fpk.gz",
       "title": "TypeScript compiler",
       "description": "tsc type-checking a React front end: a deep tree of checker and parser calls, with garbage collection as its widest peak.",
