@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {alias, anonymizer, KEPT} from '../../web/js/model/anonymize.js';
 
 const profile = strings => ({strings, threads: [{name: 'main', id: 1}, {name: 'com.foo.Pool', id: 2}]});
-const rules = (more = {}) => ({enabled: true, packages: true, depth: 2, keep: KEPT, replace: [], ...more});
+const rules = (more = {}) => ({packages: true, depth: 2, keep: KEPT, replacing: true, replace: [], ...more});
 
 test('aliases: the dictionary first, then a, b, c… and aa, ab…', () => {
   assert.deepEqual([0, 1, 2].map(alias), ['bart', 'lisa', 'homer']);
@@ -72,6 +72,17 @@ test('only the strings to replace, no aliases', () => {
   const p = anonymizer(rules({packages: false, replace: [{from: 'secret', to: 'plain'}]}))(
     profile(['com.secret.Run.go', 'secret-op']));
   assert.deepEqual(p.strings, ['com.plain.Run.go', 'plain-op']);
+});
+
+test('the aliases and the strings to replace are two transforms, each on its own', () => {
+  const list = [{from: 'secret', to: 'plain'}];
+  const names = ['com.foo.secret.Run.go', 'secret-op'];
+  assert.deepEqual(anonymizer(rules({replacing: false, replace: list}))(profile(names)).strings,
+                   ['com.bart.lisa.Run.go', 'secret-op']);
+  const same = profile(names);
+  assert.equal(anonymizer(rules({packages: false, replacing: false, replace: list}))(same), same, 'both off');
+  assert.deepEqual(anonymizer(rules({packages: false, replacing: true, replace: list}))(profile(names)).strings,
+                   ['com.foo.plain.Run.go', 'plain-op']);
 });
 
 test('nothing to do gives the profile itself; the aliases agree from one profile to the next', () => {

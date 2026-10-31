@@ -24,11 +24,12 @@ const DOMAINS = new Set(['com', 'org', 'net', 'io', 'edu', 'gov', 'dev', 'app', 
 
 /**
  * @typedef {object} Rules
- * @property {boolean} enabled whether anything is replaced: the rules below are kept, but ignored, when not
- * @property {boolean} packages whether the packages get aliases
+ * @property {boolean} packages whether the packages get aliases: `depth` and `keep` are kept, but ignored, when not
  * @property {number} depth how many package segments get aliases, after the domain: 2 for com.x.y, the
  *           sub-packages under keep their names
  * @property {string[]} keep packages that keep their name, with those under them (org.apache)
+ * @property {boolean} replacing whether the strings of `replace` are replaced, whatever `packages` says: the two
+ *           transforms are independent
  * @property {{from: string, to: string}[]} replace strings to replace by others, wherever they are, whatever their
  *           case, which the replacement keeps
  */
@@ -56,7 +57,7 @@ export function alias(n) {
  * @returns {boolean} whether they change anything
  */
 export function active(rules) {
-  return rules.enabled && (rules.packages || rules.replace.some(r => r.from !== ''));
+  return rules.packages || (rules.replacing && rules.replace.some(r => r.from !== ''));
 }
 
 /**
@@ -68,7 +69,8 @@ export function anonymizer(rules) {
   if (!active(rules))
     return p => p;
   const keep = new Set(rules.keep);
-  const literals = rules.replace.filter(r => r.from !== '').sort((a, b) => b.from.length - a.from.length);
+  const literals = (rules.replacing ? rules.replace : []).filter(r => r.from !== '')
+    .sort((a, b) => b.from.length - a.from.length);
   const found = literals.length > 0 ? new RegExp(literals.map(r => escape(r.from)).join('|'), 'gi') : null;
   /** @type {Map<string, string>} by the text in lower case: it is found whatever its case */
   const to = new Map(literals.map(r => [r.from.toLowerCase(), r.to]));

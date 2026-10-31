@@ -1329,7 +1329,7 @@ canvas.flame-canvas {
 
 .anonymizing {
   display: grid;
-  gap: 8px;
+  gap: 16px;
   font-size: 13px;
 }
 
@@ -1344,12 +1344,19 @@ canvas.flame-canvas {
   gap: 6px;
 }
 
-.anonymizing-body {
+/* a transform and its settings, which are indented under the switch and dimmed while it is off */
+.anon-group {
   display: grid;
   gap: 8px;
 }
 
-.anonymizing-body.off {
+.anon-fields {
+  display: grid;
+  gap: 8px;
+  margin-left: 22px;
+}
+
+.anon-fields.off {
   opacity: 0.5;
 }
 
