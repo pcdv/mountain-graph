@@ -11,6 +11,7 @@ import {loadFile, loadParse} from './load.js';
 import {stopParsing} from './hprof/dump.js';
 import {keepFile, lastFile, lastInterval, forgetFile} from './last-file.js';
 import {landing} from './landing.js';
+import {applyView} from './view-state.js';
 import {anonymizing} from './components/anonymizing.js';
 import {screenshotKeys} from './components/screenshot.js';
 import {installHelp} from './components/help.js';
@@ -106,6 +107,9 @@ async function open(file, again = false) {
     // closed, or another file opened, while this one was read
     if (current !== file)
       return;
+    // the settings its author showed it with, before the view reads them; not when the page only reloads
+    if (!again)
+      applyView(loaded.view);
     if (loaded.kind === 'heap') {
       // a dump's parse is kept, not the dump: parsing it again takes as long as the first time
       if (loaded.parse)

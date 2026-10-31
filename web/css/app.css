@@ -205,17 +205,27 @@ h1 .mark {
   gap: 8px;
 }
 
-.file-menu .save-reduced {
-  margin-top: 12px;
+/* what saves the file: the loss, what else to keep, what it comes to, and one button; the options line up with
+   the choice of loss */
+.file-menu .save-section {
+  display: grid;
+  gap: 8px;
 }
 
-.file-menu .save-reduced > summary {
-  cursor: pointer;
-  margin-bottom: 8px;
+.file-menu .save-section h3 {
+  margin-bottom: 0;
 }
 
-.file-menu .save-reduced .field {
-  margin-bottom: 8px;
+.file-menu .save-section .check {
+  margin-left: 96px;
+}
+
+.file-menu .save-section .check:has(input:disabled) {
+  color: var(--muted);
+}
+
+.file-menu .save-section p {
+  margin: 0;
 }
 
 /* the recording's timeline, under the header: an interval dragged on it sets the samples in focus */

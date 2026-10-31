@@ -37,6 +37,9 @@ on its own line, so reformat only the file being edited.
   the only dependency, loaded when the 3D view is first shown.
 - `web/js/main.js` — wiring only: opening a file, its progress, the view of its kind, the file
   kept for a reload.
+- `web/js/view-state.js` — the settings of the view a saved Flamepack may keep (member `mountaingraph`,
+  "With the settings of the view" in the file menu) and applies when opened: a whitelist of keys, never the
+  anonymizing rules or personal habits. A new setting of the view is added to its list.
 - `web/gallery/` — profiles to try, listed in `index.json` (file, title, description, kind) and shown
   as cards on the landing page (`web/js/landing.js`), which fetches one and opens it as a file.
   Public: nothing internal in them (`test/gallery.test.js` checks that each opens, not what it holds).

@@ -30,9 +30,8 @@ import {fileMenu} from '../components/file-menu.js';
 import {folded, section} from '../components/form.js';
 import {floating, keepView, remembered} from './page.js';
 import {helpTip} from '../components/help.js';
-import {saveReduced, samplesReduction} from '../components/save-reduced.js';
-import {encodeSamples} from '../profile/encode.js';
-import {saveFile, savedName} from '../save-file.js';
+import {saveSection, samplesReduction} from '../components/save-section.js';
+import {captureView} from '../view-state.js';
 
 /** @typedef {import('../profile/profile.js').Profile} Profile */
 /** @typedef {import('../load.js').Sampling} Sampling */
@@ -121,7 +120,12 @@ function display(page, name, samplings, which, saved) {
     // the view fills the window under the bar: there first, to take its shape from
     // what the settings of the view keep, as they are when it is asked for: none before the view is drawn
     const shownNow = () => last && {waits: last.waits, hide: last.hide, java: last.java, ...focus, operation};
-    replace(bar, ...summary(name, samplings[which], shownNow), samplingChoice(samplings, which, to => {
+    // what is shown is kept first, so that the camera and the peak chosen are those of now
+    const settings = () => {
+      page.remember();
+      return captureView();
+    };
+    replace(bar, ...summary(name, samplings[which], shownNow, settings), samplingChoice(samplings, which, to => {
       writeSetting(SAMPLING, samplings[to].key);
       page.remember();
       display(page, name, samplings, to, focus);
@@ -231,24 +235,14 @@ function samplingChoice(samplings, which, choose) {
 }
 
 /**
- * Downloads the samples shown as a Flamepack, whatever file they were read from.
- *
- * @param {string} name of the file
- * @param {Sampling} sampling
- */
-function download(name, {profile, meta}) {
-  const doc = encodeSamples(profile, meta);
-  saveFile(savedName(name, '.fpk'), new Blob([JSON.stringify(doc)], {type: 'application/json'}));
-}
-
-/**
  * @param {string} name of the file
  * @param {Sampling} sampling the one shown
  * @param {() => import('../model/shown.js').View | null} view what the settings of the view keep, which a
  *        reduced file can be limited to
- * @returns {HTMLElement[]} its name and what it holds, for the header; its menu, with its export
+ * @param {() => Record<string, string>} settings how the view is set now, for the file saved to keep
+ * @returns {HTMLElement[]} its name and what it holds, for the header; its menu, with what saves it
  */
-function summary(name, sampling, view) {
+function summary(name, sampling, view, settings) {
   const p = sampling.profile;
   let ms = 0;
   for (let i = 0; i < p.kind.length; i++)
@@ -265,9 +259,5 @@ function summary(name, sampling, view) {
         + `for ${(p.end / 1e9).toFixed(1)} s.`
       : `Collapsed stacks: ${p.kind.length.toLocaleString()} distinct, ${amount(ms, p.unit)}, `
         + `${p.parent.length.toLocaleString()} stack nodes.`),
-    h('div', {class: 'actions'},
-      h('button', {type: 'button', class: 'button',
-        title: 'Download these samples as a Flamepack (.fpk), which jfr-web reads too',
-        onclick: () => download(name, sampling)}, 'Export .fpk')),
-    saveReduced(name, p, {}, samplesReduction(p, sampling.meta, view)));
+    saveSection(name, p, samplesReduction(p, sampling.meta, view), settings));
 }

@@ -80,19 +80,22 @@ bytes. First, samples, of time or of allocations:
   `stackcollapse` scripts (`a;b;c 12` per line), which any profiler can produce. Their counts are
   samples, with no time, thread or operation.
 
-Whatever the samples were read from, the file's menu saves those shown as a Flamepack, with
-**Export .fpk**. **Save with loss…** goes further: it drops the stacks of the methods that hardly
-run, where the flame graph is thin, cutting each at its deepest caller wide enough and ending it in
-`(thin stacks)`. The file comes out half or a third the size. Every sample keeps its time, thread
-and weight, and the methods that take time keep their peaks; the total of a method is short by the
-thin stacks it is on.
+Whatever the samples were read from, the file's menu saves those shown as a Flamepack, with **Save**.
+The **Loss** it asks for is none at first, which writes the whole profile as a `.fpk`. A loss drops the
+stacks of the methods that hardly run, where the flame graph is thin, cutting each at its deepest
+caller wide enough and ending it in `(thin stacks)`. The file comes out half or a third the size.
+Every sample keeps its time, thread and weight, and the methods that take time keep their peaks; the
+total of a method is short by the thin stacks it is on.
 
-Neither export applies the view's settings: the file keeps the waits, the native samples and the
-hidden frames, and the settings apply again when it is opened. **Only what is shown**, beside the
-loss, saves what the view shows instead: the samples left out as waits, the native ones when only
-Java's are shown, and those outside the interval or the operation in focus are not in the file, and
-the frames hidden are out of its stacks, their time with their callers. The file is smaller, and
-draws as the view drew it.
+The file keeps the waits, the native samples and the hidden frames, and the settings apply again
+when it is opened. **Only what is shown**, with a loss, saves what the view shows instead: the
+samples left out as waits, the native ones when only Java's are shown, and those outside the
+interval or the operation in focus are not in the file, and the frames hidden are out of its stacks,
+their time with their callers. The file is smaller, and draws as the view drew it.
+
+**With the settings of the view** adds to either file how the page is set: the view, the shape of the
+land, the peaks counted, the camera. Whoever opens the file sees what was shown. The anonymizing
+rules and personal habits (the mouse, the width of the panels) are never in it.
 
 Then the memory of a JVM:
 
@@ -102,8 +105,8 @@ Then the memory of a JVM:
   seconds, and the page stays responsive throughout. WebAssembly addresses 4 GiB, so the page reads
   heaps up to roughly 100 million objects. Beyond that, or for a gzipped dump, the `jheap` command
   parses it and keeps the result beside it, `<name>.jheap.json`, a Flamepack the page opens as it
-  would the dump. So does a heap the page exported, `<name>.fpk`. The file's menu also has
-  **Save with loss…**: the heap reduced to what the page draws, for a gallery or a report, in a
+  would the dump. So does a heap the page saved, `<name>.fpk`. The file's menu also saves with a
+  loss: the heap reduced to what the page draws, for a gallery or a report, in a
   `<name>-reduced.fpk.gz` a few percent of the dump's profile, at a level of loss that is chosen,
   its size said before the file is saved (`tools/reduce.js` does the same from a terminal).
 - **Duplicate Strings**, from `jheap <dump> dups --save <name>.fpk`: a peak is a value held in

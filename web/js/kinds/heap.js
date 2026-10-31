@@ -8,7 +8,7 @@
 import {h, replace} from '../lib/dom.js';
 import {bytes} from '../lib/format.js';
 import {forgetFile} from '../last-file.js';
-import {encode, stacksToProfile, stacksOf} from '../profile/heap.js';
+import {stacksToProfile, stacksOf} from '../profile/heap.js';
 import {peaks, mountains} from '../model/peaks.js';
 import {terrain} from '../model/terrain.js';
 import {peaksView} from '../views/peaks.js';
@@ -27,8 +27,8 @@ import {contextStacks} from '../model/context.js';
 import {ownershipPeaks, mountainsOf, holdersOf, holdsOf, THIN} from '../model/ownership.js';
 import {fileMenu} from '../components/file-menu.js';
 import {folded, section} from '../components/form.js';
-import {saveReduced} from '../components/save-reduced.js';
-import {saveFile, savedName} from '../save-file.js';
+import {saveSection, heapReduction} from '../components/save-section.js';
+import {captureView} from '../view-state.js';
 import {floating, keepView, remembered} from './page.js';
 
 /** @typedef {import('../profile/heap.js').HeapProfile} HeapProfile */
@@ -62,7 +62,12 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
     const viewpoint = kept0.viewpoint;
     page.remember = () => keepView({open: [...unfolded], chosen: selection.chosen, tab: selection.tab, viewpoint});
 
-    replace(bar, ...summary(name, p, stats, restored, duplicates));
+    // what is shown is kept first, so that the camera and the peak chosen are those of now
+    const settings = () => {
+      page.remember();
+      return captureView();
+    };
+    replace(bar, ...summary(name, p, stats, restored, duplicates, settings));
     main.classList.add('stage');
     let tuned = tuning();
     // the 3D view's own controls, which it puts there as it is built
@@ -156,28 +161,16 @@ export function showHeap(page, name, {profile: p, stats, duplicates}, restored =
 }
 
 /**
- * Downloads the full paths as a Flamepack: the context setting is not
- * applied, so nothing is lost before the file is read elsewhere.
- *
- * @param {string} name of the heap dump
- * @param {HeapProfile} p
- * @param {import('../hprof/dump.js').HeapDuplicates | null} duplicates kept in the file, so that it opens as it did
- */
-function download(name, p, duplicates) {
-  const doc = {...encode(p), ...duplicates ? {duplicates} : {}};
-  saveFile(savedName(name, '.fpk'), new Blob([JSON.stringify(doc)], {type: 'application/json'}));
-}
-
-/**
  * @param {string} name of the file
  * @param {HeapProfile} p
  * @param {HeapStats} stats
  * @param {boolean} restored
  * @param {import('../hprof/dump.js').HeapDuplicates | null} duplicates
- * @returns {HTMLElement[]} its name and what it holds, for the header; its menu, with its export and the
+ * @param {() => Record<string, string>} settings how the view is set now, for the file saved to keep
+ * @returns {HTMLElement[]} its name and what it holds, for the header; its menu, with what saves it and the
  *          parse's report
  */
-function summary(name, p, stats, restored, duplicates) {
+function summary(name, p, stats, restored, duplicates, settings) {
   const unreachable = stats.totalSize > 0 ? Math.round(100 * stats.unreachableSize / stats.totalSize) : 0;
   // a profile saved without its parse's report has none to show
   const report = stats.report;
@@ -200,15 +193,13 @@ function summary(name, p, stats, restored, duplicates) {
   return fileMenu(name, brief,
     holds,
     restored ? h('p', {class: 'muted'}, 'Its parse is kept in the browser: open the dump again to parse it again.') : null,
-    h('div', {class: 'actions'},
+    // what is reduced is how a heap's classes hold each other, which a profile of duplicate Strings has not:
+    // it is saved whole, with the duplicates it opens with
+    saveSection(name, p, duplicates ? {...heapReduction(p, {duplicates}), levels: []} : heapReduction(p), settings),
+    restored ? h('div', {class: 'actions'},
       h('button', {type: 'button', class: 'button',
-        title: 'Download every path as a Flamepack (.fpk), which jfr-web reads too',
-        onclick: () => download(name, p, duplicates)}, 'Export JSON'),
-      restored ? h('button', {type: 'button', class: 'button',
         title: 'Drops the parse kept in the browser: the page starts empty next time',
-        onclick: () => forgetFile().then(() => location.reload())}, 'Forget the parse') : null),
-    // what is reduced is how a heap's classes hold each other, which a profile of duplicate Strings has not
-    duplicates ? null : saveReduced(name, p),
+        onclick: () => forgetFile().then(() => location.reload())}, 'Forget the parse')) : null,
     report ? h('h3', null, 'Parse report') : null,
     report ? parseReport(report) : null);
 }

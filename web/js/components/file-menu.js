@@ -21,6 +21,9 @@ export function fileMenu(name, brief, ...details) {
   menu.addEventListener('beforetoggle', e => {
     if (/** @type {any} */ (e).newState !== 'open')
       return;
+    // what the menu holds is told, to work out again what depends on the settings of the view
+    for (const part of menu.children)
+      part.dispatchEvent(new Event('menuopen'));
     const r = button.getBoundingClientRect();
     menu.style.top = `${r.bottom + 6}px`;
     menu.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 8 - Math.min(560, innerWidth - 16)))}px`;

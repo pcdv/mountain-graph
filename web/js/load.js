@@ -17,6 +17,7 @@ import {decode, VERSIONS} from './profile/profile.js';
 import {isCollapsed, readCollapsed} from './profile/collapsed.js';
 import {isJfr, readJfr} from './profile/jfr.js';
 import {anonymizer} from './model/anonymize.js';
+import {MEMBER} from './view-state.js';
 import {heapOf, keptName, parseInWorker} from './hprof/dump.js';
 
 /** @typedef {import('./profile/profile.js').Profile} Profile */
@@ -44,10 +45,11 @@ import {heapOf, keptName, parseInWorker} from './hprof/dump.js';
  */
 
 /**
- * What a file holds, by kind. A heap parsed from a dump has its parse, to keep.
+ * What a file holds, by kind. A heap parsed from a dump has its parse, to keep. A Flamepack may say how
+ * its author set the view (view-state.js): `view` is that member, to be checked before it is used.
  *
- * @typedef {{kind: 'samples', samplings: Sampling[]}
- *         | {kind: 'heap', heap: Heap, parse: Parse | null}} Loaded
+ * @typedef {({kind: 'samples', samplings: Sampling[]}
+ *         | {kind: 'heap', heap: Heap, parse: Parse | null}) & {view?: unknown}} Loaded
  */
 
 /**
@@ -185,9 +187,10 @@ function fromText(name, text) {
     throw new Error(`${name} is a profile of version ${doc.version}: this page reads versions `
                     + `${VERSIONS.join(' and ')}, and 3.`);
   // a heap's: the report of jheap's parse, or the objects of each path, which no profile of samples has
+  const view = doc[MEMBER] ? {view: doc[MEMBER]} : {};
   if (doc.heap || Array.isArray(doc.samples?.objects))
-    return {kind: 'heap', heap: heapOf(doc, doc.heap?.report ?? null), parse: null};
-  return samples(decode(doc), doc.meta);
+    return {kind: 'heap', heap: heapOf(doc, doc.heap?.report ?? null), parse: null, ...view};
+  return {...samples(decode(doc), doc.meta), ...view};
 }
 
 /**
