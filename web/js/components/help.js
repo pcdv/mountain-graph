@@ -24,7 +24,9 @@ export function openHelp(anchor) {
     const close = h('button', {type: 'button', class: 'button icon close', title: 'Close the help', 'aria-label': 'Close the help',
                                onclick: () => dialog?.close()});
     close.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
-    dialog = /** @type {HTMLDialogElement} */ (h('dialog', {class: 'help'}, frame, close));
+    // the close button has a row of its own: over the page it sat on the page's scrollbar
+    dialog = /** @type {HTMLDialogElement} */ (h('dialog', {class: 'help', 'aria-label': 'Help'},
+      h('div', {class: 'help-head'}, h('span', null, 'Help'), close), frame));
     // a click on the backdrop is a click on the dialog itself, not on what it holds
     dialog.addEventListener('click', e => {
       if (e.target === dialog)
@@ -38,7 +40,14 @@ export function openHelp(anchor) {
     dialog.showModal();
   // loaded once: the page again at another anchor only scrolls
   if (!frame.getAttribute('src')) {
-    frame.addEventListener('load', () => scrollTo(wanted));
+    frame.addEventListener('load', () => {
+      // the page has the focus, and a key pressed there does not reach the dialog: Escape is passed on
+      frame?.contentWindow?.addEventListener('keydown', e => {
+        if (e.key === 'Escape')
+          dialog?.close();
+      });
+      scrollTo(wanted);
+    });
     frame.setAttribute('src', PAGE);
   }
   else
