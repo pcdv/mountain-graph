@@ -34,6 +34,21 @@ import {FOLD, encode, stacksOf, stacksToProfile} from '../profile/heap.js';
 const CONTEXTS = 5;
 
 /**
+ * Not `Math.max(0, ...values)`, which passes every value as an argument and overflows the stack with the
+ * hundreds of thousands a big heap's ends come to.
+ *
+ * @param {Iterable<number>} values
+ * @returns {number} the largest, 0 when none is above
+ */
+const largest = values => {
+  let top = 0;
+  for (const v of values)
+    if (v > top)
+      top = v;
+  return top;
+};
+
+/**
  * How much may be lost.
  *
  * @typedef {object} Loss
@@ -339,7 +354,7 @@ function fromEnd(p, s, ends, least, peaks, context, together) {
     if (length[id] <= CONTEXTS)
       byLength[length[id] - 1].push(weight[id]);
   }
-  const top = byLength.map(list => Math.max(0, ...list));
+  const top = byLength.map(largest);
   const lightest = byLength.map(nth);
 
   /** @type {Map<number, string>} the package of each name */
@@ -356,7 +371,7 @@ function fromEnd(p, s, ends, least, peaks, context, together) {
   const packages = new Map();
   for (const i of ends)
     packages.set(packageOf(i), (packages.get(packageOf(i)) ?? 0) + s.own[i]);
-  const topPackage = Math.max(0, ...packages.values());
+  const topPackage = largest(packages.values());
   const lightestPackage = nth([...packages.values()]);
 
   /** @param {number[]} ids @param {number} j @returns {boolean} the end of j + 1 frames may be a peak */
@@ -465,7 +480,7 @@ export function compare(before, after, {least, peaks: count}) {
   const a = views(before, count), b = views(after, count);
   return [...a.keys()].map(view => {
     const x = /** @type {View} */ (a.get(view)), y = /** @type {View} */ (b.get(view));
-    const heaviest = Math.max(0, ...x.list.map(peak => x.trees.get(peak.name)?.total ?? 0));
+    const heaviest = largest(x.list.map(peak => x.trees.get(peak.name)?.total ?? 0));
     const d = {view, moved: 0, self: 0, total: 0, depths: 0, ridges: 0, missing: 0, added: 0, worst: 0};
     const none = {nodes: new Map(), deepest: -1};
     x.list.forEach((peak, i) => {

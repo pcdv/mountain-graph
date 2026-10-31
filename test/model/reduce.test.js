@@ -82,6 +82,19 @@ describe('reduce', () => {
     assert.ok(folds.every(f => (f & 7) === SYNTHETIC));
   });
 
+  it('reduces a heap of more classes than a call has arguments', () => {
+    // the weights of all the classes are compared at once: spread into Math.max, they overflowed the stack
+    /** @type {Map<string, number>} */
+    const bytes = new Map(), objects = new Map();
+    for (let i = 0; i < 200_000; i++) {
+      bytes.set(`System Class;lib${i}.util.Helper`, 10 + i % 13);
+      objects.set(`System Class;lib${i}.util.Helper`, 1);
+    }
+    const p = stacksToProfile(bytes, objects), r = reduce(p, LEVELS[1]);
+
+    assert.equal(sum(r.weight), sum(p.weight));
+  });
+
   it('draws as the whole with nothing to lose', () => {
     const p = heap();
     const loss = {least: 3e-4, peaks: 100, context: 5, totals: true, together: false, strays: false};
