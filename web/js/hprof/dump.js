@@ -57,7 +57,7 @@ import {decodeHeap} from '../profile/heap.js';
  * @returns {string} what jheap names the parse it keeps beside it
  */
 export function keptName(name) {
-  return `${name.replace(/\.hprof(\.gz)?$|\.gz$/i, '')}.jheap.json`;
+  return `${name.replace(/\.hprof(\.gz)?$|\.gz$/i, '')}.jheap.fpk`;
 }
 
 /**

@@ -8,6 +8,7 @@ import {gzip} from '../web/js/gzip.js';
 describe('savedName', () => {
   it('drops what says what the file was', () => {
     assert.equal(savedName('heap.hprof', '.fpk'), 'heap.fpk');
+    assert.equal(savedName('heap.jheap.fpk', '.fpk'), 'heap.fpk');
     assert.equal(savedName('heap.jheap.json', '.fpk'), 'heap.fpk');
     assert.equal(savedName('heap.fpk.gz', '-reduced.fpk.gz'), 'heap-reduced.fpk.gz');
     assert.equal(savedName('heap.flamepack.json.gz', '-reduced.fpk.gz'), 'heap-reduced.fpk.gz');

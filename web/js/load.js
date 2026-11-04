@@ -7,7 +7,7 @@
  *   a slice at a time: it is never read whole.
  * - Anything else is read whole, unzipped when gzipped: a JFR recording
  *   (jfr.js), a profile of jfr-web (version 5, 4 or 3), a heap's profile as jheap
- *   keeps it beside a dump (`<name>.jheap.json`), or collapsed stacks
+ *   keeps it beside a dump (`<name>.jheap.fpk`, `.jheap.json` before), or collapsed stacks
  *   (collapsed.js).
  *
  * The kind says what the page shows: samples (time or allocations, by the

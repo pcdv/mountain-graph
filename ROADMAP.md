@@ -200,7 +200,7 @@ either kind, told by their content, and shows the view of that kind (`kinds/`).
   4.6 GB and 46M objects in 18 s against jheap's 4 s: the reads and their copy into the module's
   memory are most of the difference. A file opened while a dump parses stops the parse
 - [x] A heap's profile opened as a dump is, without parsing: the parse jheap keeps beside a dump
-  (`.jheap.json`), with its report, for a heap past the page's 4 GiB or gzipped; an export of the page
+  (`.jheap.fpk`, `.jheap.json` before), with its report, for a heap past the page's 4 GiB or gzipped; an export of the page
 - [x] Peaks ranked by what they hold, the deepest chain of holders still retaining most of the
   weight (`model/ownership.js`, the same chains as jheap's), or by shallow size, gathered with
   their holders (*context*)
@@ -209,7 +209,7 @@ either kind, told by their content, and shows the view of that kind (`kinds/`).
 - [x] Kept for a reload as its parse, not the dump; anonymized as samples are
 - [ ] A gzipped dump in the page: unzipped through `DecompressionStream` into a file of the origin
   private file system, whose synchronous handles exist in workers, and parsed from there. Refused
-  today, with a message naming jheap and the `.jheap.json` it keeps. Done when a test drops a
+  today, with a message naming jheap and the `.jheap.fpk` it keeps. Done when a test drops a
   gzipped `File` through `loadFile`
 - [ ] A class object named `class com.Foo`: its static fields hang under the plain class name,
   which reads as an instance of it. A change to the parse, in jheap first

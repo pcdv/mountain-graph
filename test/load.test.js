@@ -219,12 +219,16 @@ describe('a heap dump', () => {
     const kept = JSON.stringify({...encode(parsed.profile), heap: {report: parsed.stats.report}});
     const parse = () => assert.fail('a profile is not parsed');
 
-    const {heap: {profile, stats}, parse: none} = await loadHeap(new File([kept], 'heap.jheap.json'), {parse});
+    const {heap: {profile, stats}, parse: none} = await loadHeap(new File([kept], 'heap.jheap.fpk'), {parse});
 
     assert.equal(stats.report?.instanceCount, 1);
     assert.equal(stats.totalSize, 8);
     assert.equal(profile.stack.length, parsed.profile.stack.length);
     assert.equal(none, null, 'the file is kept, not a parse');
+
+    // the name an earlier jheap kept it under opens the same
+    const {heap: earlier} = await loadHeap(new File([kept], 'heap.jheap.json'), {parse});
+    assert.equal(earlier.stats.report?.instanceCount, 1);
   });
 
   test('opens from a profile the page exported, without a report: what it can count, it does', async () => {
@@ -240,7 +244,7 @@ describe('a heap dump', () => {
 
   test('gzipped, is not read here: the page says what reads it', async () => {
     await assert.rejects(loadFile(new File([gzipSync(dump)], 'heap.hprof.gz')),
-      /heap\.hprof\.gz is a gzipped heap dump, which the page cannot read: .*jheap.* heap\.jheap\.json/);
+      /heap\.hprof\.gz is a gzipped heap dump, which the page cannot read: .*jheap.* heap\.jheap\.fpk/);
   });
 
   test('cut short, says what jheap says of it', async () => {

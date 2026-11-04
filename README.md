@@ -124,7 +124,7 @@ Then the memory of a JVM:
   reads the file a slice at a time. A dump of 4.6 GB and 46 million objects opens in under 20
   seconds, and the page stays responsive throughout. WebAssembly addresses 4 GiB, so the page reads
   heaps up to roughly 100 million objects. Beyond that, or for a gzipped dump, the `jheap` command
-  parses it and keeps the result beside it, `<name>.jheap.json`, a Flamepack the page opens as it
+  parses it and keeps the result beside it, `<name>.jheap.fpk`, a Flamepack the page opens as it
   would the dump. So does a heap the page saved, `<name>.fpk`. The file's menu also saves with a
   loss: the heap reduced to what the page draws, for a gallery or a report, in a
   `<name>-reduced.fpk.gz` a few percent of the dump's profile, at a level of loss that is chosen,
