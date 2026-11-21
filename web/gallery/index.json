@@ -2,8 +2,14 @@
   "profiles": [
     {
       "file": "intellij-20261031-heap.fpk.gz",
-      "title": "IntelliJ IDEA heap, a tour",
-      "description": "The live heap of IntelliJ IDEA, 460 MiB in 8.3 million objects, reduced to what the page draws, with a tour of the views that plays when it opens: the peaks and how they are ranked, the 3D landscape in its shapes, the flame graph.",
+      "title": "IntelliJ IDEA heap, a tour on a computer",
+      "description": "The live heap of IntelliJ IDEA, 460 MiB in 8.3 million objects, reduced to what the page draws, with a tour of the views that plays when it opens: the peaks and how they are ranked, the 3D landscape in its shapes, the flame graph. Its views are laid out for a wide screen.",
+      "kind": "memory"
+    },
+    {
+      "file": "intellij-20261031-heap-smartphone.fpk.gz",
+      "title": "IntelliJ IDEA heap, a tour on a smartphone",
+      "description": "The same heap and the same tour, with views laid out for a phone held upright. On a computer screen it looks poor: open the other tour there.",
       "kind": "memory"
     },
     {
