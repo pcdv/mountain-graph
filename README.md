@@ -1,5 +1,56 @@
 # MountainGraph
 
+## TL;DR
+
+A progressive web app (PWA) that draws profiling data as 3D landscapes. You can browse the included
+gallery if you have no files to open. It works on a smartphone, but a computer gives the best experience.
+
+The app embeds its own documentation.
+
+[Try it here](https://pcdv.github.io/mountain-graph/)
+
+## Introduction
+
+This is an experiment I had in mind for years: exploring profiling data graphically, like a flame graph,
+but in three dimensions. I lacked the time, motivation or 3D skills to see it through.
+
+A small injury left me stuck on a couch for some time, and an idle Claude subscription did the rest.
+
+MountainGraph reads and writes Flamepack files (`fpk`), an open format described
+[here](https://github.com/pcdv/flamepack). Those files can contain:
+
+- time spent (wall time)
+- allocations
+- data extracted from a Java heap dump (classes or duplicated strings)
+
+It can parse several file types, mainly Java profiles (JFR, HPROF) but also:
+
+- `stackcollapse`
+- `cpuprofile` ([conversion](https://github.com/pcdv/flamepack/blob/master/tools/cpuprofile.mjs) is needed first)
+
+More formats could be added if needed.
+
+Non-exhaustive feature list:
+
+- Viewing modes: 2D, 3D, Flame graph
+- Anonymization
+- Tour (guided slide show)
+- Fly-through mode
+- Minecraft-style landscapes
+
+It is a companion app to other tools I wrote:
+
+- [jfr-web](https://github.com/pcdv/jfr-web): a Java profiler based on JFR (CLI and web app),
+  working in several modes: standalone, embedded, static HTML. It adds the notion of an _operation_
+  (e.g. HTTP request, RPC call, JUnit test) and many ways to inspect them. It supports
+  [flak](https://github.com/pcdv/flak) applications out of the box.
+- [jheap](https://github.com/pcdv/jheap): parses HPROF files and outputs a Flamepack file.
+  It can (lossily) "compress" a 5 GiB heap dump in around 1 MiB by keeping only the aggregated paths.
+  The resulting file can be opened in MountainGraph, or further analyzed by `jheap` itself. I wrote a
+  small agent skill that uses `jheap` to quickly find the source of a memory leak.
+
+## What it shows
+
 A flame graph shows where the time went, but it can only be read in one order at a time.
 Top-down, it ranks the most expensive stacks. Inverted, it ranks the hot methods and spreads their
 callers beneath them. MountainGraph is an experiment in using a third dimension to show both at
@@ -7,8 +58,8 @@ once.
 
 It draws a profile as a landscape. The methods that take the most time rise as peaks (the inverted
 view), and the call paths into them form the slopes (the stacks of the top-down view), down to the
-entry points, a request or a thread, at the foot. The question it asks is not only *where?* but
-*why do we keep ending up here?*
+entry points, a request or a thread, at the foot. The question it asks is not only _where?_ but
+_why do we keep ending up here?_
 
 A heap dump reads the same way. The objects holding the most memory are the peaks, and the
 references that lead to them are the slopes, out to the roots that hold everything up.
@@ -79,7 +130,7 @@ Pick a file or drop it on the page, gzipped or not: the page tells what it is fr
 bytes. First, samples, of time or of allocations:
 
 - **JFR recordings** (`.jfr`, JDK 11 and later), read in the page. A recording holds two kinds of
-  samples, which weigh different things, so both are read, and a *Samples* choice in the top bar
+  samples, which weigh different things, so both are read, and a _Samples_ choice in the top bar
   switches between the wall clock (Java and native samples, weighing time) and the allocations
   (weighing bytes). A recording read this way has no operations.
 - **[Flamepack](https://github.com/pcdv/flamepack)** (`.fpk`, version 5, 4 or 3): collapsed stacks
@@ -132,7 +183,7 @@ Then the memory of a JVM:
 - **Duplicate Strings**, from `jheap <dump> dups --save <name>.fpk`: a peak is a value held in
   several copies, as high as what keeping one copy would save, and its slopes are the objects that
   hold the copies, out to the root. The page recognises the file by its `duplicates` member and
-  draws it as *Own size* with the class alone, so the settings that choose how peaks are ranked and
+  draws it as _Own size_ with the class alone, so the settings that choose how peaks are ranked and
   gathered are not shown. The file holds the Strings' text, the application's data, as a heap dump
   does, so it is no more shareable than the dump.
 
@@ -147,7 +198,7 @@ jheap's command does:
   first.
 - **Thin wrappers are skipped by heuristic.** An object that owns under 1% of what it holds and
   spreads it over several children is taken for the place where the walk entered the graph, not for
-  an owner. The setting *thin wrappers* shows them again.
+  an owner. The setting _thin wrappers_ shows them again.
 
 The last file opened is kept in the browser and shown again when the page is reloaded. A heap dump
 is kept as its parse, a few MB, so a reload does not parse it again.
